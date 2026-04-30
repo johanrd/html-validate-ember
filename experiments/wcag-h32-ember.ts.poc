@@ -1,0 +1,93 @@
+// Custom replacement for html-validate's `wcag/h32` rule.
+//
+// Why we ship our own:
+//   `wcag/h32` requires every `<form>` element to have a submit
+//   button (or an externally-associated one via `<button form='X'>`).
+//   In Ember/Glimmer, several legitimate patterns make a form
+//   functionally submittable without a literal `<button
+//   type='submit'>` child:
+//
+//     - `<form {{on 'change' this.handleCommit}}>` — auto-commit on
+//       each input change.
+//     - `<form {{on 'input' ...}}>` — same, on every keystroke.
+//     - `<form {{on 'submit' ...}}>` — explicit submit handler;
+//       Enter in any input fires it (browser implicit submission).
+//
+//   `blank.ts` detects these and stamps a `data-hve-auto-commit`
+//   marker attribute onto the form's open tag. This rule is a strict
+//   port of the upstream `wcag/h32` logic that additionally exempts
+//   any form carrying that marker.
+//
+// Behavior is otherwise byte-identical to upstream `wcag/h32`. Only
+// enabled in our `:gts-recommended` preset, which simultaneously
+// disables the upstream rule. Users on `:recommended` (minimal) get
+// the strict upstream behavior.
+
+import { Rule } from 'html-validate';
+import type { DOMReadyEvent, DOMTree, HtmlElement, RuleDocumentation } from 'html-validate';
+
+import { AUTO_COMMIT_MARKER } from '../blank.js';
+
+function isSubmit(node: HtmlElement): boolean {
+  return Boolean(node.meta?.submitButton);
+}
+
+function hasNestedSubmit(form: HtmlElement, selector: string): boolean {
+  const matches = form
+    .querySelectorAll(selector)
+    .filter(isSubmit)
+    .filter((node) => !node.hasAttribute('form'));
+  return matches.length > 0;
+}
+
+function isAssociated(id: string, node: HtmlElement): boolean {
+  const formAttr = node.getAttribute('form');
+  return Boolean(formAttr?.valueMatches(id, true));
+}
+
+function hasAssociatedSubmit(document: DOMTree, form: HtmlElement): boolean {
+  const id = form.id;
+  if (!id) return false;
+  const matches = document
+    .querySelectorAll('button[form],input[form]')
+    .filter(isSubmit)
+    .filter((node) => isAssociated(id, node));
+  return matches.length > 0;
+}
+
+export default class WcagH32Ember extends Rule {
+  documentation(): RuleDocumentation {
+    return {
+      description: [
+        'WCAG 2.1 requires each `<form>` element to have at least one submit button.',
+        '',
+        'This is the `:gts-recommended` variant of `wcag/h32` shipped by `html-validate-ember`.',
+        'It exempts forms that carry a `data-hve-auto-commit` marker — automatically injected',
+        "by the transformer when the form has an `{{on 'change' ...}}`, `{{on 'input' ...}}`,",
+        "or `{{on 'submit' ...}}` modifier (these patterns make the form functionally",
+        'submittable without a literal `<button type=submit>`).',
+      ].join('\n'),
+      url: 'https://github.com/johanrd/html-validate-ember#wcag-h32-ember',
+    };
+  }
+
+  setup(): void {
+    const formTags = this.getTagsWithProperty('form');
+    const formSelector = formTags.join(',');
+    const submitButtonTags = this.getTagsWithProperty('submitButton');
+    const submitButtonSelector = submitButtonTags.join(',');
+
+    this.on('dom:ready', (event: DOMReadyEvent) => {
+      const { document } = event;
+      const forms = document.querySelectorAll(formSelector);
+      for (const form of forms) {
+        // Exemption: transformer marked this form as functionally
+        // submittable via a Glimmer event-listener modifier.
+        if (form.hasAttribute(AUTO_COMMIT_MARKER)) continue;
+        if (hasNestedSubmit(form, submitButtonSelector)) continue;
+        if (hasAssociatedSubmit(document, form)) continue;
+        this.report(form, `<${form.tagName}> element must have a submit button`);
+      }
+    });
+  }
+}

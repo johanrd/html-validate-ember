@@ -1,0 +1,21 @@
+import Component from '@glimmer/component';
+import { on } from '@ember/modifier';
+
+export default class AutoCommitFormComponent extends Component {
+  handleCommit = (e: Event) => {
+    const form = e.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    void data;
+  };
+
+  <template>
+    {{! Auto-commit form: change handler reads FormData on each input change. }}
+    {{! No literal submit button — wcag-h32-ember should exempt this form. }}
+    <form {{on 'change' this.handleCommit}}>
+      <label>
+        Name:
+        <input type='text' name='name' />
+      </label>
+    </form>
+  </template>
+}

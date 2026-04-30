@@ -1,0 +1,56 @@
+{{!-- Classic .hbs template fixture. The file IS the template — no JS
+portion, no <template> wrapper. Exercises the patterns most likely to
+appear in real classic-Ember templates: blocks, components, modifiers,
+splattributes, classic helpers, comments. --}}
+
+{{!-- Classic Ember helpers --}}
+{{outlet}}
+
+<header role='banner' class='card'>
+  <h1>{{t 'card.title'}}</h1>
+
+  {{!-- Conditional rendering --}}
+  {{#if @hasIcon}}
+    <span class='icon' role='img' aria-label='Icon'>
+      {{@iconName}}
+    </span>
+  {{else}}
+    <span class='placeholder'>—</span>
+  {{/if}}
+
+  {{!-- Iteration with block params --}}
+  <ul>
+    {{#each this.items key='id' as |item index|}}
+      <li class='item-{{item.kind}}' data-test-item={{index}}>
+        {{item.label}}
+      </li>
+    {{else}}
+      <li class='empty'>{{t 'card.no-items'}}</li>
+    {{/each}}
+  </ul>
+
+  {{!-- Local binding --}}
+  {{#let (concat 'prefix-' this.suffix) as |id|}}
+    <button type='button' id={{id}} {{on 'click' this.handle}} ...attributes>
+      {{t 'card.action'}}
+    </button>
+  {{/let}}
+
+  {{!-- Component invocation (PascalCase → <x-c>) --}}
+  <Button @label='Save' />
+
+  {{!-- Mixed-content text + mustache --}}
+  <p>{{t 'prefix.label'}}: {{this.value}} {{!-- inline annotation --}}</p>
+
+  {{!-- Native element with modifier + concat-mustache attr value --}}
+  <input
+    type='text'
+    name='username'
+    id='username'
+    value={{this.username}}
+    placeholder={{t 'form.placeholder'}}
+    class='input input--{{this.size}}'
+    {{on 'input' this.updateUsername}}
+  />
+  <label for='username'>{{t 'form.username'}}</label>
+</header>

@@ -1,0 +1,18 @@
+{{!-- Ember built-in components: <Input>, <Textarea>, <LinkTo>.
+The transformer maps these to their rendered native tags so html-
+validate's content-model rules apply (instead of the generic <x-c>
+placeholder used for unknown components). --}}
+
+<form>
+  <label for='name'>Name:</label>
+  <Input @value={{this.name}} id='name' name='name' />
+
+  <label for='bio'>Bio:</label>
+  <Textarea @value={{this.bio}} id='bio' name='bio' rows='4' />
+
+  <LinkTo @route='profile' @model={{this.user.id}} class='link'>
+    View profile
+  </LinkTo>
+
+  <button type='submit'>{{t 'form.save'}}</button>
+</form>

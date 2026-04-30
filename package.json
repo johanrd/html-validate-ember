@@ -1,0 +1,94 @@
+{
+  "name": "html-validate-ember",
+  "version": "0.1.0",
+  "description": "html-validate transformer for Ember .gts (Glimmer) templates",
+  "keywords": [
+    "html-validate",
+    "html-validate-plugin",
+    "ember",
+    "ember.js",
+    "emberjs",
+    "glimmer",
+    "gts",
+    "gjs",
+    "template-imports",
+    "template",
+    "linter",
+    "validator",
+    "accessibility",
+    "a11y",
+    "html5"
+  ],
+  "homepage": "https://github.com/johanrd/html-validate-ember#readme",
+  "bugs": {
+    "url": "https://github.com/johanrd/html-validate-ember/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johanrd/html-validate-ember.git"
+  },
+  "license": "MIT",
+  "author": "Johan Røed",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "validate-gts": "./dist/run.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build && npm run typecheck:tests && npm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck:tests": "tsc -p tsconfig.test.json",
+    "validate": "node dist/run.js"
+  },
+  "dependencies": {
+    "@glimmer/syntax": "^0.95.0",
+    "content-tag": "^4.1.1",
+    "html-tags": "^5.1.0",
+    "mathml-tag-names": "^4.0.0",
+    "svg-tags": "^1.0.0"
+  },
+  "devDependencies": {
+    "@glimmer/component": "^2.1.1",
+    "@glimmer/env": "^0.1.7",
+    "@glint/ember-tsc": "^1.5.0",
+    "@glint/environment-ember-loose": "^1.5.2",
+    "@glint/environment-ember-template-imports": "^1.5.2",
+    "@types/node": "^22.10.0",
+    "@types/svg-tags": "^1.0.2",
+    "html-validate": "^10.13.1",
+    "release-plan": "^0.18.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5"
+  },
+  "peerDependencies": {
+    "@glint/ember-tsc": ">=1.5",
+    "html-validate": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@glint/ember-tsc": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

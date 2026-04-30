@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run typecheck:tests
+      - run: npm test
+      - name: Smoke-test CLI on shipped fixtures
+        run: |
+          # Each fixture is exercised by the integration suite; this just
+          # verifies the CLI runs without crashing. Many fixtures are
+          # designed to fail validation, so a non-zero exit is expected —
+          # we only fail CI on a hard crash (BUG: line in stderr).
+          for fixture in examples/*.gts examples/*.gjs examples/*.hbs; do
+            [ -f "$fixture" ] || continue
+            node dist/run.js "$fixture" 2>&1 | tee /tmp/out.log
+            if grep -q '\[html-validate-ember\] BUG:' /tmp/out.log; then
+              echo "Hard failure on $fixture"
+              exit 1
+            fi
+          done
