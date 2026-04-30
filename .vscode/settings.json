@@ -1,0 +1,28 @@
+{
+  "files.exclude": {
+    "**/node_modules/**": true
+  },
+  "[gts]": {
+    // "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  // Tell the html-validate VS Code extension which language IDs to lint.
+  // Default is `["html", "javascript", "markdown", "vue", "vue-html"]`;
+  // we add Ember/Glimmer language IDs so html-validate-ember's transform
+  // fires inside the editor.
+  //
+  // The Glimmer-syntax / Glint extensions register `.gts` as language ID
+  // `glimmer-ts` and `.gjs` as `glimmer-js` (with `gts`/`gjs` as display
+  // aliases — NOT the actual IDs). `handlebars` covers `.hbs`.
+  "html-validate.validate": [
+    "html",
+    "javascript",
+    "markdown",
+    "vue",
+    "vue-html",
+    "glimmer-ts",
+    "glimmer-js",
+    "handlebars"
+  ]
+}

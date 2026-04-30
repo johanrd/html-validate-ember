@@ -10,7 +10,7 @@ import type {
 } from 'html-validate';
 import { createRequire } from 'node:module';
 
-import { blankTemplateContent } from './blank.js';
+import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
 
@@ -163,7 +163,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
 
   // .gts / .gjs: extract `<template>` blocks via content-tag, blank
   // each one, optionally enrich with Glint type info.
-  const scope = extractStringScope(data);
+  const scope = extractStringScope(data, filename);
   let glintTypeMap = null;
   let glintComponentTagMap = null;
   let glintComponentAttrMap = null;
@@ -200,40 +200,65 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     );
     return;
   }
+  // Multipass branch validation: enumerate {{#if}}/{{else}} branch
+  // combinations and yield one Source per combination so each is
+  // independently validated. Errors in unselected branches surface;
+  // identical blanked outputs are deduped before validation.
+  //
+  // Trade-off: an error stable across branches (e.g., a real misnesting
+  // OUTSIDE the if/else) gets reported once per pass. The bundled
+  // `validate-gts` CLI dedupes by (line, column, ruleId, message)
+  // before printing. Direct html-validate consumers (the VS Code
+  // extension, the `html-validate` CLI used standalone) don't dedupe;
+  // set `HVE_MULTIPASS=0` to fall back to the single-branch
+  // form-submit-aware heuristic if duplicates are annoying.
+  const multipass = process.env['HVE_MULTIPASS'] !== '0';
   for (const tpl of parsed) {
     if (tpl.tagName !== 'template') {
       continue;
     }
     const startOffset = tpl.contentRange.startChar;
     const { line, column } = offsetToLineCol(data, startOffset);
-    const result = blankTemplateContent(
-      tpl.contents,
-      scope,
-      glintTypeMap,
-      glintComponentTagMap,
-      glintComponentAttrMap,
-    );
-    if (result.error) {
-      process.stderr.write(`[html-validate-ember] glimmer parse failure: ${result.error.message}\n`);
+    const results = multipass
+      ? blankTemplateContentMultipass(
+          tpl.contents,
+          scope,
+          glintTypeMap,
+          glintComponentTagMap,
+          glintComponentAttrMap,
+        )
+      : [
+          blankTemplateContent(
+            tpl.contents,
+            scope,
+            glintTypeMap,
+            glintComponentTagMap,
+            glintComponentAttrMap,
+          ),
+        ];
+    for (const result of results) {
+      if (result.error) {
+        process.stderr.write(`[html-validate-ember] glimmer parse failure: ${result.error.message}\n`);
+      }
+      if (result.content.length !== tpl.contents.length) {
+        process.stderr.write(
+          `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
+        );
+      }
+      // Elements whose only Glimmer source content was mustaches will look
+      // empty after blanking. Hook them and append a DynamicValue placeholder
+      // so html-validate's empty-heading / text-content rules see "has content,
+      // unknowable" rather than truly empty.
+      yield {
+        data: result.content,
+        filename,
+        line,
+        column,
+        offset: startOffset,
+        originalData,
+        hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), startOffset),
+      };
     }
-    if (result.content.length !== tpl.contents.length) {
-      process.stderr.write(
-        `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
-      );
-    }
-    // Elements whose only Glimmer source content was mustaches will look
-    // empty after blanking. Hook them and append a DynamicValue placeholder
-    // so html-validate's empty-heading / text-content rules see "has content,
-    // unknowable" rather than truly empty.
-    yield {
-      data: result.content,
-      filename,
-      line,
-      column,
-      offset: startOffset,
-      originalData,
-      hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), startOffset),
-    };
   }
 }
 

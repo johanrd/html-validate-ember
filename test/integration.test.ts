@@ -5,6 +5,7 @@ import { HtmlValidate } from 'html-validate';
 import type { RuleConfig } from 'html-validate';
 
 import plugin from '../index.js';
+import { dedupeMultipassReport } from '../lib/multipass-dedupe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +40,13 @@ async function validate(
   rulesOverride?: RuleConfig,
 ): Promise<ValidationResult> {
   const v = makeValidator(rulesOverride);
-  const report = await v.validateFile(fx(filename));
+  const rawReport = await v.validateFile(fx(filename));
+  // Multipass branch validation (default) yields one html-validate
+  // Source per {{#if}}/{{else}} branch combination; an error stable
+  // across branches (e.g., a misnested element outside the if/else) can
+  // land in multiple results. Dedupe so tests assert the user-visible
+  // count, matching what `validate-gts` prints.
+  const report = dedupeMultipassReport(rawReport);
   const messages: ExpectedMessage[] = [];
   for (const r of report.results) {
     for (const m of r.messages) {
@@ -124,10 +131,79 @@ describe('end-to-end fixtures', () => {
     expect(r.valid).toBe(true);
   });
 
-  it('form-submit-in-else: wcag/h32 not flagged when submit button is in {{else}}', async () => {
+  it('form-submit-in-else: wcag/h32 surfaces correctly under multipass', async () => {
+    // Fixture has a submit button in the {{else}} branch (Send) and a
+    // type='button' in the program branch (Stop). Under multipass:
+    //   - program branch: form has no submit → wcag/h32 fires (real
+    //     concern: in this state the user cannot trigger submission via
+    //     a literal button, only via Enter on the textarea)
+    //   - inverse branch: form has submit → no h32
+    // The single-branch heuristic that historically masked this still
+    // exists as the fallback when HVE_MULTIPASS=0; its behavior is
+    // covered by the unit tests in `test/blank.test.ts`.
     const r = await validate('form-submit-in-else.gts');
     const wcagH32 = r.messages.filter((m) => m.rule === 'wcag/h32');
-    expect(wcagH32).toHaveLength(0);
+    expect(wcagH32).toHaveLength(1);
+  });
+
+  it('imported-const-resolution: {{NAME}} resolves against `import { NAME } from \'./sibling\'`', async () => {
+    // The fixture imports `ROUTE_DIR = 'bogus'` from `./imported-routes.ts`
+    // and references it as `<p dir={{ROUTE_DIR}}>`. With cross-file
+    // resolution working, the blanker substitutes the literal `'bogus'`
+    // and `attribute-allowed-values` fires on the invalid `dir` value.
+    const r = await validate('imported-const-resolution.gts');
+    const dirErrors = r.messages.filter(
+      (m) => m.rule === 'attribute-allowed-values' && /dir/i.test(m.message ?? ''),
+    );
+    expect(
+      dirErrors,
+      `expected attribute-allowed-values on dir; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+  });
+
+  it("this-field-resolution: {{this.field}} resolves against the class field's initializer", async () => {
+    // The fixture has `textDir = 'bogus'` and `<p dir={{this.textDir}}>`.
+    // With class-field resolution working, the blanker substitutes the
+    // literal `'bogus'` into the attribute and html-validate's
+    // `attribute-allowed-values` rule fires (`dir` has an enum:
+    // ltr/rtl/auto). Without resolution, the mustache becomes
+    // DynamicValue and no enum check happens.
+    const r = await validate('this-field-resolution.gts');
+    const dirErrors = r.messages.filter(
+      (m) => m.rule === 'attribute-allowed-values' && /dir/i.test(m.message ?? ''),
+    );
+    expect(
+      dirErrors,
+      `expected attribute-allowed-values on dir; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+  });
+
+  it('block-param-types: multi-param `as |a: A, b: B|` parses and the body validates', async () => {
+    // Glimmer's parser rejects multi-param block-params with type
+    // annotations (and the commas between them). The transformer
+    // pre-strips both before Glimmer sees the source so the template
+    // parses normally. We verify by asserting that a body-level error
+    // (duplicate id `dup`) fires — proving the body was actually
+    // walked, not silently skipped.
+    const r = await validate('block-param-types.gts');
+    const dupIds = r.messages.filter((m) => m.rule === 'no-dup-id');
+    expect(
+      dupIds,
+      `expected no-dup-id from body of multi-param block; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+  });
+
+  it('if-else-branch-errors: errors in BOTH branches are reported (multipass default)', async () => {
+    // Fixture has `<h2></h2>` in the program branch and `<h1></h1>` in the
+    // inverse — both empty headings. Multipass (default) yields one
+    // Source per branch combination; html-validate validates each
+    // independently and both errors surface.
+    const r = await validate('if-else-branch-errors.gts');
+    const empty = r.messages.filter((m) => m.rule === 'empty-heading');
+    expect(
+      empty,
+      `expected empty-heading in BOTH if and else branches; got: ${JSON.stringify(empty)}`,
+    ).toHaveLength(2);
   });
 
   describe('.hbs (classic Ember templates)', () => {

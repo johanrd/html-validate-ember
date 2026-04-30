@@ -19,7 +19,7 @@ const data = fs.readFileSync(path.resolve(file), 'utf8');
 const preprocessor = new Preprocessor();
 const parsed = preprocessor.parse(data, { filename: file });
 
-const scope = extractStringScope(data);
+const scope = extractStringScope(data, path.resolve(file));
 
 let glintTypeMap = null;
 let glintComponentTagMap = null;

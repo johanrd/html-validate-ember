@@ -268,12 +268,19 @@ function tryStaticText(
   }
 
   const path = node.path;
-  if (!path || path.type !== 'PathExpression' || path.head.type !== 'VarHead') {
+  if (
+    !path ||
+    path.type !== 'PathExpression' ||
+    (path.head.type !== 'VarHead' && path.head.type !== 'ThisHead')
+  ) {
     return null;
   }
   const helper = path.original;
 
-  // Bare reference {{NAME}} — no params, no hash. Resolve against scope.
+  // Bare reference — no params, no hash. Resolve against `scope`.
+  // The map is keyed by the path's `original` text:
+  //   - `{{NAME}}`         → scope.get('NAME')         (top-level const)
+  //   - `{{this.field}}`   → scope.get('this.field')   (class field)
   if (
     scope &&
     (!node.params || node.params.length === 0) &&
@@ -285,13 +292,18 @@ function tryStaticText(
     }
   }
 
-  if (helper === 't') {
-    return safeLiteralString(node.params[0]);
-  }
-  if (helper === 'if') {
-    const truthy = safeLiteralString(node.params[1]);
-    if (truthy !== null) return truthy;
-    return safeLiteralString(node.params[2]);
+  // Helper-form lookups (`{{t 'Key'}}` / `{{if cond 'a' 'b'}}`) are only
+  // meaningful for VarHead; `{{this.t 'Key'}}` would be a method call,
+  // not the t-helper.
+  if (path.head.type === 'VarHead') {
+    if (helper === 't') {
+      return safeLiteralString(node.params[0]);
+    }
+    if (helper === 'if') {
+      const truthy = safeLiteralString(node.params[1]);
+      if (truthy !== null) return truthy;
+      return safeLiteralString(node.params[2]);
+    }
   }
   return null;
 }
@@ -340,10 +352,120 @@ function findCloseTagStart(content: string, elementEnd: number): number {
   return -1;
 }
 
+// `@glimmer/syntax`'s parser doesn't understand TS-flavored block params:
+// `{{#each items as |x: T|}}` is sometimes accepted (single simple
+// type), sometimes rejected (multi-param + comma, qualified types,
+// object/parenthesized/union types). When parse fails the whole
+// template is silently skipped. We pre-process the `as |…|` interior
+// so Glimmer sees the normalized space-separated form `as |a b|`
+// regardless. Length-preserving — every stripped char becomes a space
+// so AST loc offsets after the strip match the original source.
+//
+// Strategy: walk the source linearly, find each mustache opener
+// `{{…}}`, locate `as |` and the matching closing `|` (last `|` before
+// `}}`), then walk the param list character-by-character with balanced-
+// bracket tracking for `()`, `{}`, `<>`, `[]` so union (`A | B`),
+// object (`{ a: number }`), parenthesized (`(A | B)[]`), and generic
+// (`Map<string, number>`) types are stripped correctly.
+function stripBlockParamTypeAnnotations(content: string): string {
+  const buf = content.split('');
+  let i = 0;
+  while (i < content.length - 1) {
+    if (content[i] !== '{' || content[i + 1] !== '{') {
+      i++;
+      continue;
+    }
+    const mustacheEnd = content.indexOf('}}', i + 2);
+    if (mustacheEnd < 0) break;
+    // Find the start of the param list — the `|` after `as`.
+    const asMatch = /\bas\s*\|/.exec(content.slice(i, mustacheEnd));
+    if (!asMatch) {
+      i = mustacheEnd + 2;
+      continue;
+    }
+    const paramStart = i + asMatch.index + asMatch[0].length;
+    // The closing `|` is the LAST `|` before `}}` in the opener — `|`s
+    // before it are union operators inside types.
+    const paramEnd = content.lastIndexOf('|', mustacheEnd - 1);
+    if (paramEnd <= paramStart) {
+      i = mustacheEnd + 2;
+      continue;
+    }
+    stripBlockParamRange(buf, paramStart, paramEnd);
+    i = mustacheEnd + 2;
+  }
+  return buf.join('');
+}
+
+// Walk `[start, end)` (the chars between the opening and closing `|`
+// of `as |…|`), find each `name: TypeExpr` pair and replace the
+// `:` + type-expression bytes with spaces. Comma separators between
+// params also become spaces so Glimmer's space-separated grammar is
+// happy. Length-preserved throughout.
+function stripBlockParamRange(buf: string[], start: number, end: number): void {
+  const isWS = (c: string) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
+  const isIdent = (c: string) => /[A-Za-z0-9_$]/.test(c);
+  const opens = '({[<';
+  const closes = ')}]>';
+
+  let i = start;
+  while (i < end) {
+    // Skip whitespace.
+    while (i < end && isWS(buf[i] ?? '')) i++;
+    if (i >= end) return;
+
+    // Comma between params — strip to space and continue.
+    if (buf[i] === ',') {
+      buf[i] = ' ';
+      i++;
+      continue;
+    }
+
+    // Read identifier (the param name).
+    const idStart = i;
+    while (i < end && isIdent(buf[i] ?? '')) i++;
+    if (i === idStart) {
+      // Unexpected char — defensively advance.
+      i++;
+      continue;
+    }
+
+    // Skip whitespace, then look for `:` (the type annotation marker).
+    while (i < end && isWS(buf[i] ?? '')) i++;
+    if (i >= end || buf[i] !== ':') continue;
+
+    // Walk the type expression with bracket-depth tracking. Terminates
+    // at `,` at depth 0 (next param separator) or end of range. `|` at
+    // any depth is part of the type (union operator), never a separator
+    // — the closing `|` of `as |…|` is OUTSIDE the range we're given.
+    const typeStart = i;
+    let depth = 0;
+    while (i < end) {
+      const c = buf[i] ?? '';
+      if (opens.includes(c)) {
+        depth++;
+      } else if (closes.includes(c)) {
+        if (depth > 0) depth--;
+      } else if (c === ',' && depth === 0) {
+        break;
+      }
+      i++;
+    }
+    for (let k = typeStart; k < i; k++) {
+      const c = buf[k];
+      if (c !== '\n' && c !== '\r') {
+        buf[k] = ' ';
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Per-element handlers. Each takes the AST node + a mutable `ctx` object
 // that accumulates the rewrite plan (blank ranges, renames, etc.).
 // ---------------------------------------------------------------------------
+
+type BranchChoice = 'program' | 'inverse';
 
 interface Context {
   content: string;
@@ -356,6 +478,11 @@ interface Context {
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
+  // When set, `handleBlockStatement` uses the selection from this map
+  // (keyed by the BlockStatement's source-start offset) instead of the
+  // default form-submit-aware heuristic. Drives `blankTemplateContentMultipass`,
+  // which enumerates branch combinations to validate each independently.
+  branchSelections?: ReadonlyMap<number, BranchChoice>;
   inFullyBlankedRange(offset: number): boolean;
 }
 
@@ -863,10 +990,16 @@ function handleMustacheCommentStatement(
 }
 
 // Handle a `{{#if}}/{{else}}/{{/if}}` (and `{{#each}}` / `{{#unless}}` /
-// `{{#let}}`) AST node. Single-branch emission: only one branch survives
-// to validation. Default = program (truthy) branch, but prefer the inverse
-// when only it contains a `<button type='submit'>` (form-must-have-submit
-// FP fix).
+// `{{#let}}`) AST node.
+//
+// Branch selection:
+//   - When `ctx.branchSelections` has an entry for this block's start
+//     offset (multipass driver), honor that choice.
+//   - Otherwise, fall back to the form-submit-aware heuristic: emit the
+//     program (truthy) branch by default, switch to the inverse only
+//     when it's the only branch with a `<button type='submit'>`. Avoids
+//     the most common single-branch FP (wcag/h32) without needing the
+//     full multipass machinery.
 function handleBlockStatement(node: AST.BlockStatement, ctx: Context): void {
   const { blankRanges, fullyBlankedRanges } = ctx;
   const wholeStart = startOffset(node);
@@ -884,11 +1017,16 @@ function handleBlockStatement(node: AST.BlockStatement, ctx: Context): void {
     return;
   }
 
-  // Both branches exist. Pick the truthy/program branch by default, the
-  // inverse only when it's the one with the submit button.
-  const programHasSubmit = blockHasSubmitButton(node.program);
-  const inverseHasSubmit = blockHasSubmitButton(inverse);
-  const preferInverse = inverseHasSubmit && !programHasSubmit;
+  // Branch selection: caller-driven (multipass) or heuristic.
+  let preferInverse: boolean;
+  const explicit = ctx.branchSelections?.get(wholeStart);
+  if (explicit !== undefined) {
+    preferInverse = explicit === 'inverse';
+  } else {
+    const programHasSubmit = blockHasSubmitButton(node.program);
+    const inverseHasSubmit = blockHasSubmitButton(inverse);
+    preferInverse = inverseHasSubmit && !programHasSubmit;
+  }
 
   if (preferInverse) {
     const inverseFirst = inverse.body[0]?.loc?.getStart().offset;
@@ -931,14 +1069,21 @@ function blankTemplateContent(
   glintTypeMap?: ReadonlyMap<string, AttrTypeInfo> | null,
   glintComponentTagMap?: ReadonlyMap<string, string> | null,
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): BlankResult | BlankErrorResult {
+  // Pre-strip TS type annotations from block params so Glimmer's parser
+  // accepts `{{#each items as |a: A, b: B|}}` and similar (it rejects
+  // multi-param-with-types and complex types otherwise, silently
+  // dropping the whole template). Length-preserving — AST offsets we
+  // record below still match the original `content` string.
+  const parseInput = stripBlockParamTypeAnnotations(content);
   let ast: AST.Template;
   try {
     // `mode: 'codemod'` preserves source-level distinctions we care about
     // (e.g. long-form `{{!-- ... --}}` vs short-form `{{! ... }}` comments;
     // exact whitespace) — same flag `ember-estree` uses for its
     // `templateOnly: true` path.
-    ast = preprocess(content, { mode: 'codemod' });
+    ast = preprocess(parseInput, { mode: 'codemod' });
   } catch (err) {
     return { content, error: err instanceof Error ? err : new Error(String(err)) };
   }
@@ -953,6 +1098,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
+    branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
         if (offset >= s && offset < e) {
@@ -1017,4 +1163,102 @@ function blankTemplateContent(
   };
 }
 
-export { blankTemplateContent, isNativeTag };
+// Multipass branch validation.
+//
+// Single-branch emission (`blankTemplateContent` without
+// `branchSelections`) silently drops errors that live in unselected
+// branches of a `{{#if}}/{{else}}` (or `{{else if}}` chain). Multipass
+// fixes that by enumerating branch combinations and emitting one
+// `BlankResult` per combination — each represents one possible runtime
+// DOM. The caller (typically `transform.ts`) yields one html-validate
+// `Source` per result so each combination is validated independently.
+//
+// Combinations are capped at 2^MAX_BP to bound work — templates with
+// more branch points fall back to the first MAX_BP and ignore the rest
+// (an honest upper limit; deeper exploration would multiply quickly).
+//
+// Identical outputs are deduped (e.g., two combinations that pick the
+// outer-program of an outer/inner pair produce the same blanked text
+// regardless of the inner choice — the inner branch is inside the
+// outer's blanked range and never reached).
+//
+// Trade-off vs single-pass: each yielded source is independently
+// validated, so an error that's stable across branches (e.g., a
+// misnested element OUTSIDE the if/else) gets reported once per
+// combination. The caller may want to dedupe by (line, column,
+// ruleId, message). Branch-internal errors land at distinct positions
+// per branch and don't dedup.
+const MAX_BRANCH_POINTS = 3; // 2^3 = 8 combinations max
+function blankTemplateContentMultipass(
+  content: string,
+  scope?: ReadonlyMap<string, string>,
+  glintTypeMap?: ReadonlyMap<string, AttrTypeInfo> | null,
+  glintComponentTagMap?: ReadonlyMap<string, string> | null,
+  glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
+): Array<BlankResult | BlankErrorResult> {
+  // Same pre-strip as `blankTemplateContent` — see that function's
+  // comment for rationale. We need the strip here too because we walk
+  // the AST locally to enumerate branch points before delegating each
+  // combination to `blankTemplateContent` (which strips again on its
+  // own — idempotent since the strip is length-preserving and a second
+  // pass finds nothing left to strip).
+  const parseInput = stripBlockParamTypeAnnotations(content);
+  let ast: AST.Template;
+  try {
+    ast = preprocess(parseInput, { mode: 'codemod' });
+  } catch (err) {
+    return [{ content, error: err instanceof Error ? err : new Error(String(err)) }];
+  }
+
+  // Collect branch points in document order. Each is the source-start
+  // offset of a `BlockStatement` that has both program and inverse — that
+  // matches `handleBlockStatement`'s `branchSelections` lookup key.
+  const branchPoints: number[] = [];
+  traverse(ast, {
+    BlockStatement(node) {
+      if (node.inverse) {
+        branchPoints.push(startOffset(node));
+      }
+    },
+  });
+
+  if (branchPoints.length === 0) {
+    return [
+      blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
+    ];
+  }
+
+  const considered = branchPoints.slice(0, MAX_BRANCH_POINTS);
+  const numCombinations = 1 << considered.length;
+  const results: Array<BlankResult | BlankErrorResult> = [];
+  const seen = new Set<string>();
+
+  for (let combo = 0; combo < numCombinations; combo++) {
+    const selections = new Map<number, BranchChoice>();
+    considered.forEach((bpOffset, i) => {
+      const bit = (combo >> i) & 1;
+      selections.set(bpOffset, bit === 0 ? 'program' : 'inverse');
+    });
+    const result = blankTemplateContent(
+      content,
+      scope,
+      glintTypeMap,
+      glintComponentTagMap,
+      glintComponentAttrMap,
+      selections,
+    );
+    if (result.error) {
+      // Parse failure is the same for every combination — no point
+      // running the rest.
+      return [result];
+    }
+    if (!seen.has(result.content)) {
+      seen.add(result.content);
+      results.push(result);
+    }
+  }
+
+  return results;
+}
+
+export { blankTemplateContent, blankTemplateContentMultipass, isNativeTag };
