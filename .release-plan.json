@@ -1,0 +1,18 @@
+{
+  "solution": {
+    "html-validate-ember": {
+      "impact": "minor",
+      "oldVersion": "0.1.0",
+      "newVersion": "0.2.0",
+      "tagName": "latest",
+      "constraints": [
+        {
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
+        }
+      ],
+      "pkgJSONPath": "./package.json"
+    }
+  },
+  "description": "## Release (2026-04-30)\n\n* html-validate-ember 0.2.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#2](https://github.com/johanrd/html-validate-ember/pull/2) Implements multipass validation for {{#if}}/{{else}} ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+}

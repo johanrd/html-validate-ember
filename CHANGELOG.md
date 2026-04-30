@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-04-30)
+
+* html-validate-ember 0.2.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#2](https://github.com/johanrd/html-validate-ember/pull/2) Implements multipass validation for {{#if}}/{{else}} ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 All notable changes to this project follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).
 
 ## [0.1.0] - 2026-04-30
