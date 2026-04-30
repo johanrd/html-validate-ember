@@ -7,6 +7,7 @@ import type { ConfigData, Report } from 'html-validate';
 import plugin from './index.js';
 import { preloadGlintFiles } from './lib/glint.js';
 import type { PreloadStats } from './lib/glint.js';
+import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
 
 // Walk up from `start` looking for a `.htmlvalidate.json` config file
 // and return its parsed contents (or null if none found / unreadable).
@@ -126,6 +127,7 @@ function printUsage(): void {
       '    HVE_GLINT=1       same as --glint (also honored when invoking html-validate directly).\n' +
       '    HVE_NO_CACHE=1    bypass the on-disk Glint extraction cache.\n' +
       '    HVE_DEBUG=1       on Glint preload, print per-file skip reasons (non-gts/gjs, read error, rewrite empty/error).\n' +
+      '    HVE_MULTIPASS=1   validate every {{#if}}/{{else}} branch combination (catches errors in unselected branches; capped at 8 combinations per template).\n' +
       '\n' +
       '  Pass any mix of .gts/.gjs/.hbs files and directories. Directories are walked recursively.\n' +
       '  Exits non-zero when any file has errors.\n',
@@ -278,16 +280,32 @@ function printUsage(): void {
       tickValidation();
       continue;
     }
+    // Multipass yields one html-validate Source per branch combination;
+    // a stable error (e.g., a misnested element outside any if/else)
+    // can land in multiple results. Dedupe by
+    // (line, column, ruleId, message) before counting and printing.
+    // No-op for templates without branch points (one source → one
+    // result → set of message keys is already unique).
+    const deduped = dedupeMultipassReport(report);
+    if (deduped.valid) {
+      // Every flagged error/warning was a multipass duplicate of one
+      // already counted under a previous pass; the file is effectively
+      // clean. (Shouldn't happen given the original report was invalid,
+      // but guard anyway — multipass dedupe semantics.)
+      valid++;
+      tickValidation();
+      continue;
+    }
     invalid++;
-    totalErrors += report.errorCount;
-    totalWarnings += report.warningCount;
-    for (const result of report.results) {
+    totalErrors += deduped.errorCount;
+    totalWarnings += deduped.warningCount;
+    for (const result of deduped.results) {
       for (const msg of result.messages) {
         ruleCounts.set(msg.ruleId, (ruleCounts.get(msg.ruleId) ?? 0) + 1);
       }
     }
     if (!quiet) {
-      process.stdout.write(format(report.results));
+      process.stdout.write(format(deduped.results));
     }
     tickValidation();
   }

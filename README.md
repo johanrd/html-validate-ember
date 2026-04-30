@@ -439,17 +439,24 @@ Three layers, broadest to narrowest:
 
 No SourceMap machinery — same approach `html-validate-vue` and `html-validate-angular` use.
 
+## Multipass branch validation
+
+`{{#if}}/{{else}}` (and `{{else if}}` chains) are validated **per branch by default**. The transformer enumerates branch combinations (capped at 2³ = 8 to bound work), yields one html-validate `Source` per combination, and html-validate validates each independently. Errors from every branch surface — including the un-selected branch under single-pass.
+
+The bundled `validate-gts` CLI dedupes identical messages by `(line, column, ruleId, message)` before printing, so an error stable across branches (e.g., a misnested element *outside* the if/else) is reported once even though it lives in every pass. The dedupe util is also exported as `dedupeMultipassReport` from `lib/multipass-dedupe.js` for custom consumers.
+
+**Direct html-validate consumers** (the `vscode-html-validate` extension, the `html-validate` CLI used standalone) don't dedupe and may show the same outside-of-branch error N times — set `HVE_MULTIPASS=0` to fall back to single-branch emission with the form-submit-aware heuristic if duplicates are noisy.
+
 ## Known limitations
 
-- **`{{else if}}` chains: only one branch validates.** Single-branch emission picks the first branch (program) by default. The transformer prefers the `{{else}}` branch when it's the only one with a submit-style form control; other branch-selection edge cases may FP / miss errors. Use `{{!-- [html-validate-disable rule] --}}` to silence per-site.
-- **Top-level `const` resolution only.** `{{NAME}}` resolves against `const NAME = '...'` declarations in the same `.gts` file. Imported constants and `this.fieldName` class-field references don't resolve (Glint will narrow some of these when `--glint` is on).
-- **TS type annotations inside `<template>` blocks aren't stripped.** If you put `as |item: Item|`-style type annotations inside the template, the blanker doesn't handle them.
+- **More than 3 branch points per template.** Multipass caps at 8 combinations to bound validation work. Surplus branch points fall back to the single-branch heuristic; branches you might want validated may be skipped. In practice, deeply branching templates are rare; refactoring into smaller components is usually cleaner anyway.
+- **Static-string scope.** `{{NAME}}` resolves against same-file `const NAME = '...'` declarations and one-level-deep `import { NAME } from './sibling'` (relative paths only — package and path-aliased imports are skipped). `{{this.field}}` resolves against same-file class-field initializers (`field = '...'` or `field: T = '...'`). What's not resolved: transitive re-exports (`export { X } from './...'` chains), default imports, namespace imports, and getters returning literals — Glint narrows some of these to string-literal types when `--glint` is on, which the blanker picks up through a separate code path.
+- **TS-flavored block-param types are stripped, not parsed.** `@glimmer/syntax`'s parser doesn't understand `{{#each items as |item: T|}}`-style annotations (or the comma separators that come with multi-param lists). The transformer pre-strips them to whitespace before Glimmer parses, with balanced-bracket scanning so unions (`A | B`), object types (`{ a: number }`), parenthesized types (`(A | B)[]`), generics (`Map<string, number>`), arrays (`T[]`), and qualified names (`NS.Type`) all work. Length-preserving — AST offsets after the strip match original source. The strip only operates inside `as |…|` ranges of mustache openers; type literals appearing elsewhere in the template aren't touched (and Glimmer wouldn't accept them there anyway).
 
 ## Future work
 
 - **Custom rules** — html-validate plugins can ship their own rules. Candidates: `ember-prefer-glimmer-comment-directive` (flag `<!-- [html-validate-disable …] -->` and suggest `{{!-- … --}}`), `ember-component-naming` (enforce PascalCase / dotted invocations).
-- **TypeScript declarations** — ship `.d.ts` for the plugin export so editors auto-complete the config shape.
-- **Piecewise string-builder** in `blank.js` — current `split('')` / `join('')` is O(n) per `<template>` block; not a bottleneck on real codebases (sub-second for 1000-line files).
+- **Piecewise string-builder** in `blank.ts` — current `split('')` / `join('')` is O(n) per `<template>` block; not a bottleneck on real codebases (sub-second for 1000-line files).
 
 ## Inspecting what gets emitted
 
