@@ -25,6 +25,11 @@ const TRANSFORMER_ARTIFACT_RULES: RuleConfig = {
   // vs double-quote consistency is also a project preference; the
   // transformer can't enforce it faithfully.
   'attr-quotes': 'off',
+  // The Glimmer compiler escapes `<`, `>`, and `&` in text content at
+  // build time. Source like `<span>Memory > 1000 MB</span>` renders as
+  // `Memory &gt; 1000 MB` in the actual DOM — flagging the source is
+  // noise, not a real bug.
+  'no-raw-characters': 'off',
 };
 
 // Ember/Glimmer ecosystem style preferences, baked in for projects that

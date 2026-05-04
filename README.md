@@ -2,7 +2,7 @@
   <img src="./assets/logo.png" alt="HTML-validate ember" width="480" />
 </p>
 
-[html-validate](https://html-validate.org) transformer for Ember Glimmer templates — `.gts`, `.gjs`, and classic `.hbs`.
+[HTML-validate](https://html-validate.org) transformer for Ember templates — `.gts`, `.gjs`, and classic `.hbs`.
 
 Lint your templates against html-validate's HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
 
@@ -236,16 +236,6 @@ HTML5 attribute names are case-insensitive and lowercase canonical. Camel-case i
 
 ```
 templates/page.gts:42: error [attr-case] Attribute "data-test-userMenuList" should be lowercase
-```
-
-### Raw `>` and `<` in text content
-
-```hbs
-<span>Memory > 1000 MB</span>   {{!-- ← should be &gt; --}}
-```
-
-```
-templates/dashboard.gts:96: error [no-raw-characters] Raw ">" must be encoded as "&gt;"
 ```
 
 ### Duplicate CSS class
