@@ -193,6 +193,62 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(1);
   });
 
+  it('multipass-multi-template: no-unused-disable suppression is scoped to the branched template, not the whole file', async () => {
+    // Two top-level templates in one file. Header (no branches) has a
+    // directive that's really unused — `no-unused-disable` MUST fire
+    // there. Main (branched) has the FP pattern — `no-unused-disable`
+    // must NOT fire there. File-level suppression would silence both;
+    // template-range scoping silences only the branched template.
+    const r = await validate('multipass-multi-template.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `expected exactly one no-unused-disable (from Header); got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+    // The Header directive lives at the top of the file; the Main
+    // directive is well below. Assert the surviving message points at
+    // the Header range, not the Main range.
+    expect(
+      unused[0]!.line,
+      `surviving no-unused-disable should be Header's; got line ${unused[0]!.line}`,
+    ).toBeLessThan(20);
+  });
+
+  it('multipass-yield-only-branch: wcag/h32 must not fire when the no-submit branch is just `{{yield}}`', async () => {
+    // The form has a default submit in the `(has-block)`-false branch
+    // and a `{{yield}}` in the true branch. The yield is opaque — the
+    // consumer might fill it with their own submit, so we can't claim
+    // the form lacks one. Multipass currently validates the blanked
+    // yield-only branch as a real DOM and FP-fires `wcag/h32`.
+    const r = await validate('multipass-yield-only-branch.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on yield-only branches; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('multipass-disable-needed-in-some-branch: no-unused-disable does NOT survive when the directive is load-bearing in another pass', async () => {
+    // Catch-22: a `disable-next wcag/h32` on `<form>` is needed in the
+    // inner=program branch (no submit button → h32 fires → suppressed)
+    // but looks "unused" in the inner=inverse branch (submit present →
+    // h32 doesn't fire). Naive dedupe surfaces no-unused-disable from
+    // the inverse pass. Correct behavior: drop it because another pass
+    // had the directive visible and used it (no `no-unused-disable`
+    // there).
+    const r = await validate('multipass-disable-needed-in-some-branch.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      unused,
+      `no-unused-disable must not fire when the directive was load-bearing in another branch; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    expect(
+      h32,
+      `wcag/h32 should be suppressed by the directive; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('if-else-branch-errors: errors in BOTH branches are reported (multipass default)', async () => {
     // Fixture has `<h2></h2>` in the program branch and `<h1></h1>` in the
     // inverse — both empty headings. Multipass (default) yields one

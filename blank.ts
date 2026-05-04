@@ -1163,6 +1163,31 @@ function blankTemplateContent(
   };
 }
 
+// True when the branch's body contains nothing the validator can see —
+// only mustaches (`{{yield}}`, helpers, dynamic values), mustache
+// comments, and whitespace. Selecting such a branch in multipass would
+// emit a blanked DOM with no real children; presence-style rules
+// (`wcag/h32` "form must have submit", `empty-heading`, `text-content`)
+// then FP-fire because they don't know the runtime DOM might contain
+// anything via the yield.
+//
+// Anything structural — native elements, component invocations, nested
+// blocks — counts as real content and disqualifies the branch from
+// "opaque-only".
+function isBranchOpaqueOnly(branch: AST.Block): boolean {
+  for (const stmt of branch.body) {
+    if (stmt.type === 'TextNode') {
+      if (stmt.chars.trim() !== '') return false;
+      continue;
+    }
+    if (stmt.type === 'MustacheStatement' || stmt.type === 'MustacheCommentStatement') {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 // Multipass branch validation.
 //
 // Single-branch emission (`blankTemplateContent` without
@@ -1174,8 +1199,14 @@ function blankTemplateContent(
 // `Source` per result so each combination is validated independently.
 //
 // Combinations are capped at 2^MAX_BP to bound work — templates with
-// more branch points fall back to the first MAX_BP and ignore the rest
-// (an honest upper limit; deeper exploration would multiply quickly).
+// more branch points fall back to the first MAX_BP and ignore the
+// rest. Cost is one blanker call per combination (html-validate only
+// re-validates *distinct* outputs thanks to the `seen` dedupe below),
+// so the cap matters mostly when many combinations produce unique
+// blanked text. A future tree-aware enumeration could enumerate
+// reachable combinations only (combinations that select the inverse
+// of an outer block don't differ from each other by inner-block
+// choices, since the inner is blanked anyway).
 //
 // Identical outputs are deduped (e.g., two combinations that pick the
 // outer-program of an outer/inner pair produce the same blanked text
@@ -1188,7 +1219,7 @@ function blankTemplateContent(
 // combination. The caller may want to dedupe by (line, column,
 // ruleId, message). Branch-internal errors land at distinct positions
 // per branch and don't dedup.
-const MAX_BRANCH_POINTS = 3; // 2^3 = 8 combinations max
+const MAX_BRANCH_POINTS = 5; // 2^5 = 32 combinations max
 function blankTemplateContentMultipass(
   content: string,
   scope?: ReadonlyMap<string, string>,
@@ -1213,11 +1244,23 @@ function blankTemplateContentMultipass(
   // Collect branch points in document order. Each is the source-start
   // offset of a `BlockStatement` that has both program and inverse — that
   // matches `handleBlockStatement`'s `branchSelections` lookup key.
-  const branchPoints: number[] = [];
+  // Per branch, also record whether selecting it would yield an opaque-
+  // only DOM (see `isBranchOpaqueOnly`); we skip combinations that
+  // select such branches to avoid presence-style FPs.
+  interface BranchPoint {
+    offset: number;
+    opaqueProgram: boolean;
+    opaqueInverse: boolean;
+  }
+  const branchPoints: BranchPoint[] = [];
   traverse(ast, {
     BlockStatement(node) {
       if (node.inverse) {
-        branchPoints.push(startOffset(node));
+        branchPoints.push({
+          offset: startOffset(node),
+          opaqueProgram: isBranchOpaqueOnly(node.program),
+          opaqueInverse: isBranchOpaqueOnly(node.inverse),
+        });
       }
     },
   });
@@ -1235,10 +1278,17 @@ function blankTemplateContentMultipass(
 
   for (let combo = 0; combo < numCombinations; combo++) {
     const selections = new Map<number, BranchChoice>();
-    considered.forEach((bpOffset, i) => {
-      const bit = (combo >> i) & 1;
-      selections.set(bpOffset, bit === 0 ? 'program' : 'inverse');
-    });
+    let skip = false;
+    for (let i = 0; i < considered.length; i++) {
+      const bp = considered[i]!;
+      const choice: BranchChoice = ((combo >> i) & 1) === 0 ? 'program' : 'inverse';
+      if ((choice === 'program' && bp.opaqueProgram) || (choice === 'inverse' && bp.opaqueInverse)) {
+        skip = true;
+        break;
+      }
+      selections.set(bp.offset, choice);
+    }
+    if (skip) continue;
     const result = blankTemplateContent(
       content,
       scope,
@@ -1256,6 +1306,15 @@ function blankTemplateContentMultipass(
       seen.add(result.content);
       results.push(result);
     }
+  }
+
+  // Every combination selected at least one opaque-only branch — fall
+  // back to a single heuristic-driven pass so we still validate the
+  // template's stable (outside-of-branch) content.
+  if (results.length === 0) {
+    return [
+      blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
+    ];
   }
 
   return results;
