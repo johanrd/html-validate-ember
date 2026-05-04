@@ -1,8 +1,71 @@
-# html-validate-ember
+<p align="center">
+  <img src="./assets/logo.png" alt="HTML-validate ember" width="480" />
+</p>
 
 [html-validate](https://html-validate.org) transformer for Ember Glimmer templates — `.gts`, `.gjs`, and classic `.hbs`.
 
 Lint your templates against html-validate's HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
+
+## Install
+
+`html-validate` is a peer dependency, so install **both**:
+
+```sh
+pnpm add --save-dev html-validate html-validate-ember
+```
+
+## Configure
+
+Create `.htmlvalidate.json` at your project root:
+
+```json
+{
+  "extends": ["html-validate:recommended", "html-validate-ember:gts-recommended"],
+  "plugins": ["html-validate-ember"],
+  "transform": {
+    "^.*\\.(gts|gjs|hbs)$": "html-validate-ember"
+  }
+}
+```
+
+### Two presets
+
+Pick whichever fits your project:
+
+- **`html-validate-ember:gts-recommended`** *(recommended for most projects)* — everything in `:recommended` plus Ember/Glimmer style conventions baked in (`void-style: selfclosing` to match `ember-template-lint`'s `self-closing-void-elements`, etc.). Use this if you want the plugin to "just work" the way an Ember dev expects.
+- **`html-validate-ember:recommended`** *(minimal)* — only the rule disables that are *required* for the transformer to behave correctly: `no-trailing-whitespace` (mustache lines blank to whitespace), `no-self-closing` (some emit paths preserve a self-closing `/>`), `attr-quotes` (rewritten attributes use double quotes). No stylistic opinions. Pick this if you'd rather keep all html-validate defaults and only opt into the transformer essentials.
+
+## Run
+
+The bundled `validate-gts` CLI accepts any mix of `.gts` / `.gjs` / `.hbs` files and directories. Directories are walked recursively. Exits non-zero when any file has errors.
+
+The recommended pattern is to wire it into `package.json` scripts:
+
+```json
+"scripts": {
+  "lint:html:templates": "validate-gts --glint app/templates",
+  "lint:html:components": "validate-gts --glint app/components",
+  "lint:html": "validate-gts --glint app/templates app/components"
+}
+```
+
+Then:
+
+```sh
+pnpm lint:html
+```
+
+Wire it into CI alongside your existing lint scripts; non-zero exit fails the build.
+
+For ad-hoc one-off runs, use `pnpm exec`:
+
+```sh
+pnpm exec validate-gts app/components/foo.gts            # single file
+pnpm exec validate-gts app/templates                     # directory (walked recursively)
+pnpm exec validate-gts --glint app/templates             # enable Glint type extraction
+pnpm exec validate-gts --quiet app                       # only show summary
+```
+
 
 ## Supported formats
 
@@ -11,6 +74,7 @@ Lint your templates against html-validate's HTML5 spec checks, accessibility rul
 | `.gts` | Template-imports + TypeScript (Ember's modern default) | ✅ full (component → element resolution, attribute type narrowing, splatted-root literal extraction) |
 | `.gjs` | Template-imports + JavaScript | ✅ same machinery as `.gts` (Glint understands both) |
 | `.hbs` | Classic separate template file | ⚠️ no Glint integration. Built-in Ember components (`<Input>`/`<Textarea>`/`<LinkTo>`) substitute to their rendered native tag (`<input>`/`<textarea>`/`<a>`) so content-model rules apply; other components blank transparently (open/close tags removed; children float into the parent's content model). Static-text resolution applies (`{{t 'Key'}}`, `{{if cond 'a' 'b'}}`). |
+
 
 ## Progressive enhancement
 
@@ -210,89 +274,6 @@ templates/admin.gts:18: error [input-attributes] Attribute "readonly" not allowe
 
 ---
 
-## Install
-
-`html-validate` is a peer dependency, so install **both**:
-
-```sh
-# npm
-npm install --save-dev html-validate html-validate-ember
-
-# pnpm
-pnpm add --save-dev html-validate html-validate-ember
-
-# yarn
-yarn add --dev html-validate html-validate-ember
-```
-
-> Why a peer dep? So you can pin html-validate's version and the plugin doesn't drag in a duplicate copy (which would break the `DynamicValue` instanceof checks).
-
-If you forget to install `html-validate` you'll see a `Cannot find package 'html-validate'` error on first run — the fix is `pnpm add --save-dev html-validate` (or your package manager's equivalent).
-
-## Configure
-
-Create `.htmlvalidate.json` at your project root:
-
-```json
-{
-  "extends": ["html-validate:recommended", "html-validate-ember:gts-recommended"],
-  "plugins": ["html-validate-ember"],
-  "transform": {
-    "^.*\\.(gts|gjs|hbs)$": "html-validate-ember"
-  }
-}
-```
-
-That's it. `html-validate **/*.{gts,gjs,hbs}` will lint every template.
-
-### Two presets
-
-Pick whichever fits your project:
-
-- **`html-validate-ember:gts-recommended`** *(recommended for most projects)* — everything in `:recommended` plus Ember/Glimmer style conventions baked in (`void-style: selfclosing` to match `ember-template-lint`'s `self-closing-void-elements`, etc.). Use this if you want the plugin to "just work" the way an Ember dev expects.
-- **`html-validate-ember:recommended`** *(minimal)* — only the rule disables that are *required* for the transformer to behave correctly: `no-trailing-whitespace` (mustache lines blank to whitespace), `no-self-closing` (some emit paths preserve a self-closing `/>`), `attr-quotes` (rewritten attributes use double quotes). No stylistic opinions. Pick this if you'd rather keep all html-validate defaults and only opt into the transformer essentials.
-
-## Run
-
-The bundled `validate-gts` CLI accepts any mix of `.gts` files and directories. Directories are walked recursively for `.gts`. Exits non-zero when any file has errors.
-
-```sh
-# single file
-npx validate-gts app/components/foo.gts
-
-# directory (walked recursively)
-npx validate-gts app/templates
-
-# multiple targets
-npx validate-gts app/templates app/components
-
-# enable Glint type extraction
-npx validate-gts --glint app/templates
-
-# only show summary, skip per-file diagnostics
-npx validate-gts --quiet app
-```
-
-You can also invoke html-validate's own CLI with the plugin wired up via `.htmlvalidate.json`:
-
-```sh
-npx html-validate 'app/**/*.gts'
-```
-
-### Wiring into `package.json` scripts
-
-After installing this plugin (pnpm/npm/yarn), add these scripts:
-
-```json
-"scripts": {
-  "lint:html:templates": "validate-gts --glint app/templates",
-  "lint:html:components": "validate-gts --glint app/components",
-  "lint:html": "validate-gts --glint app/templates app/components"
-}
-```
-
-Then `pnpm lint:html` lints both directories and exits non-zero on any error — wire it into CI alongside your existing lint scripts.
-
 ## Inline errors in VS Code
 
 Install the official extension: [html-validate.vscode-html-validate](https://marketplace.visualstudio.com/items?itemName=html-validate.vscode-html-validate).
@@ -444,13 +425,6 @@ No SourceMap machinery — same approach `html-validate-vue` and `html-validate-
 `{{#if}}/{{else}}` (and `{{else if}}` chains) are validated **per branch by default**. The transformer enumerates branch combinations (capped at 2⁵ = 32 to bound work), yields one html-validate `Source` per combination, and html-validate validates each independently. Errors from every branch surface — including the un-selected branch under single-pass.
 
 The bundled `validate-gts` CLI dedupes identical messages by `(line, column, ruleId, message)` before printing, so an error stable across branches (e.g., a misnested element *outside* the if/else) is reported once even though it lives in every pass. The dedupe util is also exported as `dedupeMultipassReport` from `lib/multipass-dedupe.js` for custom consumers.
-
-### Two FP classes the multipass machinery handles
-
-- **Opaque-only branches are skipped.** A branch whose body contains only mustaches (`{{yield}}`, helpers, dynamic values), mustache comments, and whitespace is *not* treated as a separate runtime DOM. Without this, presence-style rules (`wcag/h32` "form must have submit", `empty-heading`, `text-content`) would FP-fire on the blanked DOM. Branches with any structural content (native elements, component invocations, nested blocks) are still validated normally. Falls back to single-pass when every combination would be skipped.
-- **`no-unused-disable` is dropped within branched template ranges.** A directive that suppressed `wcag/h32` in branch A leaves no message in the merged report from that pass, but pass B (where the rule wouldn't have fired) flags it as unused. The merged report shows only B's `no-unused-disable`, with no way to recover A's silent suppression. Within the file-line range of any template multipass branched on, `no-unused-disable` is suppressed; outside those ranges (non-branched templates in the same file, or non-branched files) the rule fires normally. `HVE_MULTIPASS=0` disables both behaviors.
-
-**Direct html-validate consumers** (the `vscode-html-validate` extension, the `html-validate` CLI used standalone) don't dedupe and may show the same outside-of-branch error N times, plus the `no-unused-disable` FP described above — set `HVE_MULTIPASS=0` to fall back to single-branch emission with the form-submit-aware heuristic if duplicates are noisy.
 
 ## Known limitations
 
