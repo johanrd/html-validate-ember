@@ -74,6 +74,24 @@ for (const cls of new Set<typeof DynamicValueESM>([DynamicValueESM, DynamicValue
 
 const preprocessor = new Preprocessor();
 
+// Side-channel from the transformer to `dedupeMultipassReport`. For
+// each .gts/.gjs/.hbs file, holds the file-line ranges of templates
+// that multipass actually branched on (i.e., yielded >1 `Source`). The
+// dedupe step uses these ranges to drop reports from rules that don't
+// compose cleanly with branch-by-branch validation — see
+// `MULTIPASS_INCOMPATIBLE_RULES` in `lib/multipass-dedupe.ts` —
+// scoped to the branched template only, so multi-template files don't
+// over-suppress.
+//
+// Key matches `Source.filename`, which html-validate reflects
+// unchanged as `Result.filePath` in the report it builds. Not safe
+// for re-entrant validation: the map is module-global and cleared
+// imperatively by the transformer (on entry) and by the dedupe (on
+// completion). A single-process / single-thread harness is fine; an
+// embedder that runs concurrent `validateFile` calls would need to
+// rework this.
+export const __multipassBranchedRanges = new Map<string, Array<[number, number]>>();
+
 function offsetToLineCol(source: string, offset: number): { line: number; column: number } {
   let line = 1;
   let column = 1;
@@ -129,6 +147,12 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   const data = source.data;
   const originalData = source.originalData ?? data;
   const filename = source.filename ?? '';
+
+  // Clear any stale state left by a previous validation of this file
+  // whose dedupe step never ran (e.g., the file was clean and `run.ts`
+  // skipped dedupe, or an embedder consumes reports without dedupe).
+  // Long-running processes (editor LSP) shouldn't accumulate ranges.
+  __multipassBranchedRanges.delete(filename);
 
   // Classic .hbs template: the file IS the template content. No JS
   // portion, no `<template>` extraction, no Glint integration (Glint's
@@ -236,6 +260,16 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
             glintComponentAttrMap,
           ),
         ];
+    if (results.length > 1) {
+      // Record the file-line range covered by this template's content
+      // so the dedupe can scope its rule-suppression to just this
+      // template (not the whole file). Multi-template files keep
+      // non-branched templates' diagnostics intact.
+      const endLine = offsetToLineCol(data, tpl.contentRange.endChar).line;
+      const ranges = __multipassBranchedRanges.get(filename) ?? [];
+      ranges.push([line, endLine]);
+      __multipassBranchedRanges.set(filename, ranges);
+    }
     for (const result of results) {
       if (result.error) {
         process.stderr.write(`[html-validate-ember] glimmer parse failure: ${result.error.message}\n`);
