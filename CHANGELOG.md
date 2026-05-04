@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-05-04)
+
+* html-validate-ember 0.2.1 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#3](https://github.com/johanrd/html-validate-ember/pull/3) fix multi pass false positives in opaque branches and no-unused-disable ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-04-30)
 
 * html-validate-ember 0.2.0 (minor)
