@@ -131,6 +131,19 @@ describe('end-to-end fixtures', () => {
     expect(r.valid).toBe(true);
   });
 
+  it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
+    // <LinkTo> is substituted to <a> via the built-in components map,
+    // and block-form substitution injects an href placeholder so the
+    // resulting anchor counts as interactive for html-validate's
+    // aria-label-misuse rule. Historically the missing href injection
+    // FP-fired here even though at runtime LinkTo always renders an
+    // <a> with a computed href; the hand-written <a href=...>
+    // reference in the same fixture captures the intended behavior.
+    const r = await validate('linkto-aria-label.hbs');
+    const ariaErrors = r.messages.filter((m) => m.rule === 'aria-label-misuse');
+    expect(ariaErrors).toHaveLength(0);
+  });
+
   it('form-submit-in-else: wcag/h32 surfaces correctly under multipass', async () => {
     // Fixture has a submit button in the {{else}} branch (Send) and a
     // type='button' in the program branch (Stop). Under multipass:

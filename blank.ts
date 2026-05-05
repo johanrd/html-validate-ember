@@ -534,14 +534,27 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   // components Glint either can't see (`.hbs` runs) or didn't surface
   // (running without `--glint`). The built-ins also seed `attrCtx` so
   // splatted-root attribute injection works for them without a real
-  // file walk (we ship the metadata).
+  // file walk (we ship the metadata). Glint can return a tag-only
+  // entry for canonical components (e.g. `LinkTo` resolved via
+  // `@ember/routing` types — no project `.gts` to read for the
+  // splatted root); in that case we still need the builtin's
+  // attrs as long as its canonical tag matches what Glint resolved.
+  //
+  // Trade-off: a project that shadows a built-in name (a user-defined
+  // component literally called `LinkTo` resolving to `<a>` but not
+  // necessarily rendering `href`) gets the canonical builtin's
+  // attrs applied here, masking any anchor/aria errors on the
+  // shadow. This is the same FN risk the `.hbs` path has always
+  // carried (no Glint there, so the built-in wins by name); we
+  // accept it for consistency rather than leave canonical `<LinkTo>`
+  // in `.gts` permanently FP-flagged.
   let resolved: string | undefined = ctx.glintComponentTagMap?.get(key);
   let attrCtx: ComponentAttrs | undefined = ctx.glintComponentAttrMap?.get(key);
-  if (!resolved) {
+  if (!resolved || !attrCtx) {
     const builtin = lookupBuiltinComponent(node.tag);
     if (builtin) {
-      resolved = builtin.tag;
-      attrCtx ??= builtin;
+      if (!resolved) resolved = builtin.tag;
+      if (!attrCtx && resolved === builtin.tag) attrCtx = builtin;
     }
   }
 
@@ -594,6 +607,17 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   ctx.renames.push([tagStart, tagStart + node.tag.length, resolved + padding]);
   const closeTagStart = elementEnd - node.tag.length - 1;
   ctx.renames.push([closeTagStart, closeTagStart + node.tag.length, resolved + padding]);
+  // Inject the resolved component's static attrs into Glimmer-attr blank
+  // regions in the open tag (mirrors the self-closing input-type
+  // injection). Without this, e.g. <LinkTo>...</LinkTo> resolves to a
+  // bare <a> with no href — html-validate then treats it as
+  // non-interactive and FP-fires `aria-label-misuse` and other
+  // role-dependent rules. The same mechanism gives Glint-resolved
+  // components a way to surface canonical attrs (e.g. a custom
+  // <SubmitButton> that always renders <button type='submit'>).
+  if (attrCtx && Object.keys(attrCtx.attrs).length > 0) {
+    tryInjectComponentAttrs(node, ctx, resolved, attrCtx.attrs);
+  }
   return resolved;
 }
 
@@ -664,6 +688,97 @@ function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
     if (/[\n\r]/.test(slice)) continue;
     ctx.renames.push([s, s + TYPE_TEXT.length, TYPE_TEXT]);
     return;
+  }
+}
+
+// Generalized attr injection for block-form component substitution.
+// For each `(name, value)` in `attrs`, find a Glimmer-only attribute
+// or modifier blank region in the open tag with enough room for
+// `name='value'` (no newlines), and rewrite it. Each region is used
+// by at most one injected attr.
+//
+// Used today for `<LinkTo>...</LinkTo>` to surface its computed
+// `href` so html-validate sees an interactive `<a>`. Generalized
+// because the same mechanism applies to any block-form component
+// substitution where a Glint-resolved or builtin entry has static
+// attrs (e.g. `<SubmitButton>` that always renders
+// `<button type='submit'>`).
+//
+// Value sourcing per attr: prefer a literal looked up via
+// `lookupComponentAttr` (matches the self-closing input-type path),
+// fall back to a 3-space placeholder so the `processAttribute` hook
+// converts the value to `DynamicValue`. The placeholder length must
+// be >= 3 to clear that hook's threshold.
+function tryInjectComponentAttrs(
+  node: AST.ElementNode,
+  ctx: Context,
+  resolvedTag: string,
+  attrs: Readonly<Record<string, string>>,
+): void {
+  const candidates: Range[] = [];
+  // Names already present as non-Glimmer attrs on the invocation; skip
+  // injecting these so the substituted tag doesn't carry duplicates
+  // (e.g. `<SubmitButton type='button'>` against a splatted root with
+  // `type='submit'` would otherwise emit two `type` attrs and trip
+  // html-validate's `no-dup-attr`).
+  //
+  // Limitation: `componentAttrMap` records the literal but not the
+  // position of `...attributes` in the splatted root. Two layouts
+  // are common in Glimmer:
+  //   1. `<button class='primary' type='submit' ...attributes>`
+  //      — caller-wins. Conventional, dominant in real code.
+  //   2. `<button ...attributes type='submit'>`
+  //      — component-wins. Forces a literal regardless of caller.
+  // We default to layout (1): drop the canonical attr when the
+  // caller supplies the same name. Layout (2) would render the
+  // component's value at runtime, which we then misrepresent as
+  // the caller's value — but emitting both attrs doesn't actually
+  // help: HTML5 parsing also takes the first one, so the validator's
+  // DOM view is identical to the caller-wins path. We just avoid
+  // the spurious `no-dup-attr` noise for the dominant layout.
+  const existingNonGlimmer = new Set<string>();
+  for (const attr of node.attributes ?? []) {
+    if (isGlimmerOnlyAttr(attr.name)) {
+      candidates.push([startOffset(attr), endOffset(attr)]);
+    } else {
+      existingNonGlimmer.add(attr.name);
+    }
+  }
+  for (const m of node.modifiers ?? []) {
+    candidates.push([startOffset(m), endOffset(m)]);
+  }
+  // Build the injection plan first, then place longer texts before
+  // shorter ones. Otherwise a short attr visited first can claim the
+  // only candidate slot wide enough for a longer attr, silently
+  // dropping it. Empty-string literal on a known boolean attr
+  // (e.g. `<button disabled ...attributes>` records `disabled: ''`)
+  // emits just the attr name. For non-boolean attrs we can't tell
+  // shorthand `disabled` apart from explicit `value=''`, so fall
+  // back to the 3-space placeholder — it's HTML5-equivalent and
+  // gets DynamicValue-treated by `processAttribute`.
+  const plan = Object.keys(attrs)
+    .filter((name) => !existingNonGlimmer.has(name))
+    .map((attrName) => {
+      const literal = lookupComponentAttr(node, ctx, attrName);
+      if (literal === '' && isBooleanAttr(resolvedTag, attrName)) {
+        return { text: attrName };
+      }
+      if (isLiteralSafeForAttr(literal)) return { text: `${attrName}='${literal}'` };
+      return { text: `${attrName}='   '` };
+    });
+  plan.sort((a, b) => b.text.length - a.text.length);
+  const used = new Set<number>();
+  for (const { text } of plan) {
+    for (let i = 0; i < candidates.length; i++) {
+      if (used.has(i)) continue;
+      const [s, e] = candidates[i]!;
+      if (e - s < text.length) continue;
+      const slice = ctx.content.slice(s, s + text.length);
+      if (/[\n\r]/.test(slice)) continue;
+      ctx.renames.push([s, s + text.length, text]);
+      used.add(i);
+      break;
+    }
   }
 }
 
