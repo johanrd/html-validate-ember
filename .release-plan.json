@@ -2,17 +2,21 @@
   "solution": {
     "html-validate-ember": {
       "impact": "minor",
-      "oldVersion": "0.2.1",
-      "newVersion": "0.3.0",
+      "oldVersion": "0.3.0",
+      "newVersion": "0.4.0",
       "tagName": "latest",
       "constraints": [
         {
           "impact": "minor",
           "reason": "Appears in changelog section :rocket: Enhancement"
+        },
+        {
+          "impact": "patch",
+          "reason": "Appears in changelog section :bug: Bug Fix"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-04)\n\n* html-validate-ember 0.3.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#6](https://github.com/johanrd/html-validate-ember/pull/6) set 'no-raw-characters' off by default to avoid false positives ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-05)\n\n* html-validate-ember 0.4.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#7](https://github.com/johanrd/html-validate-ember/pull/7) make max conditional branches configurable; tree-aware enumeration ([@johanrd](https://github.com/johanrd))\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#8](https://github.com/johanrd/html-validate-ember/pull/8) Fix false positive where <LinkTo was counted as non-interactive, since href wasn't implied ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }
