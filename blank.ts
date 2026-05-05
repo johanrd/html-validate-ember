@@ -1198,20 +1198,40 @@ function isBranchOpaqueOnly(branch: AST.Block): boolean {
 // DOM. The caller (typically `transform.ts`) yields one html-validate
 // `Source` per result so each combination is validated independently.
 //
-// Combinations are capped at 2^MAX_BP to bound work — templates with
-// more branch points fall back to the first MAX_BP and ignore the
-// rest. Cost is one blanker call per combination (html-validate only
-// re-validates *distinct* outputs thanks to the `seen` dedupe below),
-// so the cap matters mostly when many combinations produce unique
-// blanked text. A future tree-aware enumeration could enumerate
-// reachable combinations only (combinations that select the inverse
-// of an outer block don't differ from each other by inner-block
-// choices, since the inner is blanked anyway).
+// Combinations are capped at maxConditionalBranches (count, not
+// combinations) — templates with more conditional branches fall back
+// to the first maxConditionalBranches in pre-order document order
+// and ignore the rest. A "conditional branch" here is any block that
+// has both a program and an `{{else}}` clause — `{{#if}}/{{else}}`,
+// `{{#unless}}/{{else}}`, `{{#each}}/{{else}}` (empty fallback).
+// Worst-case work is 2^maxConditionalBranches blanker calls when all
+// branches are siblings; nested branches enumerate fewer combinations
+// (see "Tree-aware enumeration" below).
 //
-// Identical outputs are deduped (e.g., two combinations that pick the
-// outer-program of an outer/inner pair produce the same blanked text
-// regardless of the inner choice — the inner branch is inside the
-// outer's blanked range and never reached).
+// maxConditionalBranches defaults to 10 (worst case 2^10 = 1024
+// blanker calls — cheap on real templates because nesting is more
+// common than wide sibling lists, so tree-aware enumeration usually
+// produces far fewer combinations). Override via the
+// `HVE_MAX_CONDITIONAL_BRANCHES` env var. The env var is read
+// per-call (not cached at module load) so flag-driven changes from
+// the CLI take effect even when this module is imported eagerly.
+// N=0 yields a single combination with no explicit selections,
+// making multipass equivalent to the single-branch heuristic.
+//
+// Tree-aware enumeration: branches are organized into a tree where
+// inner branches are children of the arm they're nested in. When a
+// branch's program is selected, only its `programChildren` are
+// enumerated; when its inverse is selected, only `inverseChildren`.
+// The "blanked-out arm" is invisible to validation regardless of
+// inner choices, so enumerating those choices would just produce
+// duplicates that the dedupe collapses. Skipping them up front is
+// strictly faster on nested templates: e.g. 6 branches chained
+// down through `{{else}}` arms produces 7 combinations rather than
+// 64.
+//
+// Identical outputs are still deduped via the `seen` Set — covers
+// degenerate cases where two arms produce the same blanked text
+// (e.g., both arms render `<div/>`).
 //
 // Trade-off vs single-pass: each yielded source is independently
 // validated, so an error that's stable across branches (e.g., a
@@ -1219,7 +1239,17 @@ function isBranchOpaqueOnly(branch: AST.Block): boolean {
 // combination. The caller may want to dedupe by (line, column,
 // ruleId, message). Branch-internal errors land at distinct positions
 // per branch and don't dedup.
-const MAX_BRANCH_POINTS = 5; // 2^5 = 32 combinations max
+function readMaxConditionalBranches(): number {
+  const raw = process.env['HVE_MAX_CONDITIONAL_BRANCHES'];
+  if (raw === undefined) return 10;
+  // Strict integer parse — `parseInt` accepts partial numerics
+  // (`"5abc"` → 5) which would silently change behavior on typos,
+  // including accidentally disabling multipass when someone meant
+  // to set a small cap (e.g. `"0abc"` → 0).
+  if (!/^\d+$/.test(raw)) return 10;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) ? n : 10;
+}
 function blankTemplateContentMultipass(
   content: string,
   scope?: ReadonlyMap<string, string>,
@@ -1227,6 +1257,16 @@ function blankTemplateContentMultipass(
   glintComponentTagMap?: ReadonlyMap<string, string> | null,
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
 ): Array<BlankResult | BlankErrorResult> {
+  // Cap=0 disables multipass — the tree would be empty anyway, and
+  // every fallback path below ends in a single `blankTemplateContent`
+  // call. Short-circuit before the local `preprocess()` so the
+  // disable path parses once instead of twice.
+  const cap = readMaxConditionalBranches();
+  if (cap === 0) {
+    return [
+      blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
+    ];
+  }
   // Same pre-strip as `blankTemplateContent` — see that function's
   // comment for rationale. We need the strip here too because we walk
   // the AST locally to enumerate branch points before delegating each
@@ -1241,54 +1281,138 @@ function blankTemplateContentMultipass(
     return [{ content, error: err instanceof Error ? err : new Error(String(err)) }];
   }
 
-  // Collect branch points in document order. Each is the source-start
-  // offset of a `BlockStatement` that has both program and inverse — that
-  // matches `handleBlockStatement`'s `branchSelections` lookup key.
-  // Per branch, also record whether selecting it would yield an opaque-
-  // only DOM (see `isBranchOpaqueOnly`); we skip combinations that
-  // select such branches to avoid presence-style FPs.
-  interface BranchPoint {
+  // Collect conditional branches as a tree, preserving nesting. A
+  // conditional branch is any `BlockStatement` with both a program
+  // and an inverse (`{{#if/else}}`, `{{#unless/else}}`,
+  // `{{#each/else}}`). Children of a branch are split by the arm
+  // they live in: `programChildren` if nested in the program arm,
+  // `inverseChildren` if nested in the inverse arm. The enumerator
+  // below uses this split to skip enumerating an arm's nested
+  // branches when that arm is blanked — i.e., when the *other* arm
+  // is selected. Those nested choices can't influence the blanked
+  // output, so enumerating them would just produce duplicates that
+  // the `seen` dedupe later collapses. For deeply-nested templates
+  // this turns exponential waste into a single pass per reachable
+  // runtime DOM.
+  //
+  // The cap is on total branch count in pre-order document order —
+  // surplus branches don't appear in the tree at all and the
+  // form-submit-aware single-branch heuristic decides for them.
+  // Opaque-only arms are recorded so the enumerator can skip them
+  // (avoids presence-style FPs).
+  interface ConditionalBranch {
     offset: number;
     opaqueProgram: boolean;
     opaqueInverse: boolean;
+    programChildren: ConditionalBranch[];
+    inverseChildren: ConditionalBranch[];
   }
-  const branchPoints: BranchPoint[] = [];
-  traverse(ast, {
-    BlockStatement(node) {
-      if (node.inverse) {
-        branchPoints.push({
-          offset: startOffset(node),
-          opaqueProgram: isBranchOpaqueOnly(node.program),
-          opaqueInverse: isBranchOpaqueOnly(node.inverse),
-        });
-      }
-    },
-  });
+  let included = 0;
 
-  if (branchPoints.length === 0) {
+  function collect(
+    nodes: ReadonlyArray<AST.Statement | AST.TopLevelStatement>,
+    out: ConditionalBranch[],
+  ): void {
+    for (const node of nodes) {
+      if (included >= cap) return;
+      if (node.type === 'BlockStatement') {
+        if (node.inverse) {
+          included++;
+          const branch: ConditionalBranch = {
+            offset: startOffset(node),
+            opaqueProgram: isBranchOpaqueOnly(node.program),
+            opaqueInverse: isBranchOpaqueOnly(node.inverse),
+            programChildren: [],
+            inverseChildren: [],
+          };
+          collect(node.program.body, branch.programChildren);
+          collect(node.inverse.body, branch.inverseChildren);
+          out.push(branch);
+        } else {
+          // Non-branching block (`{{#each}}` without `{{else}}`,
+          // `{{#let}}`, etc.) — its body may contain branches, but
+          // they belong to the current arm.
+          collect(node.program.body, out);
+        }
+      } else if (node.type === 'ElementNode') {
+        collect(node.children, out);
+      }
+    }
+  }
+
+  const tree: ConditionalBranch[] = [];
+  collect(ast.body, tree);
+
+  if (tree.length === 0) {
     return [
       blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
     ];
   }
 
-  const considered = branchPoints.slice(0, MAX_BRANCH_POINTS);
-  const numCombinations = 1 << considered.length;
+  // Tree-aware enumeration: for each sibling list, take the cross
+  // product of (this branch's reachable sub-combinations) × (the
+  // remaining siblings' enumerations). Choosing `program` for a
+  // branch unlocks its `programChildren`; choosing `inverse` unlocks
+  // its `inverseChildren`. Opaque-only arms are skipped — and if
+  // both arms are opaque the branch contributes nothing, leaving
+  // its parent enumeration empty for that path.
+  //
+  // Subtlety: if a non-opaque arm's child enumeration yields no
+  // combinations (e.g., the arm contains a nested branch whose
+  // both arms are opaque-only), we still need to emit the outer
+  // arm — its non-nested DOM content (`<div>X</div>` outside the
+  // nested if/else) is reachable at runtime and must be validated.
+  // The nested branch then falls to the single-branch heuristic
+  // inside `blankTemplateContent`. Without this fall-through, the
+  // outer.program selection would silently disappear and any DOM
+  // outside the nested if/else would be permanently blanked.
+  function* enumerate(
+    siblings: ReadonlyArray<ConditionalBranch>,
+  ): Iterable<ReadonlyMap<number, BranchChoice>> {
+    if (siblings.length === 0) {
+      yield new Map();
+      return;
+    }
+    const first = siblings[0]!;
+    const rest = siblings.slice(1);
+    for (const restSel of enumerate(rest)) {
+      if (!first.opaqueProgram) {
+        let yielded = false;
+        for (const innerSel of enumerate(first.programChildren)) {
+          yielded = true;
+          const sel = new Map<number, BranchChoice>(restSel);
+          sel.set(first.offset, 'program');
+          for (const [k, v] of innerSel) sel.set(k, v);
+          yield sel;
+        }
+        if (!yielded) {
+          const sel = new Map<number, BranchChoice>(restSel);
+          sel.set(first.offset, 'program');
+          yield sel;
+        }
+      }
+      if (!first.opaqueInverse) {
+        let yielded = false;
+        for (const innerSel of enumerate(first.inverseChildren)) {
+          yielded = true;
+          const sel = new Map<number, BranchChoice>(restSel);
+          sel.set(first.offset, 'inverse');
+          for (const [k, v] of innerSel) sel.set(k, v);
+          yield sel;
+        }
+        if (!yielded) {
+          const sel = new Map<number, BranchChoice>(restSel);
+          sel.set(first.offset, 'inverse');
+          yield sel;
+        }
+      }
+    }
+  }
+
   const results: Array<BlankResult | BlankErrorResult> = [];
   const seen = new Set<string>();
 
-  for (let combo = 0; combo < numCombinations; combo++) {
-    const selections = new Map<number, BranchChoice>();
-    let skip = false;
-    for (let i = 0; i < considered.length; i++) {
-      const bp = considered[i]!;
-      const choice: BranchChoice = ((combo >> i) & 1) === 0 ? 'program' : 'inverse';
-      if ((choice === 'program' && bp.opaqueProgram) || (choice === 'inverse' && bp.opaqueInverse)) {
-        skip = true;
-        break;
-      }
-      selections.set(bp.offset, choice);
-    }
-    if (skip) continue;
+  for (const selections of enumerate(tree)) {
     const result = blankTemplateContent(
       content,
       scope,

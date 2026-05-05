@@ -118,16 +118,22 @@ function expandTargets(args: string[]): string[] {
 
 function printUsage(): void {
   process.stderr.write(
-    'usage: validate-gts [--glint] [--quiet] <file-or-dir>...\n' +
+    'usage: validate-gts [--glint] [--quiet] [--max-conditional-branches=N] <file-or-dir>...\n' +
       '\n' +
-      '  --glint    enable Glint type extraction (.gts/.gjs only; requires @glint/ember-tsc in the host project).\n' +
-      '  --quiet    suppress per-file diagnostics; print only the summary.\n' +
+      '  --glint                         enable Glint type extraction (.gts/.gjs only; requires @glint/ember-tsc in the host project).\n' +
+      '  --quiet                         suppress per-file diagnostics; print only the summary.\n' +
+      '  --max-conditional-branches=N    cap multipass enumeration at N conditional branches per template\n' +
+      '                                  (default 10; up to 2^N combinations, often fewer thanks to tree-aware enumeration).\n' +
+      '                                  N=0 disables multipass and falls back to the single-branch heuristic.\n' +
+      '                                  A "conditional branch" here is any `{{#if}}` / `{{#unless}}` / `{{#each}}` block with an `{{else}}` clause.\n' +
       '\n' +
       '  Environment:\n' +
-      '    HVE_GLINT=1       same as --glint (also honored when invoking html-validate directly).\n' +
-      '    HVE_NO_CACHE=1    bypass the on-disk Glint extraction cache.\n' +
-      '    HVE_DEBUG=1       on Glint preload, print per-file skip reasons (non-gts/gjs, read error, rewrite empty/error).\n' +
-      '    HVE_MULTIPASS=1   validate every {{#if}}/{{else}} branch combination (catches errors in unselected branches; capped at 8 combinations per template).\n' +
+      '    HVE_GLINT=1                      same as --glint (also honored when invoking html-validate directly).\n' +
+      '    HVE_NO_CACHE=1                   bypass the on-disk Glint extraction cache.\n' +
+      '    HVE_DEBUG=1                      on Glint preload, print per-file skip reasons (non-gts/gjs, read error, rewrite empty/error).\n' +
+      '    HVE_MAX_CONDITIONAL_BRANCHES=N   cap multipass enumeration at N conditional branches per template\n' +
+      '                                     (default 10; up to 2^N combinations, often fewer thanks to tree-aware enumeration).\n' +
+      '                                     N=0 disables multipass and falls back to the single-branch heuristic.\n' +
       '\n' +
       '  Pass any mix of .gts/.gjs/.hbs files and directories. Directories are walked recursively.\n' +
       '  Exits non-zero when any file has errors.\n',
@@ -136,8 +142,53 @@ function printUsage(): void {
 
 (async () => {
   const args = process.argv.slice(2);
-  const flags = new Set(args.filter((a) => a.startsWith('--')));
+  const flagArgs = args.filter((a) => a.startsWith('--'));
+  // Flags that take a value via `=value`. Anything not in this set
+  // is boolean-only — passing `--glint=0` to silently disable Glint
+  // would be a footgun, so we reject the `=value` form on boolean
+  // flags rather than stripping the suffix and accepting the bare
+  // form as if it were present.
+  const VALUE_TAKING_FLAGS = new Set(['--max-conditional-branches']);
+  for (const arg of flagArgs) {
+    const eq = arg.indexOf('=');
+    if (eq === -1) continue;
+    const name = arg.slice(0, eq);
+    if (!VALUE_TAKING_FLAGS.has(name)) {
+      process.stderr.write(
+        `[validate-gts] ${name} does not accept a value (got '${arg}')\n`,
+      );
+      process.exit(2);
+    }
+  }
+  const flagName = (a: string): string => {
+    const eq = a.indexOf('=');
+    return eq === -1 ? a : a.slice(0, eq);
+  };
+  const flags = new Set(flagArgs.map(flagName));
+  const flagValue = (name: string): string | undefined => {
+    for (const a of flagArgs) {
+      const eq = a.indexOf('=');
+      if (eq !== -1 && a.slice(0, eq) === name) return a.slice(eq + 1);
+    }
+    return undefined;
+  };
   if (flags.has('--glint')) process.env['HVE_GLINT'] = '1';
+  if (flags.has('--max-conditional-branches')) {
+    const mcb = flagValue('--max-conditional-branches');
+    if (mcb === undefined) {
+      process.stderr.write(
+        '[validate-gts] --max-conditional-branches requires a value: --max-conditional-branches=N\n',
+      );
+      process.exit(2);
+    }
+    if (!/^\d+$/.test(mcb)) {
+      process.stderr.write(
+        `[validate-gts] --max-conditional-branches must be a non-negative integer (got '${mcb}')\n`,
+      );
+      process.exit(2);
+    }
+    process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = mcb;
+  }
   const quiet = flags.has('--quiet');
   const targetArgs = args.filter((a) => !a.startsWith('--'));
 
