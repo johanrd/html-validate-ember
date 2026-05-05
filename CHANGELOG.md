@@ -1,5 +1,20 @@
 # Changelog
 
+## Release (2026-05-05)
+
+* html-validate-ember 0.4.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#7](https://github.com/johanrd/html-validate-ember/pull/7) make max conditional branches configurable; tree-aware enumeration ([@johanrd](https://github.com/johanrd))
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#8](https://github.com/johanrd/html-validate-ember/pull/8) Fix false positive where <LinkTo was counted as non-interactive, since href wasn't implied ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-04)
 
 * html-validate-ember 0.3.0 (minor)
