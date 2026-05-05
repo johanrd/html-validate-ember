@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { preprocess } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
-import { blankTemplateContent, isNativeTag } from '../blank.js';
+import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from '../blank.js';
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 
@@ -258,6 +258,238 @@ describe('if/else single-branch emission', () => {
     const src = '{{#if x}}<a>x</a>{{/if}}';
     const out = blank(src);
     expect(out.content).toContain('<a>x</a>');
+  });
+});
+
+describe('multipass conditional-branch cap (HVE_MAX_CONDITIONAL_BRANCHES)', () => {
+  // 6 sibling if/else blocks. The 6th block's inverse contains a
+  // sentinel string that's not present anywhere else. With the
+  // default cap of 5, the 6th conditional branch isn't enumerated —
+  // the single-branch heuristic picks its program for every result,
+  // so the sentinel stays blanked. With cap=6, half of the 64
+  // combinations select the inverse and expose the sentinel.
+  const src =
+    '{{#if a}}<div>A1</div>{{else}}<div>A2</div>{{/if}}' +
+    '{{#if b}}<div>B1</div>{{else}}<div>B2</div>{{/if}}' +
+    '{{#if c}}<div>C1</div>{{else}}<div>C2</div>{{/if}}' +
+    '{{#if d}}<div>D1</div>{{else}}<div>D2</div>{{/if}}' +
+    '{{#if e}}<div>E1</div>{{else}}<div>E2</div>{{/if}}' +
+    '{{#if f}}<div>F1</div>{{else}}<aside>SENTINEL</aside>{{/if}}';
+
+  function withEnv(value: string | undefined, fn: () => void): void {
+    const original = process.env['HVE_MAX_CONDITIONAL_BRANCHES'];
+    if (value === undefined) delete process.env['HVE_MAX_CONDITIONAL_BRANCHES'];
+    else process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = value;
+    try {
+      fn();
+    } finally {
+      if (original === undefined) delete process.env['HVE_MAX_CONDITIONAL_BRANCHES'];
+      else process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = original;
+    }
+  }
+
+  function hasSentinel(results: ReturnType<typeof blankTemplateContentMultipass>): boolean {
+    // `BlankErrorResult` also has `content` (set to the original
+    // input), so `'content' in r` would silently let an error
+    // result mask a true negative — the original input contains
+    // every sentinel string. Discriminate on `error === null`.
+    return results.some((r) => r.error === null && r.content.includes('SENTINEL'));
+  }
+
+  it('cap=5 leaves the 6th conditional branch out — error in branch 6 is not surfaced', () => {
+    withEnv('5', () => {
+      expect(hasSentinel(blankTemplateContentMultipass(src))).toBe(false);
+    });
+  });
+
+  it('cap=6 includes the 6th conditional branch', () => {
+    withEnv('6', () => {
+      expect(hasSentinel(blankTemplateContentMultipass(src))).toBe(true);
+    });
+  });
+
+  it('default cap (≥6) reaches all 6 conditional branches', () => {
+    // Default is 10. Sanity check that the unset case enumerates all
+    // 6 sibling branches and the 6th-branch sentinel surfaces.
+    withEnv(undefined, () => {
+      expect(hasSentinel(blankTemplateContentMultipass(src))).toBe(true);
+    });
+  });
+
+  it('non-numeric value falls back to the default cap', () => {
+    // Garbage env value shouldn't crash or yield N=NaN — should
+    // behave like "unset" (default cap, all 6 branches enumerated).
+    withEnv('not-a-number', () => {
+      expect(hasSentinel(blankTemplateContentMultipass(src))).toBe(true);
+    });
+  });
+
+  it('partial-numeric value falls back to the default cap (no parseInt truncation)', () => {
+    // `Number.parseInt('5abc', 10) === 5`, which would silently set
+    // cap=5 and hide the 6th branch — surprising for a typo. Strict
+    // parsing rejects partial numerics and falls back to default 10,
+    // so the sentinel surfaces.
+    withEnv('5abc', () => {
+      expect(hasSentinel(blankTemplateContentMultipass(src))).toBe(true);
+    });
+  });
+
+  it('cap=0 disables multipass: single result via the empty-tree path', () => {
+    // The documented "disable" contract. Even with 6 conditional
+    // branches in the template, cap=0 means none enter the tree —
+    // every branch falls to the form-submit-aware single-branch
+    // heuristic and we emit one BlankResult.
+    withEnv('0', () => {
+      const results = blankTemplateContentMultipass(src);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.error).toBeNull();
+    });
+  });
+
+  it('all-opaque branches: every combination skipped → single-pass fallback', () => {
+    // Both arms of the only conditional branch are opaque-only
+    // (whitespace / mustache / comment text). The enumerator yields
+    // nothing for either arm, the all-skipped fallback fires, and
+    // we get one result from the heuristic-driven single-branch
+    // emission. Without the fallback we'd silently lose the
+    // template entirely.
+    const opaqueSrc = '<div>{{#if x}}  {{else}}  {{/if}}</div>';
+    const results = blankTemplateContentMultipass(opaqueSrc);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.error).toBeNull();
+  });
+
+  it('opaque-only nested in program arm: outer.program content still validated', () => {
+    // Outer if/else; outer.program contains DOM (`<div>X</div>`)
+    // followed by an inner if/else whose arms are both opaque-only
+    // (empty Glimmer comments). Tree-aware enumeration must still
+    // yield outer.program as a reachable runtime DOM — otherwise
+    // <div>X</div> is permanently blanked across all enumerations
+    // and html-validate never sees it.
+    //
+    // Bug it guards against: with a strict tree-aware enumerator,
+    // enumerate(outer.programChildren) yields nothing (inner has
+    // no enumerable arms), and the outer.program selection gets
+    // silently dropped. The fix is to fall through to "emit outer
+    // arm with no inner selections" when the inner enumeration is
+    // empty — inner branches then fall to the single-branch
+    // heuristic.
+    const src =
+      '{{#if outer}}<div>X</div>{{#if inner}}{{!-- --}}{{else}}{{!-- --}}{{/if}}{{else}}<main>Y</main>{{/if}}';
+    const results = blankTemplateContentMultipass(src);
+    const blobs = results
+      .filter((r): r is BlankResult => r.error === null)
+      .map((r) => r.content);
+    expect(blobs.some((c) => c.includes('<div>X</div>'))).toBe(true);
+    expect(blobs.some((c) => c.includes('<main>Y</main>'))).toBe(true);
+  });
+
+  it('opaque-only nested in inverse arm: outer.inverse content still validated', () => {
+    // Symmetric to the previous test — outer.inverse is the arm
+    // with non-opaque DOM and an opaque-only nested branch. Verifies
+    // the fall-through fix is symmetric across program/inverse.
+    const src =
+      '{{#if outer}}<main>Y</main>{{else}}<div>X</div>{{#if inner}}{{!-- --}}{{else}}{{!-- --}}{{/if}}{{/if}}';
+    const results = blankTemplateContentMultipass(src);
+    const blobs = results
+      .filter((r): r is BlankResult => r.error === null)
+      .map((r) => r.content);
+    expect(blobs.some((c) => c.includes('<div>X</div>'))).toBe(true);
+    expect(blobs.some((c) => c.includes('<main>Y</main>'))).toBe(true);
+  });
+
+  it('deeply-nested chain: tree-aware enumeration produces N+1 results, not 2^N', () => {
+    // 6 conditional branches nested in a chain — each `{{else}}` is
+    // a leaf, each program contains the next branch. Only 7 of the
+    // 64 naive combinations correspond to distinct runtime DOMs:
+    //   a.inverse → INV_A
+    //   a.program, b.inverse → INV_B
+    //   ... five more peel-offs ...
+    //   a.program ... f.program → PROG_F
+    // Pre-tree-aware, the multipass would call the blanker 64 times
+    // and rely on the `seen` Set to dedupe down to 7 distinct
+    // outputs. Tree-aware skips the redundant calls up front.
+    const chain =
+      '{{#if a}}' +
+        '{{#if b}}' +
+          '{{#if c}}' +
+            '{{#if d}}' +
+              '{{#if e}}' +
+                '{{#if f}}<div>PROG_F</div>{{else}}<div>INV_F</div>{{/if}}' +
+              '{{else}}<div>INV_E</div>{{/if}}' +
+            '{{else}}<div>INV_D</div>{{/if}}' +
+          '{{else}}<div>INV_C</div>{{/if}}' +
+        '{{else}}<div>INV_B</div>{{/if}}' +
+      '{{else}}<div>INV_A</div>{{/if}}';
+
+    withEnv('6', () => {
+      const results = blankTemplateContentMultipass(chain);
+      expect(results).toHaveLength(7);
+
+      const blobs = results
+        .filter((r): r is BlankResult => r.error === null)
+        .map((r) => r.content);
+      for (const sentinel of ['INV_A', 'INV_B', 'INV_C', 'INV_D', 'INV_E', 'INV_F', 'PROG_F']) {
+        expect(blobs.some((c) => c.includes(sentinel))).toBe(true);
+      }
+    });
+  });
+
+  it('cap trims branches in pre-order under tree-aware enumeration', () => {
+    // Same 6-deep chain, but cap=3. Only the outer three branches
+    // (a, b, c) end up in the tree; d/e/f fall to the single-branch
+    // heuristic. Reachable distinct DOMs through the kept tree:
+    //   a.inverse → INV_A
+    //   a.program, b.inverse → INV_B
+    //   a.program, b.program, c.inverse → INV_C
+    //   a.program, b.program, c.program → (whatever d/e/f resolve to
+    //                                       under the heuristic — one DOM)
+    // → 4 distinct results. (Pre-tree-aware would call the blanker
+    // 8 times and dedupe to the same 4.)
+    const chain =
+      '{{#if a}}' +
+        '{{#if b}}' +
+          '{{#if c}}' +
+            '{{#if d}}' +
+              '{{#if e}}' +
+                '{{#if f}}<div>PROG_F</div>{{else}}<div>INV_F</div>{{/if}}' +
+              '{{else}}<div>INV_E</div>{{/if}}' +
+            '{{else}}<div>INV_D</div>{{/if}}' +
+          '{{else}}<div>INV_C</div>{{/if}}' +
+        '{{else}}<div>INV_B</div>{{/if}}' +
+      '{{else}}<div>INV_A</div>{{/if}}';
+
+    withEnv('3', () => {
+      const results = blankTemplateContentMultipass(chain);
+      expect(results).toHaveLength(4);
+    });
+  });
+
+  it('nested conditionals: tree-aware enumeration covers all reachable runtime DOMs', () => {
+    // Outer if/else with an inner if/else inside the program. Naively
+    // 2² = 4 combinations, but the two that pick the outer-inverse
+    // produce identical blanked text — `inner` lives inside outer's
+    // program region, which is blanked when outer-inverse is chosen,
+    // so inner's choice is moot. Tree-aware enumeration emits
+    // exactly 3 results — one per reachable runtime DOM — without
+    // relying on the `seen` dedupe.
+    const nested =
+      '{{#if outer}}' +
+        '{{#if inner}}<div>OUTER_PROGRAM_INNER_PROGRAM</div>' +
+        '{{else}}<aside>OUTER_PROGRAM_INNER_INVERSE</aside>{{/if}}' +
+      '{{else}}' +
+        '<main>OUTER_INVERSE</main>' +
+      '{{/if}}';
+
+    const results = blankTemplateContentMultipass(nested);
+    expect(results).toHaveLength(3);
+
+    const blobs = results
+      .filter((r): r is BlankResult => r.error === null)
+      .map((r) => r.content);
+    expect(blobs.some((c) => c.includes('OUTER_PROGRAM_INNER_PROGRAM'))).toBe(true);
+    expect(blobs.some((c) => c.includes('OUTER_PROGRAM_INNER_INVERSE'))).toBe(true);
+    expect(blobs.some((c) => c.includes('OUTER_INVERSE'))).toBe(true);
   });
 });
 

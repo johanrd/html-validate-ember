@@ -6,8 +6,9 @@
 //
 // Used by the bundled `validate-gts` CLI and by the integration-test
 // helper. Direct html-validate consumers (the VS Code extension, the
-// `html-validate` CLI used standalone) don't dedupe and may want to set
-// `HVE_MULTIPASS=0` to fall back to single-branch emission.
+// `html-validate` CLI used standalone) don't dedupe and may want to
+// set `HVE_MAX_CONDITIONAL_BRANCHES=0` to fall back to single-branch
+// emission.
 
 import type { Report, Result } from 'html-validate';
 import { __multipassBranchedRanges } from '../transform.js';
@@ -27,7 +28,8 @@ export interface DedupedReport {
 // (see `__multipassBranchedRanges`), drop these rules from the merged
 // report. Outside those ranges (non-branched templates in the same
 // file, or non-branched files entirely), the rules fire normally.
-// Users wanting them on branched ranges too can set `HVE_MULTIPASS=0`.
+// Users wanting them on branched ranges too can set
+// `HVE_MAX_CONDITIONAL_BRANCHES=0`.
 //
 // Future caution: this is a coarse hammer — it drops the rule for any
 // message inside a branched range, regardless of what else is going

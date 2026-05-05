@@ -139,8 +139,8 @@ describe('end-to-end fixtures', () => {
     //     a literal button, only via Enter on the textarea)
     //   - inverse branch: form has submit → no h32
     // The single-branch heuristic that historically masked this still
-    // exists as the fallback when HVE_MULTIPASS=0; its behavior is
-    // covered by the unit tests in `test/blank.test.ts`.
+    // exists as the fallback when HVE_MAX_CONDITIONAL_BRANCHES=0; its
+    // behavior is covered by the unit tests in `test/blank.test.ts`.
     const r = await validate('form-submit-in-else.gts');
     const wcagH32 = r.messages.filter((m) => m.rule === 'wcag/h32');
     expect(wcagH32).toHaveLength(1);

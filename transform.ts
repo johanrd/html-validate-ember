@@ -234,32 +234,22 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // `validate-gts` CLI dedupes by (line, column, ruleId, message)
   // before printing. Direct html-validate consumers (the VS Code
   // extension, the `html-validate` CLI used standalone) don't dedupe;
-  // set `HVE_MULTIPASS=0` to fall back to the single-branch
-  // form-submit-aware heuristic if duplicates are annoying.
-  const multipass = process.env['HVE_MULTIPASS'] !== '0';
+  // set `HVE_MAX_CONDITIONAL_BRANCHES=0` to fall back to the
+  // single-branch form-submit-aware heuristic if duplicates are
+  // annoying.
   for (const tpl of parsed) {
     if (tpl.tagName !== 'template') {
       continue;
     }
     const startOffset = tpl.contentRange.startChar;
     const { line, column } = offsetToLineCol(data, startOffset);
-    const results = multipass
-      ? blankTemplateContentMultipass(
-          tpl.contents,
-          scope,
-          glintTypeMap,
-          glintComponentTagMap,
-          glintComponentAttrMap,
-        )
-      : [
-          blankTemplateContent(
-            tpl.contents,
-            scope,
-            glintTypeMap,
-            glintComponentTagMap,
-            glintComponentAttrMap,
-          ),
-        ];
+    const results = blankTemplateContentMultipass(
+      tpl.contents,
+      scope,
+      glintTypeMap,
+      glintComponentTagMap,
+      glintComponentAttrMap,
+    );
     if (results.length > 1) {
       // Record the file-line range covered by this template's content
       // so the dedupe can scope its rule-suppression to just this
