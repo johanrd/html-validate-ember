@@ -552,6 +552,107 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain('x-c');
   });
 
+  it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
+    // Naive first-fit walking attrs in declaration order would let
+    // `a='x'` (5 chars) consume the wide @veryLongFirstAttr slot and
+    // leave only the narrow @z slot for `name='longvalue'` (16 chars),
+    // silently dropping it. tryInjectComponentAttrs sorts by descending
+    // text length so the longer attr claims the wide slot first.
+    const src = "<MyButton @veryLongFirstAttr={{val}} @z={{q}}>x</MyButton>";
+    const tagMap = new Map([[locKey(src, 'MyButton'), 'button']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyButton'),
+        { tag: 'button', attrs: { a: 'x', name: 'longvalue' }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toContain("name='longvalue'");
+    expect(r.content).toContain("a='x'");
+  });
+
+  it("block-form: empty-string literal (boolean shorthand) emits a bare attr name", () => {
+    // <button disabled ...attributes> registers `disabled: ''` via
+    // literalAttrs. The slot here is wide enough to fit either
+    // `disabled='   '` or bare `disabled`; the contract is that the
+    // boolean shorthand stays bare so html-validate sees a real
+    // boolean attribute, not a 3-space placeholder value.
+    const src = "<MyButton @veryLongFirstAttr={{val}}>click</MyButton>";
+    const tagMap = new Map([[locKey(src, 'MyButton'), 'button']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyButton'),
+        { tag: 'button', attrs: { disabled: '' }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toMatch(/<button\s+disabled\s/);
+    expect(r.content).not.toContain("disabled='   '");
+    expect(r.content).not.toContain("disabled=");
+  });
+
+  it('block-form: empty-string literal on a non-boolean attr falls back to placeholder', () => {
+    // Bare emission would be wrong for non-boolean attrs: the AST
+    // can't distinguish `<div aria-label ...attributes>` from
+    // `<div aria-label='' ...attributes>` (both produce empty TextNode
+    // chars). Treat empty-string literal as bare only when the attr
+    // is a known HTML boolean; otherwise emit the 3-space placeholder
+    // so processAttribute converts to DynamicValue.
+    const src = "<MyDiv @veryLongFirstAttr={{val}}>x</MyDiv>";
+    const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyDiv'),
+        { tag: 'div', attrs: { 'aria-label': '' }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toContain("aria-label='   '");
+  });
+
+  it('block-form: builtin attrs apply when Glint resolves the tag without an attrCtx entry', () => {
+    // Glint can write a componentTagMap entry for canonical components
+    // (e.g. <LinkTo> via @ember/routing types) without a
+    // componentAttrMap entry — there's no project .gts file for it to
+    // parse for the splatted root. Without a fallback, the .gts/.gjs
+    // path skips href injection and aria-label-misuse FP-fires again.
+    // We pull the builtin's attrs as long as the resolved tag matches.
+    const src = "<LinkTo @route='profile'>X</LinkTo>";
+    const tagMap = new Map([[locKey(src, 'LinkTo'), 'a']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    // href placeholder injected from BUILTIN_COMPONENTS even without
+    // an attrMap entry from Glint.
+    expect(r.content).toMatch(/href\s*=\s*['"]\s+['"]/);
+  });
+
+  it('block-form: skips injecting an attr that the invocation already supplies', () => {
+    // <SubmitBtn type='button' @longer={{x}}> against a splatted
+    // root that records `type='submit'` would otherwise emit two
+    // `type` attrs in the substituted <button>. The caller's value
+    // wins (matching the common ...attributes-trails-locals pattern).
+    const src = "<SubmitBtn type='button' @longer={{xyz}}>click</SubmitBtn>";
+    const tagMap = new Map([[locKey(src, 'SubmitBtn'), 'button']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'SubmitBtn'),
+        { tag: 'button', attrs: { type: 'submit' }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toContain("type='button'");
+    expect(r.content).not.toContain("type='submit'");
+  });
+
   it('falls back to transparent treatment when source is too short to fit <button></button>', () => {
     // 10 chars < 17 (min for `<button></button>`); fall back to
     // transparent neutralize (open/close blanked entirely; children float).
@@ -686,6 +787,22 @@ describe('Built-in Ember components (Input / Textarea / LinkTo)', () => {
     expect(r.content).toContain('View');
     expect(r.content).toMatch(/<\/a\s*>/);
     expect(r.content).not.toContain('x-c');
+  });
+
+  it('<LinkTo>label</LinkTo> block-form injects href placeholder so <a> is interactive', () => {
+    // Without an href, html-validate treats the substituted <a> as a
+    // plain placeholder element — the `aria-label-misuse` rule then
+    // fires on `<LinkTo aria-label='...'>...</LinkTo>` because aria-label
+    // requires an interactive role. At runtime LinkTo always renders an
+    // <a> with a computed href, so the substitution should match.
+    // Same pattern as the self-closing void path injecting type=' '
+    // for <Input> (see lib/builtin-components.ts).
+    const src = "<LinkTo @route='profile' aria-label='View profile'>X</LinkTo>";
+    const r = blank(src);
+    // Either bare `href` or `href='   '` would let html-validate treat
+    // the <a> as interactive. The 3-space pattern matches the self-
+    // closing path's convention and the href entry in BUILTIN_COMPONENTS.
+    expect(r.content).toMatch(/href\s*=\s*['"]\s+['"]/);
   });
 
   it('Glint resolution takes precedence over built-in mapping when available', () => {

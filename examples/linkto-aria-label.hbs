@@ -1,0 +1,27 @@
+{{!-- Mirrors a real-world icon-only link pattern: <LinkTo> with
+aria-label and a non-text body. At runtime LinkTo renders an <a>
+with a computed href, so html-validate's aria-label-misuse rule
+should pass — same as it does for a hand-written <a href=...>. --}}
+
+<LinkTo
+  @route='organization.equipment'
+  @model='123'
+  aria-label='View equipment 123'
+  class='w-full flex items-center justify-center'
+>
+  <svg width='14' height='14' viewBox='0 0 14 14' aria-hidden='true'>
+    <polyline points='1.5,12.5 7,7 1.5,1.5' />
+  </svg>
+</LinkTo>
+
+{{!-- Reference case: hand-written <a href=...> with the same shape.
+Should also pass aria-label-misuse, and currently does. --}}
+<a
+  href='/organization/equipment/123'
+  aria-label='View equipment 123'
+  class='w-full flex items-center justify-center'
+>
+  <svg width='14' height='14' viewBox='0 0 14 14' aria-hidden='true'>
+    <polyline points='1.5,12.5 7,7 1.5,1.5' />
+  </svg>
+</a>
