@@ -640,7 +640,7 @@ function resolveElementFromComponentRefType(
 ): string | null {
   // emitCall is `emitComponent(resolve(Comp)({...}))`; navigate to the
   // component reference expression. Same path findComponentDeclSourceFile
-  // and resolveElementFromSatisfiesTOC use.
+  // uses to walk back to the component identifier.
   const innerCall = emitComponentCall.arguments[0];
   if (!innerCall || !ts.isCallExpression(innerCall)) return null;
   const resolveCall = innerCall.expression;
@@ -648,10 +648,21 @@ function resolveElementFromComponentRefType(
   const componentRef = resolveCall.arguments[0];
   if (!componentRef) return null;
   const refType = checker.getTypeAtLocation(componentRef);
+  // Try both shapes:
+  //   - Type alias `type TOC<S> = …` — type-args land on
+  //     `aliasTypeArguments`.
+  //   - Generic interface `interface TOC<S>` — type-args land on the
+  //     TypeReference's typeArguments, accessible via the public
+  //     `checker.getTypeArguments`.
+  // We don't know which form the host project's `TOC` (or other
+  // signature-carrying generic) uses; check both.
   const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
     .aliasTypeArguments;
-  if (!aliasArgs || aliasArgs.length === 0) return null;
-  const sigType = aliasArgs[0];
+  let sigType: TS.Type | undefined = aliasArgs?.[0];
+  if (!sigType && (refType as TS.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
+    const refArgs = checker.getTypeArguments(refType as TS.TypeReference);
+    sigType = refArgs[0];
+  }
   if (!sigType) return null;
   const eltSym = sigType.getProperty('Element');
   if (!eltSym) return null;
