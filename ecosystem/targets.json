@@ -41,13 +41,6 @@
       "exclude": []
     },
     {
-      "name": "aria-voyager",
-      "repo": "hokulea/aria-voyager",
-      "ref": "d17b494399871171e416fc943e0fb043516dd504",
-      "include": ["packages/ember-aria-voyager/tests/rendering/**/*.{gts,gjs,hbs}"],
-      "exclude": []
-    },
-    {
       "name": "ember-a11y-testing",
       "repo": "ember-a11y/ember-a11y-testing",
       "ref": "c79cfb8ba87e31c2c03e8401fd85cd5334a8c86d",
@@ -97,26 +90,6 @@
       "exclude": []
     },
     {
-      "name": "warp-drive",
-      "repo": "warp-drive-data/warp-drive",
-      "ref": "e3a30bb1ac790e76fc90c589251cfc775cffb737",
-      "include": [
-        "warp-drive-packages/ember/src/**/*.{gts,gjs,hbs}",
-        "tests/example-app-ember/app/**/*.{gts,gjs,hbs}"
-      ],
-      "exclude": []
-    },
-    {
-      "name": "ember-intl",
-      "repo": "ember-intl/ember-intl",
-      "ref": "4e423ec7bdc76003ac2874504336428888649c40",
-      "include": [
-        "docs/ember-intl/src/**/*.{gts,gjs,hbs}",
-        "docs/**/app/**/*.{gts,gjs,hbs}"
-      ],
-      "exclude": []
-    },
-    {
       "name": "vertical-collection",
       "repo": "html-next/vertical-collection",
       "ref": "f01c770f1dde915394651eb2a0635df6ae77e9cc",
@@ -124,13 +97,6 @@
         "vertical-collection/src/**/*.{gts,gjs,hbs}",
         "test-app/app/**/*.{gts,gjs,hbs}"
       ],
-      "exclude": []
-    },
-    {
-      "name": "ember-resources",
-      "repo": "NullVoxPopuli/ember-resources",
-      "ref": "9d62d6986b80066e567ae63804f815c40bb9b290",
-      "include": ["test-app/app/**/*.{gts,gjs,hbs}"],
       "exclude": []
     },
     {
