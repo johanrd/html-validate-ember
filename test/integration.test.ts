@@ -292,6 +292,26 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form: form in BLANKED-OUT branch must not leak wcag/h32 suppression into the active pass', async () => {
+    // Two `<form>` nodes, one per arm of `{{#if @showYieldedForm}}`:
+    //   - program arm: `<form>{{yield}}</form>` (legit suppression target)
+    //   - inverse arm: `<form><textarea/></form>` (NO submit, NO yield;
+    //     this is a real wcag/h32 violation that must be reported)
+    //
+    // Without a branch-aware top-level traversal in
+    // `detectStructuralYieldRules`, both forms get visited and the
+    // walker adds wcag/h32 to disableForRules for BOTH passes —
+    // silently suppressing the inverse arm's real bug. The test
+    // asserts the real bug surfaces, i.e. wcag/h32 is not silently
+    // hidden by the program arm's legitimate suppression.
+    const r = await validate('form-in-blanked-out-branch.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must fire on the inverse arm's genuinely-broken form; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+  });
+
   it('yield-only-form: <SubmitButton /> resolving to <button type="submit"> IS a static submit — no suppression', async () => {
     // The component's splatted root is `<button type='submit'
     // ...attributes>`; Glint resolves <SubmitButton /> to native
@@ -299,12 +319,36 @@ describe('end-to-end fixtures', () => {
     // blanked output has a real submit, so wcag/h32 wouldn't fire.
     // Suppression must NOT activate or no-unused-disable cascades on
     // the injected disable directive.
-    const r = await validate('yield-form-with-component-submit.gts');
-    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
-    expect(
-      unused,
-      `no-unused-disable must not fire — static-submit detection must recognize the component as submit; got: ${JSON.stringify(r.messages)}`,
-    ).toHaveLength(0);
+    //
+    // Two levers make this assertion meaningful:
+    //   1. HVE_GLINT=1 — component-as-submit detection requires Glint
+    //      to resolve <SubmitButton /> to <button>. Without Glint the
+    //      detection returns false, suppression activates, and a
+    //      naive `no-unused-disable.length === 0` check would pass
+    //      for the wrong reason (the directive would be "used" because
+    //      wcag/h32 actually fires on the unsubstituted output).
+    //   2. `wcag/h32: 'off'` via rulesOverride — with the rule off,
+    //      any injected `<!--html-validate-disable wcag/h32-->`
+    //      becomes immediately unused, surfacing as
+    //      `no-unused-disable`. So absence of `no-unused-disable` is
+    //      a POSITIVE assertion that no directive was injected, i.e.
+    //      that component-as-submit was correctly recognized and
+    //      suppression was skipped.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validateRaw('yield-form-with-component-submit.gts', {
+        'wcag/h32': 'off',
+      });
+      const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+      expect(
+        unused,
+        `no-unused-disable must not fire — with wcag/h32=off, any injected directive becomes unused; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
   });
 
   it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {

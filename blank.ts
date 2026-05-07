@@ -1333,18 +1333,43 @@ function detectStructuralYieldRules(
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
 ): string[] {
   const out: string[] = [];
-  traverse(ast, {
-    ElementNode(node) {
-      if (
-        node.tag === 'form' &&
-        elementYieldsAndLacksSubmit(node, branchSelections, glintComponentTagMap, glintComponentAttrMap)
-      ) {
-        out.push('wcag/h32');
-      } else if (node.tag === 'fieldset' && elementYieldsAndLacksLegend(node, branchSelections)) {
-        out.push('wcag/h71');
+  // Custom walk — the off-the-shelf `traverse` would visit forms /
+  // fieldsets that live entirely in a blanked-out branch for the
+  // current pass, leaking their suppression rules into
+  // `disableForRules` and silently suppressing real violations on
+  // the actually-emitted output (false negatives). At every
+  // BlockStatement we descend ONLY into the selected arm — the same
+  // selection `handleBlockStatement` makes, so this matches what the
+  // blanker actually emits in this pass.
+  function walk(stmts: ReadonlyArray<AST.TopLevelStatement | AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
       }
-    },
-  });
+      if (stmt.type === 'ElementNode') {
+        if (
+          stmt.tag === 'form' &&
+          elementYieldsAndLacksSubmit(
+            stmt,
+            branchSelections,
+            glintComponentTagMap,
+            glintComponentAttrMap,
+          )
+        ) {
+          out.push('wcag/h32');
+        } else if (
+          stmt.tag === 'fieldset' &&
+          elementYieldsAndLacksLegend(stmt, branchSelections)
+        ) {
+          out.push('wcag/h71');
+        }
+        walk(stmt.children);
+      }
+    }
+  }
+  walk(ast.body);
   return [...new Set(out)];
 }
 
