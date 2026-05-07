@@ -752,12 +752,9 @@ function tryInjectComponentAttrs(
   // Build the injection plan first, then place longer texts before
   // shorter ones. Otherwise a short attr visited first can claim the
   // only candidate slot wide enough for a longer attr, silently
-  // dropping it. Empty-string literal on a known boolean attr
-  // (e.g. `<button disabled ...attributes>` records `disabled: ''`)
-  // emits just the attr name. For non-boolean attrs we can't tell
-  // shorthand `disabled` apart from explicit `value=''`, so fall
-  // back to the 3-space placeholder — it's HTML5-equivalent and
-  // gets DynamicValue-treated by `processAttribute`.
+  // dropping it. Per-attr emission rules (boolean → presence-only,
+  // safe literal → embedded, otherwise → DynamicValue placeholder)
+  // are documented in the .map below.
   const plan = Object.keys(attrs)
     .filter((name) => !existingNonGlimmer.has(name))
     .map((attrName) => {
