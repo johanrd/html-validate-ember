@@ -45,6 +45,26 @@ When Glint can't resolve the component to a native tag, the plugin falls back to
 
 ---
 
+## 🔴 Structural-content rules fire on `<form>`/`<fieldset>` whose body is `{{yield}}` + `...attributes`
+
+**Affected targets:** ember-primitives (4 findings: 2× `wcag/h32` on `<Form>` / `<OTP.Input>` forms, 2× `wcag/h71` on fieldsets); pending review for others.
+
+**Pattern.** When a Glimmer component's template is `<form ... ...attributes>{{yield}}</form>` (or the `<fieldset>` equivalent), the plugin blanks `{{yield}}` to whitespace. html-validate then sees an empty body and reports `wcag/h32` (missing submit button) or `wcag/h71` (missing legend). At runtime the consumer fills the body via yielded children + `...attributes`, and the required structural child IS provided. FP.
+
+This is the *same shape* as the multipass yield-only-branch heuristic in `form-submit-in-else.gts` / `multipass-yield-only-branch.gts` but for non-multipass templates. The yield-only-branch handling currently scopes to multipass branches; we need a non-multipass extension: when an element's body is *yield-only* (or yield + only static content that doesn't satisfy the rule), suppress the structural-required-child rule for that element.
+
+**Fix paths to consider.**
+
+1. **Generalize the yield-only-branch heuristic** to fire outside multipass too: detect that a `<form>`/`<fieldset>` body contains `{{yield}}` (possibly as the only non-whitespace child) and inject a synthetic placeholder child sufficient to satisfy the rule (e.g. `<button type='submit' style='display:none'>` for `wcag/h32`, `<legend></legend>` for `wcag/h71`).
+
+2. **Per-rule suppression at the source level**: prepend an `<!-- [html-validate-disable-block wcag/h32] -->` directive when the element's body is yield-only. Less robust (rule-list grows over time) but localized.
+
+Approach (1) is cleaner. Symmetric to the existing input-type injection at `blank.ts:644-648`.
+
+**Test.** Add `examples/form-yield-only-no-multipass.gts` — `<form>{{yield}}</form>` with no `{{#if}}/{{else}}` — and assert no `wcag/h32` fires. Same shape for fieldset/legend.
+
+---
+
 ## Stylistic / preset-policy review
 
 Tracked separately in `STYLISTIC-FINDINGS.md` — these aren't FPs but are recommended-preset-default candidates.
