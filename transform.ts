@@ -11,6 +11,7 @@ import type {
 import { createRequire } from 'node:module';
 
 import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
 
@@ -92,17 +93,35 @@ const preprocessor = new Preprocessor();
 // rework this.
 export const __multipassBranchedRanges = new Map<string, Array<[number, number]>>();
 
-// Inline directive prepended to each branched Source so `no-unused-disable`
-// is effectively off inside any branched template — needed because
-// directives load-bearing in one branch combination look unused in another,
-// and the post-report dedupe in `lib/multipass-dedupe.ts` only runs for
-// callers that route through `dedupeMultipassReport` (the bundled CLI and
-// tests; NOT the html-validate VS Code extension, NOT the `html-validate`
-// CLI). The bracket-less form is the shortest valid spelling per
-// html-validate's `MATCH_DIRECTIVE` regex; no newline so we can compensate
-// with a single column-shift on the Source. Keep the spelling in sync with
-// `MULTIPASS_INCOMPATIBLE_RULES` in `lib/multipass-dedupe.ts`.
-const MULTIPASS_DIRECTIVE_PREFIX = '<!--html-validate-disable no-unused-disable-->';
+// Build an inline `<!--html-validate-disable …-->` directive to prepend to
+// a Source. Rules come from two sources:
+//   - `branched` (from multipass): adds `no-unused-disable` so directives
+//     load-bearing in one branch combination don't get reported "unused" in
+//     another. The post-report dedupe in `lib/multipass-dedupe.ts` only
+//     runs for callers that route through `dedupeMultipassReport` (the
+//     bundled CLI and tests; NOT the html-validate VS Code extension,
+//     NOT the standalone `html-validate` CLI), so we mirror it inline.
+//   - `disableForRules` (from blank.ts): structural-rule suppressions for
+//     this Source's templated content (e.g. `wcag/h32` for a yield-bearing
+//     `<form>`, `wcag/h71` for a yield-bearing `<fieldset>`). See
+//     `BlankResult.disableForRules` and `detectStructuralYieldRules` in
+//     `blank.ts`.
+//
+// Bracket-less form is the shortest valid spelling per html-validate's
+// `MATCH_DIRECTIVE` regex; no newline so we can compensate with a single
+// column-shift on the Source.
+//
+// The branched-template caller adds `no-unused-disable` to its rule list;
+// that one specific rule must stay in sync with `MULTIPASS_INCOMPATIBLE_RULES`
+// in `lib/multipass-dedupe.ts` (the post-report dedupe drops the same rule
+// for branched ranges). The structural-yield rules (`wcag/h32`, `wcag/h71`)
+// passed in by `BlankResult.disableForRules` are intentionally NOT in that
+// set — they're suppressions specific to a yield-bearing source, not
+// dedupe-incompatible-with-multipass rules.
+function buildDisableDirective(rules: ReadonlyArray<string>): string {
+  if (rules.length === 0) return '';
+  return `<!--html-validate-disable ${rules.join(' ')}-->`;
+}
 
 function offsetToLineCol(source: string, offset: number): { line: number; column: number } {
   let line = 1;
@@ -120,16 +139,14 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
-    // Bare-mustache attribute values (`id={{x}}`) are emitted as
-    // `id="<spaces>"` (see blank.ts). Detect that pattern and replace
-    // the value with a DynamicValue so rules see "attribute present,
-    // value unknowable". The minimum length 3 matches the shortest
-    // possible original mustache `{{x}}` (5 chars → `"<3 spaces>"`).
-    if (
-      typeof attr.value === 'string' &&
-      attr.value.length >= 3 &&
-      /^\s+$/u.test(attr.value)
-    ) {
+    // Bare-mustache attribute values (`id={{x}}`) are emitted as a
+    // whitespace-only placeholder (see blank.ts). The exact sentinel
+    // is owned by `lib/dynamic-value.ts` (`DYNAMIC_VALUE_PLACEHOLDER` /
+    // `isDynamicValuePlaceholder`); both blank.ts and
+    // component-attrs.ts inject through that constant so this stays in
+    // sync if the sentinel ever changes. Convert to DynamicValue so
+    // rules see "attribute present, value unknowable".
+    if (isDynamicValuePlaceholder(attr.value)) {
       return [{ ...attr, value: new DynamicValue('') as unknown as DynamicValueESM }];
     }
     return [attr];
@@ -185,12 +202,13 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${data.length}\n`,
       );
     }
+    const hbsPrefix = buildDisableDirective(result.disableForRules ?? []);
     yield {
-      data: result.content,
+      data: hbsPrefix + result.content,
       filename,
       line: 1,
-      column: 1,
-      offset: 0,
+      column: 1 - hbsPrefix.length,
+      offset: 0 - hbsPrefix.length,
       originalData,
       hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), 0),
     };
@@ -297,9 +315,13 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
           `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
         );
       }
-      const sourceData = branched ? MULTIPASS_DIRECTIVE_PREFIX + result.content : result.content;
-      const sourceOffset = branched ? startOffset - MULTIPASS_DIRECTIVE_PREFIX.length : startOffset;
-      const sourceColumn = branched ? column - MULTIPASS_DIRECTIVE_PREFIX.length : column;
+      const rules: string[] = [];
+      if (branched) rules.push('no-unused-disable');
+      for (const r of result.disableForRules ?? []) rules.push(r);
+      const prefix = buildDisableDirective(rules);
+      const sourceData = prefix + result.content;
+      const sourceOffset = startOffset - prefix.length;
+      const sourceColumn = column - prefix.length;
       // Elements whose only Glimmer source content was mustaches will look
       // empty after blanking. Hook them and append a DynamicValue placeholder
       // so html-validate's empty-heading / text-content rules see "has content,

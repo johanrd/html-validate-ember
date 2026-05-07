@@ -5,6 +5,7 @@ import type { AST } from '@glimmer/syntax';
 import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from '../blank.js';
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);
@@ -90,6 +91,55 @@ describe('mustache blanking', () => {
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
+  });
+
+  it('injects placeholder src on minimal `<img ...attributes>` (single slot fits one attr)', () => {
+    // `<img ...attributes>` in a thin wrapper component (parent supplies
+    // src via splat) was FP-firing `element-required-attributes` (src).
+    // The blanker erases `...attributes`, leaving an attr-less `<img>`.
+    // Inject a whitespace-valued `src='   '` placeholder (≥3 chars
+    // triggers `processAttribute`'s DynamicValue conversion) so
+    // html-validate sees src as "present, value unknowable".
+    //
+    // The minimal `...attributes` slot is 13 chars; a placeholder attr
+    // (`src='   '`) is 9 chars. Only one attr fits per slot — alt
+    // gets injected when a second Glimmer-only slot exists (test below).
+    const src = '<img ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(
+      out.content,
+      `expected blanked output to contain a placeholder src= attribute; got: ${JSON.stringify(out.content)}`,
+    ).toMatch(/src='\s{3,}'/);
+  });
+
+  it('injects both src and alt on `<img>` when there are multiple Glimmer-only slots', () => {
+    // Real-world `<img>` invocations usually have multiple Glimmer-only
+    // attrs/modifiers alongside `...attributes` (an `@arg` for typing,
+    // a `{{on "load" …}}` for lazy-loaded images, etc.) — enough total
+    // space for both `src='   '` and `alt='   '` placeholders.
+    const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toMatch(/src='\s{3,}'/);
+    expect(out.content).toMatch(/alt='\s{3,}'/);
+  });
+
+  it('does not inject placeholder src/alt when the consumer wrote them explicitly', () => {
+    // When the consumer's invocation already specifies src/alt (statically
+    // or via a bare-mustache value), the injection must skip — duplicate
+    // attributes are an error, and the consumer's value is what we want
+    // html-validate to see.
+    const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    // Original literal values survive.
+    expect(out.content).toContain('src="/foo.png"');
+    expect(out.content).toContain('alt="bar"');
+    // No injected `src='   '` / `alt='   '` placeholder anywhere — the
+    // splat slot stays blanked instead.
+    expect(out.content).not.toMatch(/src='\s{3,}'/);
+    expect(out.content).not.toMatch(/alt='\s{3,}'/);
   });
 });
 
@@ -535,7 +585,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const src = '<MyButton @label={{a}} @click={{b}} />';
     const map = new Map([[locKey(src, 'MyButton'), 'button']]);
     const r = blankWithMap(src, map);
-    expect(r.content).toContain("<button type='   '>");
+    expect(r.content).toContain(`<button type='${DYNAMIC_VALUE_PLACEHOLDER}'>`);
     expect(r.content).toContain('</button>');
     expect(r.dynamicContentOffsets).toContain(0);
   });
@@ -550,6 +600,42 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toContain('click');
     expect(r.content).toMatch(/<\/button\s*>/);
     expect(r.content).not.toContain('x-c');
+  });
+
+  it('block-form substitution blanks `as |…|` from the open tag', () => {
+    // When Glint resolves a yielding component to a native tag (e.g.
+    // `<MyList as |item|>` → div), the in-place open-tag rename leaves
+    // `as |item|` in the output, and html-validate's parser then sees
+    // `|item|` as an attribute. `attr-case` fires
+    // (`Attribute "|item|" should be lowercase`) and downstream rules
+    // cascade. The actual rendered DOM has no such attribute — block
+    // params are a Glimmer binding for yielded content, not HTML — so
+    // the blanker must erase the `as |…|` clause.
+    const src = '<MyList @items={{this.xs}} as |item|>x</MyList>';
+    const map = new Map([[locKey(src, 'MyList'), 'div']]);
+    const r = blankWithMap(src, map);
+    expect(
+      r.content,
+      `block-param syntax must not leak into the blanked open tag; got: ${JSON.stringify(r.content)}`,
+    ).not.toMatch(/\|item\|/);
+    // Sanity: the substitution itself still happened.
+    expect(r.content).toMatch(/<div\s+/);
+    expect(r.content).toMatch(/<\/div\s*>/);
+  });
+
+  it('block-form substitution blanks multi-param `as |a b|` clauses', () => {
+    // After Glimmer normalization block params look like `as |item index|`
+    // (space-separated). The blanker's regex `\|[^|]*\|` covers any
+    // non-pipe contents, so multi-param forms get blanked uniformly.
+    // Typed forms (`as |item: T|`) are stripped earlier by
+    // `stripBlockParamTypeAnnotations` before Glimmer's parser sees them,
+    // so by the time the AST reaches the blanker the type annotations are
+    // gone — no extra coverage needed at this layer.
+    const src = '<Each @items={{this.xs}} as |item index|>x</Each>';
+    const map = new Map([[locKey(src, 'Each'), 'ul']]);
+    const r = blankWithMap(src, map);
+    expect(r.content).not.toMatch(/\|item index\|/);
+    expect(r.content).toMatch(/<ul\s+/);
   });
 
   it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
@@ -591,7 +677,29 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
     expect(r.content).toMatch(/<button\s+disabled\s/);
-    expect(r.content).not.toContain("disabled='   '");
+    expect(r.content).not.toContain(`disabled='${DYNAMIC_VALUE_PLACEHOLDER}'`);
+    expect(r.content).not.toContain("disabled=");
+  });
+
+  it('block-form: boolean attr recorded as DynamicValue placeholder still emits bare', () => {
+    // `<button ...attributes disabled={{@x}}>` registers
+    // `disabled: '   '` (the DynamicValue placeholder) via literalAttrs.
+    // Boolean attrs must always emit presence-only — emitting
+    // `disabled='   '` would FP-fire `attribute-boolean-style` even
+    // though the consumer's actual runtime value is binary.
+    const src = "<MyButton @veryLongFirstAttr={{val}}>click</MyButton>";
+    const tagMap = new Map([[locKey(src, 'MyButton'), 'button']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyButton'),
+        { tag: 'button', attrs: { disabled: DYNAMIC_VALUE_PLACEHOLDER }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toMatch(/<button\s+disabled\s/);
+    expect(r.content).not.toContain(`disabled='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     expect(r.content).not.toContain("disabled=");
   });
 
@@ -613,7 +721,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
-    expect(r.content).toContain("aria-label='   '");
+    expect(r.content).toContain(`aria-label='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
   it('block-form: builtin attrs apply when Glint resolves the tag without an attrCtx entry', () => {
@@ -689,7 +797,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     // @value blanked.
     expect(r.content).not.toContain("@value");
     // type='   ' injected (3 spaces — converted to DynamicValue by hook).
-    expect(r.content).toContain("type='   '");
+    expect(r.content).toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // No open+close pair (void).
     expect(r.content).not.toContain('</input>');
   });
@@ -702,7 +810,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toContain('alt="logo"');
     expect(r.content).not.toContain('@src');
     // Only input gets type injection — not other voids.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     expect(r.content).not.toContain('</img>');
   });
 
@@ -721,7 +829,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toHaveLength(src.length);
     // Real literal value, not the placeholder.
     expect(r.content).toContain("type='range'");
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // Parent attrs still preserved.
     expect(r.content).toContain("id='s'");
     expect(r.content).toContain("class='w-full'");
@@ -737,7 +845,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toMatch(/<input\s/);
     expect(r.content).toContain("id='s'");
     // No type injection since there was no Glimmer-attr area to use.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 });
 
@@ -761,7 +869,7 @@ describe('Built-in Ember components (Input / Textarea / LinkTo)', () => {
     expect(r.content).toMatch(/<input\s/);
     // type='   ' (3 spaces) injected via tryInjectInputType — converted
     // to DynamicValue by the processAttribute hook.
-    expect(r.content).toContain("type='   '");
+    expect(r.content).toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // Parent attrs preserved.
     expect(r.content).toContain("id='name'");
     expect(r.content).toContain("name='name'");
@@ -776,7 +884,7 @@ describe('Built-in Ember components (Input / Textarea / LinkTo)', () => {
     expect(r.content).toContain('<textarea');
     expect(r.content).toContain('</textarea>');
     // No type injection for textarea.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
   it('<LinkTo>label</LinkTo> block-form substitutes to <a>label</a> in place', () => {

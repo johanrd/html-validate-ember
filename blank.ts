@@ -27,6 +27,7 @@ import type { MetaDataTable } from 'html-validate';
 import { lookupBuiltinComponent } from './lib/builtin-components.js';
 import type { ComponentAttrs } from './lib/builtin-components.js';
 import type { AttrTypeInfo } from './lib/cache.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from './lib/dynamic-value.js';
 
 // ---------------------------------------------------------------------------
 // Schema-derived metadata (computed once at module load).
@@ -595,7 +596,7 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
     if (VOID_ELEMENTS.has(resolved)) {
       return substituteSelfClosingVoidComponent(node, ctx, resolved) ? resolved : null;
     }
-    return substituteSelfClosingComponent(node, ctx, resolved) ? resolved : null;
+    return substituteSelfClosingComponent(node, ctx, resolved, attrCtx) ? resolved : null;
   }
 
   // Block-form: rename open and close tags in place. Children stay visible
@@ -607,6 +608,30 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   ctx.renames.push([tagStart, tagStart + node.tag.length, resolved + padding]);
   const closeTagStart = elementEnd - node.tag.length - 1;
   ctx.renames.push([closeTagStart, closeTagStart + node.tag.length, resolved + padding]);
+  // Erase any `as |…|` block-param clause from the renamed open tag.
+  // Block params are a Glimmer-side binding for yielded content — they
+  // never appear as attributes in the rendered DOM. Without this blank,
+  // the in-place rename leaves `as |item|` in the open tag and html-
+  // validate's parser treats `|item|` as an attribute, firing `attr-case`
+  // (and downstream rules cascade).
+  //
+  // Take the LAST regex match: per Glimmer syntax the block-params clause
+  // is always the rightmost thing before `>`, so the last match is
+  // unambiguously it — defends against the (rare) case where an attribute
+  // value happens to contain a literal `as |x|`.
+  if (node.blockParams.length > 0) {
+    const openTagEnd = findOpenTagEnd(ctx.content, elementStart);
+    if (openTagEnd >= 0) {
+      const openTagText = ctx.content.slice(elementStart, openTagEnd + 1);
+      const re = /\bas\s+\|[^|]*\|/g;
+      let last: RegExpExecArray | null = null;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(openTagText)) !== null) last = m;
+      if (last) {
+        ctx.blankRanges.push([elementStart + last.index, elementStart + last.index + last[0].length]);
+      }
+    }
+  }
   // Inject the resolved component's static attrs into Glimmer-attr blank
   // regions in the open tag (mirrors the self-closing input-type
   // injection). Without this, e.g. <LinkTo>...</LinkTo> resolves to a
@@ -667,12 +692,65 @@ function substituteSelfClosingVoidComponent(
 //
 // No-op when no suitable attr area is found — `no-implicit-input-type`
 // will still fire in that case, but the user can silence per-site.
+
+// Symmetric to tryInjectInputType but for void natives whose required attrs
+// can be supplied by the consumer via `...attributes`. Without injection,
+// `<img ...attributes>` blanks to an attribute-less `<img>` and html-validate
+// FP-fires `element-required-attributes` (src) and `wcag/h37` (alt) even
+// though both come from the splat at runtime.
+//
+// Injects whitespace-valued placeholders (`src='   '` / `alt='   '`) into
+// Glimmer-only blank regions in the open tag; `processAttribute`'s
+// DynamicValue conversion (>=3-char whitespace threshold) then surfaces them
+// as "present, value unknowable". Skipped when the consumer already wrote
+// `src=` / `alt=` explicitly.
+//
+// Currently scoped to <img>; the same shape applies to
+// <source>/<track>/<area>/<iframe> if real-world FPs surface there.
+function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
+  const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
+  if (!hasSplat) return;
+  const present = new Set((node.attributes ?? []).map((a) => a.name));
+  const wanted: string[] = [];
+  if (!present.has('src')) wanted.push("src='   '");
+  if (!present.has('alt')) wanted.push("alt='   '");
+  if (wanted.length === 0) return;
+  const candidates: Range[] = [];
+  for (const attr of node.attributes ?? []) {
+    if (isGlimmerOnlyAttr(attr.name)) {
+      candidates.push([startOffset(attr), endOffset(attr)]);
+    }
+  }
+  for (const m of node.modifiers ?? []) {
+    candidates.push([startOffset(m), endOffset(m)]);
+  }
+  // Sort candidates widest first. Both injected attrs (`src='   '` and
+  // `alt='   '`) are 9 chars, so picking the widest candidate first
+  // doesn't starve a later attr. This is a slot-side ordering only;
+  // tryInjectComponentAttrs additionally sorts the *attrs* by descending
+  // text length to prevent starvation when attrs have varying widths —
+  // not needed here because both wanted attrs are the same length.
+  candidates.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
+  for (const text of wanted) {
+    for (let i = 0; i < candidates.length; i++) {
+      const [s, e] = candidates[i]!;
+      if (e - s < text.length) continue;
+      const slice = ctx.content.slice(s, s + text.length);
+      if (/[\n\r]/.test(slice)) continue;
+      ctx.renames.push([s, s + text.length, text]);
+      candidates.splice(i, 1);
+      break;
+    }
+  }
+}
+
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
   const literalType = lookupComponentAttr(node, ctx, 'type');
   // Build the injected text. Prefer a literal value when known and
   // safe (no embedded quotes / HTML-altering chars).
   const valueLiteral = isLiteralSafeForAttr(literalType) ? literalType : null;
-  const TYPE_TEXT = valueLiteral !== null ? `type='${valueLiteral}'` : "type='   '";
+  const TYPE_TEXT =
+    valueLiteral !== null ? `type='${valueLiteral}'` : `type='${DYNAMIC_VALUE_PLACEHOLDER}'`;
   const candidates: Range[] = [];
   for (const attr of node.attributes ?? []) {
     if (isGlimmerOnlyAttr(attr.name)) {
@@ -759,12 +837,15 @@ function tryInjectComponentAttrs(
   const plan = Object.keys(attrs)
     .filter((name) => !existingNonGlimmer.has(name))
     .map((attrName) => {
+      // Boolean attrs (`disabled`, `required`, `selected`, …) emit
+      // presence-only regardless of the recorded value. Per HTML5 any
+      // value (including `''`, `'disabled'`, the DynamicValue
+      // placeholder, etc.) is equivalent to "true"; emitting
+      // `name='value'` would unnecessarily fire `attribute-boolean-style`.
+      if (isBooleanAttr(resolvedTag, attrName)) return { text: attrName };
       const literal = lookupComponentAttr(node, ctx, attrName);
-      if (literal === '' && isBooleanAttr(resolvedTag, attrName)) {
-        return { text: attrName };
-      }
       if (isLiteralSafeForAttr(literal)) return { text: `${attrName}='${literal}'` };
-      return { text: `${attrName}='   '` };
+      return { text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
     });
   plan.sort((a, b) => b.text.length - a.text.length);
   const used = new Set<number>();
@@ -862,6 +943,7 @@ function substituteSelfClosingComponent(
   node: AST.ElementNode,
   ctx: Context,
   resolved: string,
+  attrCtx: ComponentAttrs | undefined,
 ): boolean {
   const elementStart = startOffset(node);
   const elementEnd = endOffset(node);
@@ -874,9 +956,29 @@ function substituteSelfClosingComponent(
   let typeAttr = '';
   if (resolved === 'button') {
     const literal = lookupComponentAttr(node, ctx, 'type');
-    typeAttr = isLiteralSafeForAttr(literal) ? ` type='${literal}'` : " type='   '";
+    typeAttr = isLiteralSafeForAttr(literal)
+      ? ` type='${literal}'`
+      : ` type='${DYNAMIC_VALUE_PLACEHOLDER}'`;
   }
-  const openTag = `<${resolved}${typeAttr}>`;
+  // Embed the rest of the splatted-root attrs (other than type, handled
+  // above for button). Without this, components whose Signature['Element']
+  // resolves to a non-void native carrying *required* attrs sourced from
+  // arg-bindings (e.g. `<iframe title={{@label}} src={{@src}}>`) would
+  // emit a bare `<iframe></iframe>` and FP-fire
+  // `element-required-attributes`.
+  let extraAttrs = '';
+  for (const [name, value] of Object.entries(attrCtx?.attrs ?? {})) {
+    if (resolved === 'button' && name === 'type') continue; // already in typeAttr
+    // Boolean attrs emit presence-only; see tryInjectComponentAttrs's
+    // matching branch for the rationale.
+    if (isBooleanAttr(resolved, name)) {
+      extraAttrs += ` ${name}`;
+      continue;
+    }
+    const safeValue = isLiteralSafeForAttr(value) ? value : DYNAMIC_VALUE_PLACEHOLDER;
+    extraAttrs += ` ${name}='${safeValue}'`;
+  }
+  const openTag = `<${resolved}${typeAttr}${extraAttrs}>`;
   const closeTag = `</${resolved}>`;
   const minLen = openTag.length + closeTag.length;
   const sourceLen = elementEnd - elementStart;
@@ -1017,6 +1119,12 @@ function handleElementNode(node: AST.ElementNode, ctx: Context): void {
   // Native element (or block-form Glint-substituted as native).
   if (elementHasDynamicContent(node)) {
     ctx.dynamicContentOffsets.push(start);
+  }
+  // For void natives whose required attrs can come from `...attributes`,
+  // inject placeholders before the splat is blanked. Currently <img>; see
+  // tryInjectImgRequiredAttrs for the rationale and scope.
+  if (effectiveTag === 'img') {
+    tryInjectImgRequiredAttrs(node, ctx);
   }
   for (const attr of node.attributes ?? []) {
     emitAttribute(attr, ctx, effectiveTag);
@@ -1170,12 +1278,21 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Rule IDs that the consumer should disable for this Source as a whole —
+  // populated when the template contains structural patterns the static
+  // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
+  // `{{yield}}` in its body (consumer provides the submit button), and
+  // `wcag/h71` when a `<fieldset>` does (consumer provides the legend).
+  // Transform.ts prepends an inline `<!--html-validate-disable …-->`
+  // directive built from this list, with offset adjustment.
+  disableForRules: string[];
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  disableForRules?: undefined;
 }
 
 function blankTemplateContent(
@@ -1275,7 +1392,278 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    disableForRules: detectStructuralYieldRules(
+      ast,
+      branchSelections,
+      glintComponentTagMap,
+      glintComponentAttrMap,
+    ),
   };
+}
+
+// Detect structural elements (`<form>`, `<fieldset>`) whose body contains
+// `{{yield}}` (or `{{has-block}}`) AND lacks a statically-detectable
+// submit/legend — those are the cases where wcag/h32 / wcag/h71 would
+// FP-fire on the blanked output. Wrapper markup like
+// `<form><div>{{yield}}</div></form>` IS suppressed (the yield is the
+// structural content, just wrapped); a form with a real
+// `<button type='submit'>` alongside the yield is NOT suppressed (the
+// rule wouldn't fire and the disable would itself trigger
+// `no-unused-disable`).
+//
+// Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
+// would let one arm's static submit hide the other arm's yield-only
+// FP. Instead we honor `branchSelections` (the same per-pass selection
+// `handleBlockStatement` uses) so each emitted Source's
+// `disableForRules` matches its own blanked content. When no
+// selection is present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass
+// mode) we mirror `handleBlockStatement`'s heuristic: prefer program,
+// switch to inverse only when inverse has a static submit and program
+// doesn't.
+//
+// Component-aware. Component invocations that resolve to native
+// `<button>`/`<input>` via Glint or builtin maps count as static
+// submit when their splatted-root attrs make them submit-style — a
+// `<MyButton>` resolving to `<button type='submit' ...attributes>`
+// would otherwise trigger `no-unused-disable` (the rule it's trying
+// to suppress doesn't actually fire on the blanked output, since
+// substitution emits a real submit).
+//
+// Conservative on dynamic types: `<button type={{x}}>` and
+// `<input type={{x}}>` count as MAYBE-submit and disqualify the
+// suppression. Trade-off: a yield-bearing form whose only "submit-like"
+// element has a dynamic type stays unsuppressed (real h32 may fire) —
+// preferred to introducing a synthetic no-unused-disable.
+function detectStructuralYieldRules(
+  ast: AST.Template,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+  glintComponentTagMap?: ReadonlyMap<string, string> | null,
+  glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
+): string[] {
+  const out: string[] = [];
+  traverse(ast, {
+    ElementNode(node) {
+      if (
+        node.tag === 'form' &&
+        elementYieldsAndLacksSubmit(node, branchSelections, glintComponentTagMap, glintComponentAttrMap)
+      ) {
+        out.push('wcag/h32');
+      } else if (node.tag === 'fieldset' && elementYieldsAndLacksLegend(node, branchSelections)) {
+        out.push('wcag/h71');
+      }
+    },
+  });
+  return [...new Set(out)];
+}
+
+// Pick a single arm of `{{#if}}/{{else}}` to walk — mirrors the
+// selection in `handleBlockStatement` so the decision matches what the
+// blanker actually emits in each pass.
+function selectBranch(
+  block: AST.BlockStatement,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+): AST.Block | null {
+  if (!block.inverse) return block.program;
+  const explicit = branchSelections?.get(startOffset(block));
+  if (explicit !== undefined) {
+    return explicit === 'inverse' ? block.inverse : block.program;
+  }
+  const programHasSubmit = blockHasSubmitButton(block.program);
+  const inverseHasSubmit = blockHasSubmitButton(block.inverse);
+  return inverseHasSubmit && !programHasSubmit ? block.inverse : block.program;
+}
+
+// True when a `<form>` body contains `{{yield}}` (or `{{has-block}}`)
+// somewhere AND has no statically-detectable submit-style child. The
+// yield means the consumer might supply a submit button at runtime;
+// the absence of a static submit means wcag/h32 would FP-fire on the
+// blanked output. Together: the suppression is needed.
+//
+// If a static submit DOES exist, wcag/h32 wouldn't fire and our
+// injected `<!--html-validate-disable wcag/h32-->` would itself be
+// flagged "unused" by `no-unused-disable`. So we bail in that case.
+//
+// "Statically-detectable submit" means a `<button>` whose `type` is
+// absent (default `submit` inside a form) or statically equals
+// `submit` (ASCII case-insensitive); a `<button type='button'>` /
+// `type='reset'` is explicitly non-submit and does NOT disqualify.
+// For `<input>`, `type='submit'` / `type='image'` (case-insensitive)
+// counts. Bare-mustache types are conservatively treated as MAYBE
+// submit (we bail) — better an extra real wcag/h32 fire than an
+// unused-disable cascade.
+function elementYieldsAndLacksSubmit(
+  form: AST.ElementNode,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+): boolean {
+  let hasYield = false;
+  let hasStaticSubmit = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (hasStaticSubmit) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          hasYield = true;
+        }
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (
+          isStaticSubmitButton(stmt) ||
+          isSubmitInput(stmt) ||
+          isAmbiguouslyTypedInputOrButton(stmt) ||
+          isComponentResolvingToSubmitOrAmbiguous(stmt, glintComponentTagMap, glintComponentAttrMap)
+        ) {
+          hasStaticSubmit = true;
+          return;
+        }
+        walk(stmt.children);
+        continue;
+      }
+    }
+  }
+  walk(form.children);
+  return hasYield && !hasStaticSubmit;
+}
+
+// True when a `<fieldset>` body contains `{{yield}}` (or `{{has-block}}`)
+// somewhere AND has no statically-detectable `<legend>` child. Same
+// rationale as elementYieldsAndLacksSubmit.
+function elementYieldsAndLacksLegend(
+  fieldset: AST.ElementNode,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+): boolean {
+  let hasYield = false;
+  let hasStaticLegend = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (hasStaticLegend) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          hasYield = true;
+        }
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'legend') {
+          hasStaticLegend = true;
+          return;
+        }
+        walk(stmt.children);
+        continue;
+      }
+    }
+  }
+  walk(fieldset.children);
+  return hasYield && !hasStaticLegend;
+}
+
+// `<button>` with no `type` attribute (default = submit inside a form)
+// or with a static `type='submit'` (ASCII case-insensitive). Explicit
+// `type='button'` / `type='reset'` returns false.
+function isStaticSubmitButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      return attr.value.chars.toLowerCase() === 'submit';
+    }
+    // Dynamic value — handled by isAmbiguouslyTypedInputOrButton.
+    return false;
+  }
+  return true;
+}
+
+function isSubmitInput(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      const v = attr.value.chars.toLowerCase();
+      return v === 'submit' || v === 'image';
+    }
+    return false;
+  }
+  return false;
+}
+
+function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input' && node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    // Bare-mustache or concat-mustache value: type unknown statically;
+    // could be 'submit' at runtime. Bail conservatively.
+    if (attr.value.type !== 'TextNode') return true;
+  }
+  return false;
+}
+
+// True when a component invocation (`<MyButton>`, `<This.Foo>`)
+// resolves via Glint or builtin maps to a native `<button>`/`<input>`
+// that's either a static submit OR ambiguous on its type. Treats both
+// "definitely submit" and "could be submit" as disqualifying — the
+// goal is to avoid `no-unused-disable` cascades, so we err on the side
+// of NOT suppressing when in doubt.
+//
+// "Static submit" cases:
+//   - Resolves to `<button>` with no static `type` attr (default
+//     submit per HTML), OR with `type='submit'` (case-insensitive).
+//   - Resolves to `<input>` with `type='submit'` / `type='image'`
+//     (case-insensitive).
+//
+// "Ambiguous" case:
+//   - Resolves to `<button>`/`<input>` with a `type` attr whose
+//     recorded value is whitespace-only (DynamicValue placeholder
+//     produced for bare-mustache types in component-attrs.ts).
+//
+// "Not submit" cases (returns false):
+//   - Component does not resolve, OR resolves to a non-submit-style tag.
+//   - Resolves to `<button>` with a non-submit static type
+//     (`type='button'`, `type='reset'`).
+//   - Resolves to `<input>` with a non-submit static type
+//     (`type='text'`, etc.).
+function isComponentResolvingToSubmitOrAmbiguous(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+): boolean {
+  if (isNativeTag(node.tag)) return false;
+  if (!glintComponentTagMap || !node.loc.start) return false;
+  const key = `${node.loc.start.line}:${node.loc.start.column}`;
+  const resolvedTag = glintComponentTagMap.get(key);
+  if (resolvedTag !== 'button' && resolvedTag !== 'input') return false;
+  const recordedType = glintComponentAttrMap?.get(key)?.attrs?.['type'];
+  if (recordedType === undefined) {
+    // No static type recorded by the component-attrs extractor.
+    // For <button>: default IS submit per HTML → static submit.
+    // For <input>: default is 'text' → not submit.
+    return resolvedTag === 'button';
+  }
+  if (/^\s+$/u.test(recordedType)) {
+    // DynamicValue placeholder — type is bare-mustache at the splatted
+    // root; could resolve to 'submit' at runtime. Disqualify.
+    return true;
+  }
+  const v = recordedType.toLowerCase();
+  if (resolvedTag === 'button') return v === 'submit';
+  return v === 'submit' || v === 'image';
 }
 
 // True when the branch's body contains nothing the validator can see —
