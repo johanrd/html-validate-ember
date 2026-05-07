@@ -699,8 +699,12 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   for (const m of node.modifiers ?? []) {
     candidates.push([startOffset(m), endOffset(m)]);
   }
-  // Sort wider candidates first so the longest replacement gets the longest
-  // slot — matches tryInjectComponentAttrs's anti-starvation ordering.
+  // Sort candidates widest first. Both injected attrs (`src='   '` and
+  // `alt='   '`) are 9 chars, so picking the widest candidate first
+  // doesn't starve a later attr. This is a slot-side ordering only;
+  // tryInjectComponentAttrs additionally sorts the *attrs* by descending
+  // text length to prevent starvation when attrs have varying widths —
+  // not needed here because both wanted attrs are the same length.
   candidates.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
   for (const text of wanted) {
     for (let i = 0; i < candidates.length; i++) {
