@@ -297,13 +297,6 @@
       "message": "<a> element is not permitted as a descendant of <a>"
     },
     {
-      "file": "packages/components/src/components/hds/form/index.gts",
-      "line": 81,
-      "column": 8,
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "packages/components/src/components/hds/form/label/index.gts",
       "line": 61,
       "column": 8,
