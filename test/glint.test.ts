@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
+import { getSplattedRootsForFile, _clearCache as clearComponentAttrsCache } from '../lib/component-attrs.js';
+import { isDynamicValuePlaceholder } from '../lib/dynamic-value.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -74,6 +76,36 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
       step: '1',
     });
     expect(slider!.hasSplat).toBe(true);
+  });
+
+  it('records arg-bound required attributes as DynamicValue placeholders', () => {
+    // typed-iframe.gts: `<iframe ...attributes title={{@label}} src={{@src}} />`
+    // — required `title` and `src` come from typed args. Without recording
+    // them, html-validate's `element-required-attributes` FP-fires on
+    // consumers like <TypedFrame @label='...' @src='...' />.
+    //
+    // literalAttrs records bare-mustache / concat-mustache attrs with
+    // the DynamicValue whitespace placeholder so the blanker injects
+    // `name='<placeholder>'` and processAttribute converts to
+    // DynamicValue. html-validate then sees the attribute as present.
+    const filename = path.join(fixturesDir, 'typed-iframe.gts');
+    // Use the lower-level extraction directly — we don't need the consumer
+    // here, just the splatted-root attrs from the component file itself.
+    clearComponentAttrsCache();
+    const roots = getSplattedRootsForFile(filename);
+    expect(roots).toHaveLength(1);
+    expect(roots[0]!.tag).toBe('iframe');
+    // Assert via the shared `isDynamicValuePlaceholder` predicate so
+    // the test follows any future change to the sentinel
+    // (DYNAMIC_VALUE_PLACEHOLDER in lib/dynamic-value.ts) — a 1- or
+    // 2-char regression would silently break required-attribute rules,
+    // and the predicate is the single source of truth used by
+    // `processAttribute`.
+    expect(
+      isDynamicValuePlaceholder(roots[0]!.attrs.title),
+      `title should be a DynamicValue placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`,
+    ).toBe(true);
+    expect(isDynamicValuePlaceholder(roots[0]!.attrs.src)).toBe(true);
   });
 
   it('falls back to first element when no element has ...attributes', () => {
