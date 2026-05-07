@@ -145,4 +145,37 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     const { filename, contents } = readFixture('broken-import.gts');
     expect(() => extractAttrTypeMap(filename, contents)).not.toThrow();
   });
+
+  it('resolves TOC `satisfies TOC<{Element: HTMLLIElement}>` to "li"', () => {
+    // toc-list-item-consumer.gts uses <TocListItem> from a sibling .gts
+    // that declares `TOC<{ Element: HTMLLIElement; ... }>` via the
+    // satisfies form (`<template>...</template> satisfies TOC<…>`). Glint's
+    // emit surfaces `.element` as unknown/any for this shape; the recovery
+    // in resolveElementFromTOCDeclaration reads Element from the TOC<…>
+    // type-arg directly.
+    const { filename, contents } = readFixture('toc-list-item-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected componentTagMap to resolve <TocListItem> to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it('resolves TOC `: TOC<{Element: HTMLLIElement}> =` (annotation form) to "li"', () => {
+    // toc-annotated-list-item.gts uses the type-annotation form
+    // `const X: TOC<{Element: T}> = <template>...</template>;` rather
+    // than the satisfies form. Both reach the same emit path and need
+    // the same recovery — verifies resolveElementFromTOCDeclaration's
+    // type-annotation branch.
+    const { filename, contents } = readFixture('toc-annotated-list-item-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected componentTagMap to resolve <TocAnnotatedListItem> to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
 });
