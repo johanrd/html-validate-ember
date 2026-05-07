@@ -169,6 +169,34 @@ describe('end-to-end fixtures', () => {
     expect(ariaErrors).toHaveLength(0);
   });
 
+  it('yield-only-form: wcag/h32 must NOT fire when a thin <form> wrapper yields its body', async () => {
+    // `<form ...>{{yield}}</form>` blanks to an empty form body, so a
+    // length-preserving in-place injection of a synthetic submit-button
+    // child isn't workable (`{{yield}}` is 8 chars, `<button type=submit>`
+    // is 19). Instead, `detectStructuralYieldRules` flags the file and
+    // the transformer prepends a Source-level `<!--html-validate-disable
+    // wcag/h32-->` directive — the same mechanism we use for
+    // `no-unused-disable` on branched ranges.
+    const r = await validate('yield-only-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a yield-only <form> wrapper; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-fieldset: wcag/h71 must NOT fire when a thin <fieldset> wrapper yields its body', async () => {
+    // Same shape as yield-only-form but for `<fieldset>` + `wcag/h71`
+    // (`<fieldset> must have a <legend> as the first child`). Consumer
+    // supplies the legend via the yielded body.
+    const r = await validate('yield-only-fieldset.gts');
+    const h71 = r.messages.filter((m) => m.rule === 'wcag/h71');
+    expect(
+      h71,
+      `wcag/h71 must not fire on a yield-only <fieldset> wrapper; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('form-submit-in-else: wcag/h32 surfaces correctly under multipass', async () => {
     // Fixture has a submit button in the {{else}} branch (Send) and a
     // type='button' in the program branch (Stop). Under multipass:

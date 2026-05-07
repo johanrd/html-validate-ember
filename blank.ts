@@ -1170,12 +1170,21 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Rule IDs that the consumer should disable for this Source as a whole —
+  // populated when the template contains structural patterns the static
+  // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
+  // `{{yield}}` in its body (consumer provides the submit button), and
+  // `wcag/h71` when a `<fieldset>` does (consumer provides the legend).
+  // Transform.ts prepends an inline `<!--html-validate-disable …-->`
+  // directive built from this list, with offset adjustment.
+  disableForRules: string[];
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  disableForRules?: undefined;
 }
 
 function blankTemplateContent(
@@ -1275,7 +1284,59 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    disableForRules: detectStructuralYieldRules(ast),
   };
+}
+
+// Detect structural elements (`<form>`, `<fieldset>`) whose body contains
+// `{{yield}}` — these almost always mean "consumer provides the rest of
+// the body, including the structural child the rule wants" (a submit
+// button for form/h32; a legend for fieldset/h71). We can't statically
+// see the consumer's yielded content, so inject a Source-level disable
+// for the relevant rule.
+//
+// Conservative trade-off: if a yield-bearing form ALSO has a non-yield
+// body that genuinely lacks submit, the disable hides the real bug.
+// Acceptable because (a) yield-bearing forms are almost always thin
+// component wrappers with no extra body content, and (b) the alternative
+// is a permanent FP with no escape hatch.
+function detectStructuralYieldRules(ast: AST.Template): string[] {
+  const out: string[] = [];
+  traverse(ast, {
+    ElementNode(node) {
+      if (node.tag === 'form' && elementContainsYield(node)) {
+        out.push('wcag/h32');
+      } else if (node.tag === 'fieldset' && elementContainsYield(node)) {
+        out.push('wcag/h71');
+      }
+    },
+  });
+  return [...new Set(out)];
+}
+
+function elementContainsYield(node: AST.ElementNode): boolean {
+  let found = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (found) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          found = true;
+          return;
+        }
+      } else if (stmt.type === 'BlockStatement') {
+        walk(stmt.program.body);
+        if (stmt.inverse) walk(stmt.inverse.body);
+      } else if (stmt.type === 'ElementNode') {
+        walk(stmt.children);
+      }
+    }
+  }
+  walk(node.children);
+  return found;
 }
 
 // True when the branch's body contains nothing the validator can see —
