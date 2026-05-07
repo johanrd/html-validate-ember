@@ -890,6 +890,14 @@ function findComponentDeclSourceFile(
 // when the addon isn't found in node_modules, when no template file
 // exists at the expected paths, or when the template parses to no
 // element root (e.g. `{{outlet}}`-only).
+// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs (or null
+// for negative resolutions). Templates with many invocations of the same
+// addon component otherwise hit the dir walk + multiple existsSync probes
+// + read+parse on every call. Keyed on the consumer file's directory so a
+// monorepo with multiple node_modules trees stays correct (different
+// projects can resolve the same addonName to different physical paths).
+const addonHbsResolutionCache = new Map<string, ComponentAttrs | null>();
+
 function resolveAddonHbsTemplate(
   ts: typeof TS,
   checker: TS.TypeChecker,
@@ -917,14 +925,29 @@ function resolveAddonHbsTemplate(
   const moduleSpecifier = importDecl.moduleSpecifier;
   if (!ts.isStringLiteral(moduleSpecifier)) return null;
   const importPath = moduleSpecifier.text;
+  const consumerDir = path.dirname(consumerFile);
+  const cacheKey = `${consumerDir}\0${importPath}`;
+  if (addonHbsResolutionCache.has(cacheKey)) {
+    return addonHbsResolutionCache.get(cacheKey) ?? null;
+  }
   // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
-  // Addon name may be scoped (`@org/pkg`); component name is kebab-case
-  // (allowing nested-by-slash like `forms/text-input`).
-  const m = /^(@[\w-]+\/[\w-]+|[\w-]+)\/(?:templates\/)?components\/([\w/-]+)$/.exec(importPath);
-  if (!m) return null;
+  // Addon name follows npm package-name rules: lowercase letters, digits,
+  // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
+  // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
+  // Component name is kebab-case (allowing nested-by-slash like
+  // `forms/text-input`).
+  const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
+  const importRe = new RegExp(
+    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/([\\w/-]+)$`,
+  );
+  const m = importRe.exec(importPath);
+  if (!m || importPath.includes('..')) {
+    addonHbsResolutionCache.set(cacheKey, null);
+    return null;
+  }
   const addonName = m[1]!;
   const componentName = m[2]!;
-  let dir = path.dirname(consumerFile);
+  let dir = consumerDir;
   // Walk up looking for node_modules/<addon>.
   while (dir !== path.dirname(dir)) {
     const addonRoot = path.join(dir, 'node_modules', addonName);
@@ -937,14 +960,24 @@ function resolveAddonHbsTemplate(
         const hbsPath = path.join(addonRoot, subPath);
         if (fs.existsSync(hbsPath)) {
           const contents = fs.readFileSync(hbsPath, 'utf8');
-          return extractSplattedRootFromTemplate(contents);
+          const result = extractSplattedRootFromTemplate(contents);
+          addonHbsResolutionCache.set(cacheKey, result);
+          return result;
         }
       }
+      addonHbsResolutionCache.set(cacheKey, null);
       return null;
     }
     dir = path.dirname(dir);
   }
+  addonHbsResolutionCache.set(cacheKey, null);
   return null;
+}
+
+// Test-only: clear the addon-hbs resolution cache. Tests that mutate
+// fixtures' .hbs templates between runs need this to avoid stale hits.
+export function _clearAddonHbsCache(): void {
+  addonHbsResolutionCache.clear();
 }
 
 // Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.
