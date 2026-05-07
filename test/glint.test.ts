@@ -94,8 +94,12 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
     const roots = getSplattedRootsForFile(filename);
     expect(roots).toHaveLength(1);
     expect(roots[0]!.tag).toBe('iframe');
-    expect(roots[0]!.attrs.title, `title should be recorded as a whitespace placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`).toMatch(/^\s+$/);
-    expect(roots[0]!.attrs.src).toMatch(/^\s+$/);
+    // Placeholder must be ≥3 whitespace chars — that's the threshold
+    // `processAttribute` (transform.ts) uses to convert a value to
+    // DynamicValue. A 1- or 2-space placeholder would silently regress
+    // to a literal value and stop satisfying required-attribute rules.
+    expect(roots[0]!.attrs.title, `title should be ≥3-char whitespace placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`).toMatch(/^\s{3,}$/);
+    expect(roots[0]!.attrs.src).toMatch(/^\s{3,}$/);
   });
 
   it('falls back to first element when no element has ...attributes', () => {

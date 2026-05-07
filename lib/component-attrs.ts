@@ -67,7 +67,7 @@ function elementHasSplat(node: AST.ElementNode): boolean {
   return false;
 }
 
-// Whitespace-of-length-≥3 sentinel — `processAttribute` (transform.ts:116)
+// Whitespace-of-length-≥3 sentinel — `processAttribute` in `transform.ts`
 // converts attribute values matching `/^\s+$/` of length >= 3 into a
 // DynamicValue. Keeping the sentinel here in sync with that threshold lets
 // the blanker treat arg-bound attrs as "present, value unknowable" without
