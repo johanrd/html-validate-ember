@@ -65,6 +65,18 @@ Approach (1) is cleaner. Symmetric to the existing input-type injection at `blan
 
 ---
 
+## 🔴 Mysterious `<abbr>` ancestor resolution (Glint generic `HTMLElement` fallback?)
+
+**Affected targets:** ember-power-select (1 finding at `src/components/power-select.gts:1443:12` — `<div>` not permitted under `<abbr>`); pending review for others.
+
+**Pattern.** html-validate reports `<div>` is not permitted under `<abbr>`, but the source file contains no literal `<abbr>`. An ancestor component is being Glint-resolved to the `abbr` tag. The most likely cause: a component declares `Signature['Element']` as the generic `HTMLElement` (not a specific subclass like `HTMLDivElement`), and the plugin's `HTMLElement` → tag mapping falls through to something that lands on `abbr`.
+
+Needs a scoped repro and inspection of `lib/glint.ts`'s element-class → tag mapping. May be a one-line fix (don't resolve `HTMLElement` to anything — leave the component in transparent-blanking territory) or may indicate a bigger gap.
+
+**Test.** A fixture with a TOC declaring `Element: HTMLElement` (the generic). Validate. Assert no spurious ancestor-resolution finding fires.
+
+---
+
 ## Stylistic / preset-policy review
 
 Tracked separately in `STYLISTIC-FINDINGS.md` — these aren't FPs but are recommended-preset-default candidates.
