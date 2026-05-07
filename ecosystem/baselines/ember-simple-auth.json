@@ -1,0 +1,48 @@
+{
+  "ref": "27bd323f4c7f35e8aa19e770f095b06b839ca479",
+  "fileCount": 11,
+  "findings": [
+    {
+      "file": "packages/test-app/app/components/login-form.hbs",
+      "line": 2,
+      "column": 82,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/test-app/app/components/login-form.hbs",
+      "line": 4,
+      "column": 93,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/test-app/app/components/login-form.hbs",
+      "line": 14,
+      "column": 6,
+      "ruleId": "autocomplete-password",
+      "message": "<input type=\"password\"> is missing required \"autocomplete\" attribute"
+    },
+    {
+      "file": "packages/test-app/app/components/main-navigation.hbs",
+      "line": 27,
+      "column": 4,
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "packages/test-app/app/components/main-navigation.hbs",
+      "line": 37,
+      "column": 9,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/test-app/lib/my-engine/addon/templates/protected.hbs",
+      "line": 7,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    }
+  ]
+}

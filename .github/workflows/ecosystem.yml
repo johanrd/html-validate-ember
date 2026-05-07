@@ -1,0 +1,60 @@
+name: ecosystem
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - '*.ts'
+      - 'lib/**'
+      - 'ecosystem/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.github/workflows/ecosystem.yml'
+  workflow_dispatch:
+
+# Cancel in-flight ecosystem runs when a PR force-pushes — clones are
+# expensive and the only result we care about is the latest one.
+concurrency:
+  group: ecosystem-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ecosystem:
+    runs-on: ubuntu-latest
+    # Generous because targets get cloned + their deps installed for Glint
+    # type-aware extraction. First run is the slow path (cold caches);
+    # subsequent runs hit the pnpm/npm store cache and are much faster.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: corepack enable
+      - run: npm ci
+
+      # Cache target repo clones AND their installed node_modules across runs.
+      # Keyed on targets.json so any SHA bump invalidates the cache and forces
+      # a fresh fetch + reinstall (we want the baseline-vs-actual diff to
+      # reflect the pinned SHA, not whatever was cached from a previous run).
+      - name: Cache target clones + node_modules
+        uses: actions/cache@v4
+        with:
+          path: ecosystem/.cache
+          key: ecosystem-clones-${{ hashFiles('ecosystem/targets.json') }}
+
+      # The pnpm store is content-addressed; caching it across runs makes
+      # repeat installs near-instant when the lockfile barely changes.
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ecosystem-pnpm-${{ hashFiles('ecosystem/targets.json') }}
+          restore-keys: ecosystem-pnpm-
+
+      - name: Run ecosystem checks
+        run: npm run ecosystem:check

@@ -1,0 +1,97 @@
+{
+  "ref": "d17b494399871171e416fc943e0fb043516dd504",
+  "fileCount": 3,
+  "findings": [
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 33,
+      "column": 14,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 55,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 91,
+      "column": 13,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 120,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 136,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 155,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 180,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 198,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 214,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 233,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 266,
+      "column": 13,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 292,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "packages/ember-aria-voyager/tests/rendering/listbox-test.gts",
+      "line": 309,
+      "column": 16,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    }
+  ]
+}

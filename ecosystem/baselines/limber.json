@@ -1,0 +1,279 @@
+{
+  "ref": "b7d73e54c33e2dc51f1a778985851b82dcada431",
+  "fileCount": 67,
+  "findings": [
+    {
+      "file": "apps/repl/app/components/menu.gts",
+      "line": 109,
+      "column": 13,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 143,
+      "column": 55,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 146,
+      "column": 17,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 155,
+      "column": 12,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 162,
+      "column": 12,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/languages.gts",
+      "line": 94,
+      "column": 13,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/languages.gts",
+      "line": 96,
+      "column": 15,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 87,
+      "column": 8,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <dl>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 102,
+      "column": 8,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 130,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 150,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 154,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 184,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 196,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 203,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 207,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 236,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 239,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 253,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 257,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 272,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 276,
+      "column": 6,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 291,
+      "column": 6,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 14,
+      "column": 27,
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 17,
+      "column": 27,
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 140,
+      "column": 10,
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 175,
+      "column": 18,
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "apps/repl/app/templates/edit.gts",
+      "line": 27,
+      "column": 10,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/format-buttons.gts",
+      "line": 39,
+      "column": 10,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/controls/index.gts",
+      "line": 46,
+      "column": 9,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/resize-handle.gts",
+      "line": 189,
+      "column": 7,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/status.gts",
+      "line": 44,
+      "column": 8,
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/status.gts",
+      "line": 52,
+      "column": 10,
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/share.gts",
+      "line": 167,
+      "column": 8,
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "apps/repl/app/templates/error-404.gts",
+      "line": 12,
+      "column": 8,
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/error-404.gts",
+      "line": 26,
+      "column": 8,
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/output.gts",
+      "line": 20,
+      "column": 10,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "apps/tutorial/app/components/selection.gts",
+      "line": 50,
+      "column": 8,
+      "ruleId": "element-permitted-content",
+      "message": "<style> element is not permitted as content under <label>"
+    },
+    {
+      "file": "packages/limber-ui/src/code.gts",
+      "line": 225,
+      "column": 9,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    }
+  ]
+}

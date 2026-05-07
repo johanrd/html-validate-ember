@@ -1,0 +1,93 @@
+{
+  "$schema-comment": "Pinned snapshots of public Ember repos that the plugin runs against in ecosystem CI. SHAs are bumped manually for now (a periodic bump workflow can come later). The `include` glob patterns use a small minimatch subset (`**`, `*`, `?`, `{a,b}`) and are evaluated against repo-relative paths; `exclude` is applied first so noise like fixtures, generated dist trees, and node_modules never reaches html-validate. Layouts were verified at the pinned SHAs — when bumping, re-probe the repo if `files: 0` shows up.",
+  "targets": [
+    {
+      "name": "super-rentals",
+      "repo": "ember-learn/super-rentals",
+      "ref": "3d0480f066b27b8410136a858320a47671affbe3",
+      "include": ["app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "ember-website",
+      "repo": "ember-learn/ember-website",
+      "ref": "43ac579887f0722e0dc321392ecbab0affb49f34",
+      "include": ["app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "ember-power-select",
+      "repo": "cibernox/ember-power-select",
+      "ref": "bf21b6c08ff87c1921f9fb19d200f994fdfea28c",
+      "include": [
+        "src/**/*.{gts,gjs,hbs}",
+        "demo-app/**/*.{gts,gjs,hbs}",
+        "docs/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "ember-modifier",
+      "repo": "ember-modifier/ember-modifier",
+      "ref": "deb8359e2e1c35b0a1166969b25110de3a473eb5",
+      "include": ["test-app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "ember-simple-auth",
+      "repo": "mainmatter/ember-simple-auth",
+      "ref": "27bd323f4c7f35e8aa19e770f095b06b839ca479",
+      "include": ["packages/test-app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "aria-voyager",
+      "repo": "hokulea/aria-voyager",
+      "ref": "d17b494399871171e416fc943e0fb043516dd504",
+      "include": ["packages/ember-aria-voyager/tests/rendering/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "ember-a11y-testing",
+      "repo": "ember-a11y/ember-a11y-testing",
+      "ref": "c79cfb8ba87e31c2c03e8401fd85cd5334a8c86d",
+      "include": ["demo-app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "hds-design-system",
+      "repo": "hashicorp/design-system",
+      "ref": "9db0ff66136c04789d756d7b1454f3e48fc635ae",
+      "include": [
+        "packages/components/src/**/*.{gts,gjs,hbs}",
+        "showcase/app/**/*.{gts,gjs,hbs}",
+        "website/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "ember-primitives",
+      "repo": "universal-ember/ember-primitives",
+      "ref": "b8a890e912e74a0241dbb321ca8750c9b7ce3ffb",
+      "include": [
+        "ember-primitives/src/**/*.{gts,gjs,hbs}",
+        "docs-app/app/**/*.{gts,gjs,hbs}",
+        "test-app/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "limber",
+      "repo": "NullVoxPopuli/limber",
+      "ref": "b7d73e54c33e2dc51f1a778985851b82dcada431",
+      "include": [
+        "apps/repl/app/**/*.{gts,gjs,hbs}",
+        "apps/tutorial/app/**/*.{gts,gjs,hbs}",
+        "packages/ember-repl/src/**/*.{gts,gjs,hbs}",
+        "packages/limber-ui/src/**/*.{gts,gjs,hbs}",
+        "packages/app-support/shared/src/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    }
+  ]
+}
