@@ -477,6 +477,7 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
+  imgSplatOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -691,6 +692,35 @@ function substituteSelfClosingVoidComponent(
 //
 // No-op when no suitable attr area is found — `no-implicit-input-type`
 // will still fire in that case, but the user can silence per-site.
+
+// Symmetric to tryInjectInputType but for void natives whose required attrs
+// can be supplied by the consumer via `...attributes`. Without injection,
+// `<img ...attributes>` blanks to an attribute-less `<img>` and html-validate
+// FP-fires `element-required-attributes` (src) and `wcag/h37` (alt) even
+// though both come from the splat at runtime.
+//
+// We don't rewrite the source — the minimal `...attributes` slot is 13
+// chars and html-validate accepts no two-attr form that fits (bare
+// `src alt` triggers `attribute-allowed-values`-missing-value, empty
+// quoted `src=''` triggers `attribute-allowed-values`-invalid-value,
+// and the wide whitespace form `src='   ' alt='   '` is 19+ chars).
+//
+// Instead, record the element's start offset; the transformer's
+// `processElement` hook reads this list and calls `setAttribute` with
+// a DynamicValue at parse time, sidestepping source-side slot width
+// entirely. Skipped when the consumer already wrote `src=` / `alt=`
+// explicitly (no FP to suppress).
+//
+// Currently scoped to <img>; the same shape applies to
+// <source>/<track>/<area>/<iframe> if real-world FPs surface there.
+function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
+  const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
+  if (!hasSplat) return;
+  const present = new Set((node.attributes ?? []).map((a) => a.name));
+  if (present.has('src') && present.has('alt')) return;
+  ctx.imgSplatOffsets.push(startOffset(node));
+}
+
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
   const literalType = lookupComponentAttr(node, ctx, 'type');
   // Build the injected text. Prefer a literal value when known and
@@ -1042,6 +1072,12 @@ function handleElementNode(node: AST.ElementNode, ctx: Context): void {
   if (elementHasDynamicContent(node)) {
     ctx.dynamicContentOffsets.push(start);
   }
+  // For void natives whose required attrs can come from `...attributes`,
+  // inject placeholders before the splat is blanked. Currently <img>; see
+  // tryInjectImgRequiredAttrs for the rationale and scope.
+  if (effectiveTag === 'img') {
+    tryInjectImgRequiredAttrs(node, ctx);
+  }
   for (const attr of node.attributes ?? []) {
     emitAttribute(attr, ctx, effectiveTag);
   }
@@ -1194,12 +1230,21 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Offsets of `<img ...attributes>` elements (start of `<` byte) where
+  // the consumer-side `...attributes` is expected to provide required
+  // attrs (src/alt) at runtime. The transformer's processElement hook
+  // synthesizes these attrs as DynamicValue at parse-time so html-
+  // validate sees them as "present, value unknowable" — sidesteps the
+  // narrow-slot problem where source-side rewrite can't fit two 9-char
+  // `attr='   '` placeholders into a 13-char `...attributes` slot.
+  imgSplatOffsets: number[];
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  imgSplatOffsets?: undefined;
 }
 
 function blankTemplateContent(
@@ -1237,6 +1282,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
+    imgSplatOffsets: [],
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1299,6 +1345,7 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    imgSplatOffsets: ctx.imgSplatOffsets,
   };
 }
 
