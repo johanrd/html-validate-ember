@@ -2,7 +2,7 @@
 //   `const X: TOC<{Element: T}> = <template>...</template>;`
 // rather than the `satisfies` form (covered by toc-list-item.gts).
 // Both shapes hit the same emit path and need the same recovery in
-// `resolveElementFromSatisfiesTOC`.
+// `resolveElementFromTOCDeclaration`.
 import type { TOC } from '@ember/component/template-only';
 
 interface AnnotatedSig {

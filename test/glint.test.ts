@@ -122,7 +122,7 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     // that declares `TOC<{ Element: HTMLLIElement; ... }>` via the
     // satisfies form (`<template>...</template> satisfies TOC<…>`). Glint's
     // emit surfaces `.element` as unknown/any for this shape; the recovery
-    // in resolveElementFromSatisfiesTOC reads Element from the TOC<…>
+    // in resolveElementFromTOCDeclaration reads Element from the TOC<…>
     // type-arg directly.
     const { filename, contents } = readFixture('toc-list-item-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
@@ -138,7 +138,7 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     // toc-annotated-list-item.gts uses the type-annotation form
     // `const X: TOC<{Element: T}> = <template>...</template>;` rather
     // than the satisfies form. Both reach the same emit path and need
-    // the same recovery — verifies resolveElementFromSatisfiesTOC's
+    // the same recovery — verifies resolveElementFromTOCDeclaration's
     // type-annotation branch.
     const { filename, contents } = readFixture('toc-annotated-list-item-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;

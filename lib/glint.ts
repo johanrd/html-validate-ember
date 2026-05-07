@@ -693,10 +693,10 @@ function resolveElementFromTOCDeclaration(
 // Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
 // long-form alias both `@ember/component/template-only` and
 // `@glint/template/-private` re-export). Also handles qualified names like
-// `TOC.SomeMember` defensively (those wouldn't actually carry Element, so
-// we just match the leftmost identifier). Doesn't follow imports — a
-// project that aliases TOC to something else won't be resolved, which is
-// fine: the component falls back to transparent.
+// `Ember.TOC` — for those we match the rightmost identifier (`name.right`),
+// since that's the actual type name. Doesn't follow imports: a project
+// that aliases TOC to something else won't be resolved, which is fine —
+// the component falls back to transparent.
 function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
   let id: TS.Identifier;
   if (ts.isIdentifier(name)) id = name;
