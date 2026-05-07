@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
+import { getSplattedRootsForFile, _clearCache as clearComponentAttrsCache } from '../lib/component-attrs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -74,6 +75,27 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
       step: '1',
     });
     expect(slider!.hasSplat).toBe(true);
+  });
+
+  it('records arg-bound required attributes as DynamicValue placeholders', () => {
+    // typed-iframe.gts: `<iframe ...attributes title={{@label}} src={{@src}} />`
+    // — required `title` and `src` come from typed args. Without recording
+    // them, html-validate's `element-required-attributes` FP-fires on
+    // consumers like <TypedFrame @label='...' @src='...' />.
+    //
+    // literalAttrs records bare-mustache / concat-mustache attrs with a
+    // 3-space placeholder so the blanker injects `name='   '` and
+    // processAttribute converts to DynamicValue. html-validate then sees
+    // the attribute as present.
+    const filename = path.join(fixturesDir, 'typed-iframe.gts');
+    // Use the lower-level extraction directly — we don't need the consumer
+    // here, just the splatted-root attrs from the component file itself.
+    clearComponentAttrsCache();
+    const roots = getSplattedRootsForFile(filename);
+    expect(roots).toHaveLength(1);
+    expect(roots[0]!.tag).toBe('iframe');
+    expect(roots[0]!.attrs.title, `title should be recorded as a whitespace placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`).toMatch(/^\s+$/);
+    expect(roots[0]!.attrs.src).toMatch(/^\s+$/);
   });
 
   it('falls back to first element when no element has ...attributes', () => {

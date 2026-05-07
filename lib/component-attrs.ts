@@ -1,28 +1,35 @@
-// Extract literal attributes from a component's "splatted root" — the
-// element in the component's `<template>` that has `...attributes` (i.e.
-// the element that gets the parent invocation's attributes spread onto
-// it; the rendered root from the parent's perspective). When the parent
-// substitutes <MyComp /> to a native tag (via Glint's Signature['Element']
-// resolution), these literal attributes can be propagated to the
-// substituted output so html-validate sees the actual values rather than
-// a placeholder.
+// Extract attribute info from a component's "splatted root" — the element
+// in the component's `<template>` that has `...attributes` (i.e. the
+// element that gets the parent invocation's attributes spread onto it; the
+// rendered root from the parent's perspective). When the parent substitutes
+// <MyComp /> to a native tag (via Glint's Signature['Element'] resolution),
+// this attribute info is propagated to the substituted output so
+// html-validate sees the runtime-provided attributes as present.
+//
+// Two value forms are recorded:
+//   - Literal `TextNode` values are recorded verbatim — html-validate then
+//     sees the actual value (e.g. `type='range'` enables enum checks).
+//   - Bare-mustache (`title={{@label}}`) and concat-mustache
+//     (`class='prefix-{{x}}'`) values are recorded as a 3-space
+//     placeholder. The blanker injects `name='   '` at the consumer's call
+//     site, and `processAttribute` (transform.ts) converts that to a
+//     DynamicValue — html-validate sees "attribute present, value
+//     unknowable", which is enough for required-attribute and
+//     element-required-attributes-style rules.
 //
 // Example: component template
 //
 //   <template>
-//     <input ...attributes type='range' min='0' max='100' />
+//     <input ...attributes type='range' min='0' max='100' value={{@v}} />
 //   </template>
 //
 // extractSplattedRoot returns:
 //
-//   { tag: 'input', attrs: { type: 'range', min: '0', max: '100' } }
+//   { tag: 'input', attrs: { type: 'range', min: '0', max: '100',
+//                            value: '   ' } }
 //
 // Limitations:
-//   - Only literal-string attrs (`TextNode` values) are extracted.
-//     `class={{x}}` and `class='prefix-{{x}}'` are skipped — they have
-//     dynamic parts the parent caller can't anticipate.
-//   - Glimmer-only attrs (`@arg`, `...attributes`, modifiers) are
-//     skipped.
+//   - Glimmer-only attrs (`@arg`, `...attributes`, modifiers) are skipped.
 //   - When no element has `...attributes`, falls back to the first
 //     top-level element (which is the rendered root for most TOC and
 //     class-component patterns).
@@ -60,15 +67,34 @@ function elementHasSplat(node: AST.ElementNode): boolean {
   return false;
 }
 
+// Whitespace-of-length-≥3 sentinel — `processAttribute` (transform.ts:116)
+// converts attribute values matching `/^\s+$/` of length >= 3 into a
+// DynamicValue. Keeping the sentinel here in sync with that threshold lets
+// the blanker treat arg-bound attrs as "present, value unknowable" without
+// the consumer's value or any literal leaking into html-validate's checks.
+const DYNAMIC_VALUE_PLACEHOLDER = '   ';
+
 function literalAttrs(node: AST.ElementNode): Record<string, string> {
   const attrs: Record<string, string> = {};
   for (const attr of node.attributes ?? []) {
     if (isGlimmerOnlyAttr(attr.name)) continue;
     if (attr.value.type === 'TextNode' && typeof attr.value.chars === 'string') {
       attrs[attr.name] = attr.value.chars;
+    } else if (
+      attr.value.type === 'MustacheStatement' ||
+      attr.value.type === 'ConcatStatement'
+    ) {
+      // Bare-mustache (`title={{@label}}`) and concat-mustache
+      // (`class='prefix-{{x}}'`) values are computed at runtime. We can't
+      // anticipate the literal, but we DO know the attribute is present —
+      // so record it with a DynamicValue placeholder. The blanker injects
+      // `name='   '` into a Glimmer-only blank slot at the consumer's call
+      // site, and html-validate's `processAttribute` hook converts to
+      // DynamicValue. This rescues required-attribute rules
+      // (e.g. `<iframe title={{@label}}>`-style components surfacing
+      // `element-required-attributes` on the wrapped iframe).
+      attrs[attr.name] = DYNAMIC_VALUE_PLACEHOLDER;
     }
-    // ConcatStatement / MustacheStatement values: skip — caller can't
-    // anticipate what `class='prefix-{{x}}'` resolves to at runtime.
   }
   return attrs;
 }
