@@ -6,6 +6,7 @@
       "file": "packages/test-app/app/components/login-form.hbs",
       "line": 2,
       "column": 82,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
     },
@@ -13,6 +14,7 @@
       "file": "packages/test-app/app/components/login-form.hbs",
       "line": 4,
       "column": 93,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
     },
@@ -20,6 +22,7 @@
       "file": "packages/test-app/app/components/login-form.hbs",
       "line": 14,
       "column": 6,
+      "severity": "error",
       "ruleId": "autocomplete-password",
       "message": "<input type=\"password\"> is missing required \"autocomplete\" attribute"
     },
@@ -27,6 +30,7 @@
       "file": "packages/test-app/app/components/main-navigation.hbs",
       "line": 27,
       "column": 4,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -34,6 +38,7 @@
       "file": "packages/test-app/app/components/main-navigation.hbs",
       "line": 37,
       "column": 9,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
     },
@@ -41,6 +46,7 @@
       "file": "packages/test-app/lib/my-engine/addon/templates/protected.hbs",
       "line": 7,
       "column": 2,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     }

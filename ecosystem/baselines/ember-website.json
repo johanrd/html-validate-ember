@@ -6,6 +6,7 @@
       "file": "app/components/index/ember-addons.hbs",
       "line": 41,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<pre> element is not permitted as content under <code>"
     },
@@ -13,6 +14,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 66,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -20,6 +22,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 67,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -27,6 +30,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 75,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -34,6 +38,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 76,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -41,6 +46,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 83,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -48,6 +54,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 84,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -55,6 +62,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 95,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -62,6 +70,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 96,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -69,6 +78,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 104,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -76,6 +86,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 105,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -83,6 +94,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 112,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -90,6 +102,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 113,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -97,6 +110,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 124,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -104,6 +118,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 125,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -111,6 +126,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 133,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -118,6 +134,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 134,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -125,6 +142,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 141,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -132,6 +150,7 @@
       "file": "app/templates/browser-support.hbs",
       "line": 142,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -139,6 +158,7 @@
       "file": "app/templates/community/index.hbs",
       "line": 118,
       "column": 92,
+      "severity": "error",
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"frameborder\" is deprecated on <iframe> element"
     },
@@ -146,6 +166,7 @@
       "file": "app/templates/community/meetups/index.hbs",
       "line": 67,
       "column": 52,
+      "severity": "error",
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"align\" is deprecated on <img> element"
     },
@@ -153,6 +174,7 @@
       "file": "app/templates/editions/polaris.hbs",
       "line": 21,
       "column": 4,
+      "severity": "error",
       "ruleId": "no-implicit-close",
       "message": "Element <p> is implicitly closed by adjacent <ul>"
     },
@@ -160,6 +182,7 @@
       "file": "app/templates/editions/polaris.hbs",
       "line": 37,
       "column": 237,
+      "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
     },
@@ -167,6 +190,7 @@
       "file": "app/templates/index.hbs",
       "line": 137,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-name",
       "message": "<image> is not a valid element name"
     },
@@ -174,6 +198,7 @@
       "file": "app/templates/index.hbs",
       "line": 191,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -181,6 +206,7 @@
       "file": "app/templates/index.hbs",
       "line": 200,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -188,6 +214,7 @@
       "file": "app/templates/index.hbs",
       "line": 214,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h4> element is not permitted as content under <ul>"
     },
@@ -195,6 +222,7 @@
       "file": "app/templates/index.hbs",
       "line": 216,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -202,6 +230,7 @@
       "file": "app/templates/index.hbs",
       "line": 227,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h4> element is not permitted as content under <ul>"
     },
@@ -209,6 +238,7 @@
       "file": "app/templates/index.hbs",
       "line": 229,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -216,6 +246,7 @@
       "file": "app/templates/index.hbs",
       "line": 241,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h4> element is not permitted as content under <ul>"
     },
@@ -223,6 +254,7 @@
       "file": "app/templates/index.hbs",
       "line": 243,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -230,6 +262,7 @@
       "file": "app/templates/index.hbs",
       "line": 278,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -237,6 +270,7 @@
       "file": "app/templates/index.hbs",
       "line": 286,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -244,6 +278,7 @@
       "file": "app/templates/learn/examples.hbs",
       "line": 14,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h2> element is not permitted as content under <ul>"
     },
@@ -251,6 +286,7 @@
       "file": "app/templates/learn/examples.hbs",
       "line": 16,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h3> element is not permitted as content under <ul>"
     },
@@ -258,6 +294,7 @@
       "file": "app/templates/learn/examples.hbs",
       "line": 20,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -265,6 +302,7 @@
       "file": "app/templates/learn/examples.hbs",
       "line": 26,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h3> element is not permitted as content under <ul>"
     },
@@ -272,6 +310,7 @@
       "file": "app/templates/learn/examples.hbs",
       "line": 28,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -279,6 +318,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 3,
       "column": 24,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" cannot be used on this element"
     },
@@ -286,6 +326,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 116,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h2> element is not permitted as content under <ul>"
     },
@@ -293,6 +334,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 118,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h3> element is not permitted as content under <ul>"
     },
@@ -300,6 +342,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 122,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -307,6 +350,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 128,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h3> element is not permitted as content under <ul>"
     },
@@ -314,6 +358,7 @@
       "file": "app/templates/learn/index.hbs",
       "line": 130,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<ul> element is not permitted as content under <ul>"
     },
@@ -321,6 +366,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 103,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -328,6 +374,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 108,
       "column": 19,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"checked\" should omit value"
     },
@@ -335,6 +382,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 118,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -342,6 +390,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 132,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -349,6 +398,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 146,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -356,6 +406,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 160,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -363,6 +414,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 174,
       "column": 25,
+      "severity": "error",
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
     },
@@ -370,6 +422,7 @@
       "file": "app/templates/mascots/commission.hbs",
       "line": 207,
       "column": 21,
+      "severity": "error",
       "ruleId": "prefer-button",
       "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
     },
@@ -377,6 +430,7 @@
       "file": "app/templates/mascots/faq.hbs",
       "line": 41,
       "column": 65,
+      "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"width\" has invalid value \"90%\""
     },
@@ -384,6 +438,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 18,
       "column": 7,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"novalidate\" should omit value"
     },
@@ -391,6 +446,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 41,
       "column": 17,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"required\" should omit value"
     },
@@ -398,6 +454,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 58,
       "column": 17,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"required\" should omit value"
     },
@@ -405,6 +462,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 108,
       "column": 15,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"required\" should omit value"
     },
@@ -412,6 +470,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 135,
       "column": 15,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"required\" should omit value"
     },
@@ -419,6 +478,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 159,
       "column": 17,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"required\" should omit value"
     },
@@ -426,6 +486,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 184,
       "column": 13,
+      "severity": "error",
       "ruleId": "no-conditional-comment",
       "message": "Use of conditional comments are deprecated"
     },
@@ -433,6 +494,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 190,
       "column": 13,
+      "severity": "error",
       "ruleId": "no-conditional-comment",
       "message": "Use of conditional comments are deprecated"
     },
@@ -440,6 +502,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 192,
       "column": 13,
+      "severity": "error",
       "ruleId": "no-conditional-comment",
       "message": "Use of conditional comments are deprecated"
     },
@@ -447,6 +510,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 198,
       "column": 25,
+      "severity": "error",
       "ruleId": "no-conditional-comment",
       "message": "Use of conditional comments are deprecated"
     },
@@ -454,6 +518,7 @@
       "file": "app/templates/mascots/payment.hbs",
       "line": 276,
       "column": 21,
+      "severity": "error",
       "ruleId": "prefer-button",
       "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
     },
@@ -461,6 +526,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 105,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -468,6 +534,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 109,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -475,6 +542,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 117,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -482,6 +550,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 121,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -489,6 +558,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 143,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -496,6 +566,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 147,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -503,6 +574,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 155,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -510,6 +582,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 159,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -517,6 +590,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 165,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -524,6 +598,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 169,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -531,6 +606,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 175,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -538,6 +614,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 179,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -545,6 +622,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 185,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -552,6 +630,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 189,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -559,6 +638,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 195,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -566,6 +646,7 @@
       "file": "app/templates/survey/2017.hbs",
       "line": 199,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -573,6 +654,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 78,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -580,6 +662,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 82,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -587,6 +670,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 90,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -594,6 +678,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 94,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -601,6 +686,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 100,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -608,6 +694,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 104,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -615,6 +702,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 111,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -622,6 +710,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 115,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -629,6 +718,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 140,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -636,6 +726,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 144,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -643,6 +734,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 154,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -650,6 +742,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 158,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -657,6 +750,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 166,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -664,6 +758,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 170,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -671,6 +766,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 182,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -678,6 +774,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 186,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -685,6 +782,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 195,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -692,6 +790,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 199,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -699,6 +798,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 205,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -706,6 +806,7 @@
       "file": "app/templates/survey/2018.hbs",
       "line": 209,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -713,6 +814,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 44,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -720,6 +822,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 48,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -727,6 +830,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 54,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -734,6 +838,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 58,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -741,6 +846,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 64,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -748,6 +854,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 68,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -755,6 +862,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 74,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -762,6 +870,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 78,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -769,6 +878,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 384,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -776,6 +886,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 392,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -783,6 +894,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 398,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -790,6 +902,7 @@
       "file": "app/templates/survey/2019.hbs",
       "line": 404,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -797,6 +910,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 39,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -804,6 +918,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 43,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -811,6 +926,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 49,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -818,6 +934,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 53,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -825,6 +942,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 59,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -832,6 +950,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 63,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -839,6 +958,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 69,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <ul>"
     },
@@ -846,6 +966,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 73,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -853,6 +974,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 323,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -860,6 +982,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 329,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -867,6 +990,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 335,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     },
@@ -874,6 +998,7 @@
       "file": "app/templates/survey/2020.hbs",
       "line": 341,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
     }

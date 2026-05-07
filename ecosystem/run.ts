@@ -44,6 +44,13 @@ interface Finding {
   file: string;
   line: number;
   column: number;
+  // html-validate uses numeric severity internally (1=warn, 2=error).
+  // Baselines store the human-readable form so consumers don't have to
+  // remember the mapping. "error" findings fail builds; "warning"
+  // findings are advisory and surface in lint output without blocking.
+  // Both are recorded so a regression that adds a warning to a
+  // previously-warning-free file still shows in the next CI diff.
+  severity: 'error' | 'warning';
   ruleId: string;
   message: string;
 }
@@ -290,14 +297,23 @@ async function validateTarget(target: Target, repoDir: string): Promise<{ files:
       });
       continue;
     }
-    if (report.valid) continue;
+    // Don't skip on `report.valid === true`: a valid report has no
+    // ERRORS, but it can still carry warnings (e.g. a file whose only
+    // diagnostic is a `prefer-native-element` warning). We want those
+    // in the baseline too — otherwise the warning silently appears /
+    // disappears as the file gains/loses errors.
     const deduped = dedupeMultipassReport(report);
     for (const result of deduped.results) {
       for (const m of result.messages) {
+        // html-validate's Severity: 1 = warn, 2 = error. Anything
+        // else is unexpected; default to "error" so it doesn't silently
+        // collapse to advisory.
+        const severity: 'error' | 'warning' = m.severity === 1 ? 'warning' : 'error';
         findings.push({
           file: rel,
           line: m.line,
           column: m.column,
+          severity,
           ruleId: m.ruleId,
           message: m.message,
         });
@@ -309,6 +325,7 @@ async function validateTarget(target: Target, repoDir: string): Promise<{ files:
       a.file.localeCompare(b.file) ||
       a.line - b.line ||
       a.column - b.column ||
+      a.severity.localeCompare(b.severity) ||
       a.ruleId.localeCompare(b.ruleId) ||
       a.message.localeCompare(b.message)
     );
@@ -317,7 +334,7 @@ async function validateTarget(target: Target, repoDir: string): Promise<{ files:
 }
 
 function findingKey(f: Finding): string {
-  return `${f.file}:${f.line}:${f.column}:${f.ruleId}:${f.message}`;
+  return `${f.file}:${f.line}:${f.column}:${f.severity}:${f.ruleId}:${f.message}`;
 }
 
 function diffFindings(baseline: Finding[], current: Finding[]): { added: Finding[]; removed: Finding[] } {
@@ -344,12 +361,22 @@ function summarizeFindings(findings: Finding[], limit = 20): string {
   if (findings.length === 0) return '  (none)\n';
   const out: string[] = [];
   for (const f of findings.slice(0, limit)) {
-    out.push(`  ${f.file}:${f.line}:${f.column}  ${f.ruleId}\n    ${f.message}\n`);
+    out.push(`  ${f.file}:${f.line}:${f.column}  [${f.severity}] ${f.ruleId}\n    ${f.message}\n`);
   }
   if (findings.length > limit) {
     out.push(`  … and ${findings.length - limit} more\n`);
   }
   return out.join('');
+}
+
+function countBySeverity(findings: Finding[]): { errors: number; warnings: number } {
+  let errors = 0;
+  let warnings = 0;
+  for (const f of findings) {
+    if (f.severity === 'error') errors++;
+    else warnings++;
+  }
+  return { errors, warnings };
 }
 
 async function main(): Promise<void> {
@@ -385,8 +412,9 @@ async function main(): Promise<void> {
       else process.env['HVE_GLINT'] = prevGlint;
     }
     const { files, findings } = result;
+    const { errors, warnings } = countBySeverity(findings);
     process.stderr.write(
-      `  files: ${files}\n  findings: ${findings.length}${useGlint ? ' (with Glint)' : ' (no Glint)'}\n`,
+      `  files: ${files}\n  findings: ${findings.length} (errors: ${errors}, warnings: ${warnings})${useGlint ? ' (with Glint)' : ' (no Glint)'}\n`,
     );
 
     const current: Baseline = { ref: target.ref, fileCount: files, findings };

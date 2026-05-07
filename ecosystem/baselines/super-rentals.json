@@ -6,6 +6,7 @@
       "file": "app/components/rental/image.gjs",
       "line": 15,
       "column": 8,
+      "severity": "error",
       "ruleId": "wcag/h37",
       "message": "<img> is missing required \"alt\" attribute"
     },
@@ -13,6 +14,7 @@
       "file": "app/components/rentals.gjs",
       "line": 25,
       "column": 8,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -20,6 +22,7 @@
       "file": "app/components/rentals.gjs",
       "line": 28,
       "column": 12,
+      "severity": "error",
       "ruleId": "no-implicit-input-type",
       "message": "<input> is missing recommended \"type\" attribute"
     },
@@ -27,6 +30,7 @@
       "file": "app/templates/contact.gjs",
       "line": 17,
       "column": 36,
+      "severity": "error",
       "ruleId": "tel-non-breaking",
       "message": "\" \" should be replaced with \"&nbsp;\" (non-breaking space) in telephone number"
     },
@@ -34,6 +38,7 @@
       "file": "app/templates/contact.gjs",
       "line": 17,
       "column": 42,
+      "severity": "error",
       "ruleId": "tel-non-breaking",
       "message": "\" \" should be replaced with \"&nbsp;\" (non-breaking space) in telephone number"
     },
@@ -41,6 +46,7 @@
       "file": "app/templates/contact.gjs",
       "line": 17,
       "column": 46,
+      "severity": "error",
       "ruleId": "tel-non-breaking",
       "message": "\"-\" should be replaced with \"&#8209;\" (non-breaking hyphen) in telephone number"
     }

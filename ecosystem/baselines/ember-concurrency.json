@@ -3,9 +3,18 @@
   "fileCount": 56,
   "findings": [
     {
+      "file": "packages/test-app/app/components/code-template-toggle.gts",
+      "line": 88,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
       "file": "packages/test-app/app/components/github-edit.gts",
       "line": 23,
       "column": 6,
+      "severity": "error",
       "ruleId": "wcag/h30",
       "message": "Anchor link must have a text describing its purpose"
     },
@@ -13,6 +22,7 @@
       "file": "packages/test-app/app/components/tutorial-0.gts",
       "line": 38,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -20,6 +30,7 @@
       "file": "packages/test-app/app/components/tutorial-0.gts",
       "line": 38,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -27,6 +38,7 @@
       "file": "packages/test-app/app/components/tutorial-1.gts",
       "line": 47,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -34,6 +46,7 @@
       "file": "packages/test-app/app/components/tutorial-1.gts",
       "line": 47,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -41,6 +54,7 @@
       "file": "packages/test-app/app/components/tutorial-2.gts",
       "line": 50,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -48,6 +62,7 @@
       "file": "packages/test-app/app/components/tutorial-2.gts",
       "line": 50,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -55,6 +70,7 @@
       "file": "packages/test-app/app/components/tutorial-3.gts",
       "line": 52,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -62,6 +78,7 @@
       "file": "packages/test-app/app/components/tutorial-3.gts",
       "line": 52,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -69,6 +86,7 @@
       "file": "packages/test-app/app/components/tutorial-4.gts",
       "line": 62,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -76,6 +94,7 @@
       "file": "packages/test-app/app/components/tutorial-4.gts",
       "line": 62,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -83,6 +102,7 @@
       "file": "packages/test-app/app/components/tutorial-5.gts",
       "line": 59,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -90,6 +110,7 @@
       "file": "packages/test-app/app/components/tutorial-5.gts",
       "line": 59,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -97,6 +118,7 @@
       "file": "packages/test-app/app/components/tutorial-6.gts",
       "line": 37,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -104,6 +126,7 @@
       "file": "packages/test-app/app/components/tutorial-6.gts",
       "line": 37,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -111,6 +134,7 @@
       "file": "packages/test-app/app/components/tutorial-7.gts",
       "line": 41,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -118,6 +142,7 @@
       "file": "packages/test-app/app/components/tutorial-7.gts",
       "line": 41,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -125,6 +150,7 @@
       "file": "packages/test-app/app/components/tutorial-8.gts",
       "line": 41,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -132,6 +158,7 @@
       "file": "packages/test-app/app/components/tutorial-8.gts",
       "line": 41,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -139,6 +166,7 @@
       "file": "packages/test-app/app/components/tutorial-9.gts",
       "line": 40,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<li> element is not permitted as content under <div>"
     },
@@ -146,6 +174,7 @@
       "file": "packages/test-app/app/components/tutorial-9.gts",
       "line": 40,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -153,6 +182,7 @@
       "file": "packages/test-app/app/templates/docs/examples/autocomplete.gts",
       "line": 98,
       "column": 6,
+      "severity": "error",
       "ruleId": "no-implicit-close",
       "message": "Element <p> is implicitly closed by adjacent <ul>"
     },
@@ -160,6 +190,7 @@
       "file": "packages/test-app/app/templates/docs/examples/autocomplete.gts",
       "line": 120,
       "column": 6,
+      "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
     },
@@ -167,6 +198,7 @@
       "file": "packages/test-app/app/templates/docs/installation.gts",
       "line": 15,
       "column": 6,
+      "severity": "error",
       "ruleId": "no-implicit-close",
       "message": "Element <p> is implicitly closed by adjacent <ul>"
     },
@@ -174,6 +206,7 @@
       "file": "packages/test-app/app/templates/docs/installation.gts",
       "line": 27,
       "column": 6,
+      "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
     }

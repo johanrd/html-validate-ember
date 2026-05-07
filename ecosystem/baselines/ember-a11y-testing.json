@@ -6,6 +6,7 @@
       "file": "demo-app/templates/ignored-image-alt.gts",
       "line": 6,
       "column": 6,
+      "severity": "error",
       "ruleId": "wcag/h37",
       "message": "<img> is missing required \"alt\" attribute"
     },
@@ -13,6 +14,7 @@
       "file": "demo-app/templates/ignored-image-alt.gts",
       "line": 6,
       "column": 10,
+      "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"src\" has invalid value \"\""
     },
@@ -20,6 +22,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 57,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<button> element is not permitted as content under <ul>"
     },
@@ -27,6 +30,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 57,
       "column": 12,
+      "severity": "error",
       "ruleId": "text-content",
       "message": "<button> must have accessible text"
     },
@@ -34,6 +38,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 70,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as content under <ul>"
     },
@@ -41,6 +46,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 103,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<code> element is not permitted as content under <ul>"
     },
@@ -48,6 +54,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 114,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<img> element is not permitted as content under <ul>"
     },
@@ -55,6 +62,7 @@
       "file": "demo-app/templates/violations.gts",
       "line": 114,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h37",
       "message": "<img> is missing required \"alt\" attribute"
     }

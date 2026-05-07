@@ -3,9 +3,26 @@
   "fileCount": 859,
   "findings": [
     {
+      "file": "packages/components/src/components/hds/advanced-table/th-reorder-handle.gts",
+      "line": 112,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/advanced-table/th.gts",
+      "line": 498,
+      "column": 20,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
       "file": "packages/components/src/components/hds/app-footer/index.gts",
       "line": 70,
       "column": 40,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
@@ -13,6 +30,7 @@
       "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
       "line": 68,
       "column": 9,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
@@ -20,6 +38,7 @@
       "file": "packages/components/src/components/hds/app-footer/link.gts",
       "line": 32,
       "column": 8,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     },
@@ -27,6 +46,7 @@
       "file": "packages/components/src/components/hds/app-footer/link.gts",
       "line": 47,
       "column": 9,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -34,6 +54,7 @@
       "file": "packages/components/src/components/hds/app-header/home-link.gts",
       "line": 54,
       "column": 6,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     },
@@ -41,6 +62,7 @@
       "file": "packages/components/src/components/hds/app-header/home-link.gts",
       "line": 70,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -48,6 +70,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/list/back-link.gts",
       "line": 24,
       "column": 8,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     },
@@ -55,6 +78,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/list/index.gts",
       "line": 58,
       "column": 15,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -62,6 +86,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
       "line": 35,
       "column": 8,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     },
@@ -69,6 +94,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
       "line": 65,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -76,6 +102,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
       "line": 69,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -83,6 +110,7 @@
       "file": "packages/components/src/components/hds/app-side-nav/portal/index.gts",
       "line": 28,
       "column": 28,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" cannot be used on this element"
     },
@@ -90,6 +118,7 @@
       "file": "packages/components/src/components/hds/breadcrumb/item.gts",
       "line": 77,
       "column": 10,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
     },
@@ -97,6 +126,7 @@
       "file": "packages/components/src/components/hds/breadcrumb/item.gts",
       "line": 89,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -104,13 +134,23 @@
       "file": "packages/components/src/components/hds/button/index.gts",
       "line": 158,
       "column": 6,
+      "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "packages/components/src/components/hds/card/container.gts",
+      "line": 185,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <li> element"
     },
     {
       "file": "packages/components/src/components/hds/dropdown/list-item/radio.gts",
       "line": 46,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
     },
@@ -118,6 +158,7 @@
       "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
       "line": 135,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -125,6 +166,7 @@
       "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
       "line": 139,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -132,6 +174,7 @@
       "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
       "line": 143,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -139,6 +182,7 @@
       "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
       "line": 146,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -146,6 +190,7 @@
       "file": "packages/components/src/components/hds/dropdown/toggle/icon.gts",
       "line": 150,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -153,6 +198,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
       "line": 295,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <fieldset>"
     },
@@ -160,6 +206,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
       "line": 300,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <fieldset>"
     },
@@ -167,6 +214,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
       "line": 312,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as a descendant of <a>"
     },
@@ -174,6 +222,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
       "line": 329,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as a descendant of <a>"
     },
@@ -181,6 +230,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 201,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -188,6 +238,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 230,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -195,6 +246,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 237,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -202,6 +254,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 245,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -209,6 +262,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 253,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -216,6 +270,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
       "line": 277,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -223,6 +278,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
       "line": 287,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <fieldset>"
     },
@@ -230,6 +286,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
       "line": 292,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <fieldset>"
     },
@@ -237,6 +294,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
       "line": 301,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as a descendant of <a>"
     },
@@ -244,6 +302,7 @@
       "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
       "line": 317,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as a descendant of <a>"
     },
@@ -251,6 +310,7 @@
       "file": "packages/components/src/components/hds/filter-bar/index.gts",
       "line": 352,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<a> element is not permitted as a descendant of <a>"
     },
@@ -258,6 +318,7 @@
       "file": "packages/components/src/components/hds/filter-bar/index.gts",
       "line": 364,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<input> element is not permitted as a descendant of <a>"
     },
@@ -265,6 +326,7 @@
       "file": "packages/components/src/components/hds/filter-bar/index.gts",
       "line": 377,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<a> element is not permitted as a descendant of <a>"
     },
@@ -272,6 +334,7 @@
       "file": "packages/components/src/components/hds/form/label/index.gts",
       "line": 61,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
     },
@@ -279,6 +342,7 @@
       "file": "packages/components/src/components/hds/form/legend/index.gts",
       "line": 45,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <legend>"
     },
@@ -286,6 +350,7 @@
       "file": "packages/components/src/components/hds/form/super-select/single/base.gts",
       "line": 213,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -293,6 +358,7 @@
       "file": "packages/components/src/components/hds/form/text-input/field.gts",
       "line": 102,
       "column": 10,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
     },
@@ -300,6 +366,7 @@
       "file": "packages/components/src/components/hds/pagination/nav/arrow.gts",
       "line": 119,
       "column": 9,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" cannot be used on this element"
     },
@@ -307,6 +374,7 @@
       "file": "packages/components/src/components/hds/pagination/nav/arrow.gts",
       "line": 145,
       "column": 9,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" cannot be used on this element"
     },
@@ -314,6 +382,7 @@
       "file": "packages/components/src/components/hds/stepper/list/index.gts",
       "line": 57,
       "column": 34,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
@@ -321,6 +390,7 @@
       "file": "packages/components/src/components/hds/stepper/nav/index.gts",
       "line": 271,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<abbr> element is not permitted as content under <ol>"
     },
@@ -328,6 +398,7 @@
       "file": "packages/components/src/components/hds/stepper/nav/step.gts",
       "line": 223,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -335,6 +406,7 @@
       "file": "packages/components/src/components/hds/stepper/nav/step.gts",
       "line": 226,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -342,6 +414,7 @@
       "file": "packages/components/src/components/hds/table/index.gts",
       "line": 399,
       "column": 19,
+      "severity": "error",
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"scope\" is deprecated on <td> element"
     },
@@ -349,6 +422,7 @@
       "file": "packages/components/src/components/hds/tabs/tab.gts",
       "line": 148,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -356,6 +430,7 @@
       "file": "packages/components/src/components/hds/tag/index.gts",
       "line": 185,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <span>"
     },
@@ -363,6 +438,7 @@
       "file": "packages/components/src/components/hds/tag/index.gts",
       "line": 207,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <span>"
     },
@@ -370,6 +446,7 @@
       "file": "packages/components/src/components/hds/tag/index.gts",
       "line": 224,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
     },
@@ -377,6 +454,7 @@
       "file": "packages/components/src/components/hds/tag/index.gts",
       "line": 235,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <span>"
     },
@@ -384,6 +462,7 @@
       "file": "showcase/app/components/mock/app/main/form-complex.gts",
       "line": 149,
       "column": 8,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -391,6 +470,7 @@
       "file": "showcase/app/components/mock/app/main/form-complex.gts",
       "line": 283,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <form>"
     },
@@ -398,6 +478,7 @@
       "file": "showcase/app/components/mock/app/main/form-complex.gts",
       "line": 284,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <form>"
     },
@@ -405,6 +486,7 @@
       "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
       "line": 87,
       "column": 23,
+      "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"selected\" should omit value"
     },
@@ -412,6 +494,7 @@
       "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
       "line": 87,
       "column": 33,
+      "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"selected\" has invalid value \"true\""
     },
@@ -419,6 +502,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
       "line": 520,
       "column": 46,
+      "severity": "error",
       "ruleId": "no-dup-class",
       "message": "Class \"hds-advanced-table__thead\" duplicated"
     },
@@ -426,6 +510,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/demos.gts",
       "line": 14,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -433,6 +518,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/demos.gts",
       "line": 16,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -440,6 +526,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/functional-examples.gts",
       "line": 185,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -447,6 +534,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/functional-examples.gts",
       "line": 186,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -454,6 +542,7 @@
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/functional-examples.gts",
       "line": 187,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -461,6 +550,7 @@
       "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
       "line": 14,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -468,6 +558,7 @@
       "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
       "line": 16,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -475,6 +566,7 @@
       "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
       "line": 22,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -482,6 +574,7 @@
       "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
       "line": 26,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -489,6 +582,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 59,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -496,6 +590,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 67,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -503,6 +598,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 76,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -510,6 +606,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 88,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -517,6 +614,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 256,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -524,6 +622,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 264,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -531,6 +630,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 271,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -538,6 +638,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 282,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -545,6 +646,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 296,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<span> element is not permitted as content under <ul>"
     },
@@ -552,6 +654,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
       "line": 15,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -559,6 +662,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
       "line": 17,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -566,6 +670,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
       "line": 23,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -573,6 +678,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
       "line": 27,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -580,6 +686,7 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
       "line": 31,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -587,6 +694,7 @@
       "file": "showcase/app/components/page-components/card/sub-sections/tag.gts",
       "line": 29,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -594,6 +702,7 @@
       "file": "showcase/app/components/page-components/copy/button/code-fragments/with-modal.gts",
       "line": 47,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -601,6 +710,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 341,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -608,6 +718,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 342,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -615,6 +726,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 343,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -622,6 +734,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 363,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -629,6 +742,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 364,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -636,6 +750,7 @@
       "file": "showcase/app/components/page-components/copy/button/sub-sections/demos.gts",
       "line": 365,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -643,6 +758,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 46,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -650,6 +766,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 103,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -657,6 +774,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 166,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -664,6 +782,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 185,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -671,6 +790,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 188,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -678,6 +798,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 191,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -685,6 +806,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
       "line": 194,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -692,6 +814,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkbox.gts",
       "line": 132,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -699,6 +822,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkbox.gts",
       "line": 147,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -706,6 +830,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 28,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -713,6 +838,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 42,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -720,6 +846,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 63,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -727,6 +854,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 86,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -734,6 +862,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 111,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -741,6 +870,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 127,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -748,6 +878,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 146,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -755,6 +886,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 154,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -762,6 +894,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 164,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -769,6 +902,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 173,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -776,6 +910,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 183,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -783,6 +918,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 199,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -790,6 +926,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 223,
       "column": 11,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -797,6 +934,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/generic.gts",
       "line": 23,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -804,6 +942,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/radio.gts",
       "line": 132,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -811,6 +950,7 @@
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/radio.gts",
       "line": 147,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -818,6 +958,7 @@
       "file": "showcase/app/components/page-components/filter-bar/sub-sections/demos.gts",
       "line": 44,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -825,6 +966,7 @@
       "file": "showcase/app/components/page-components/flyout/sub-sections/demo.gts",
       "line": 291,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -832,6 +974,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
       "line": 265,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -839,6 +982,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
       "line": 269,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -846,6 +990,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
       "line": 273,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -853,6 +998,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
       "line": 277,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -860,6 +1006,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
       "line": 281,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -867,6 +1014,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/demos.gts",
       "line": 38,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -874,6 +1022,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/demos.gts",
       "line": 42,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -881,6 +1030,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/field.gts",
       "line": 106,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -888,6 +1038,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/field.gts",
       "line": 107,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -895,6 +1046,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/field.gts",
       "line": 108,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -902,6 +1054,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 14,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -909,6 +1062,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 16,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -916,6 +1070,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 20,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -923,6 +1078,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 22,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -930,6 +1086,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 26,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -937,6 +1094,7 @@
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
       "line": 28,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -944,6 +1102,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 532,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -951,6 +1110,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 533,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -958,6 +1118,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 534,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -965,6 +1126,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 535,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -972,6 +1134,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 536,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -979,6 +1142,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 568,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -986,6 +1150,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 569,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -993,6 +1158,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 570,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1000,6 +1166,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 571,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1007,6 +1174,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 572,
       "column": 24,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1014,6 +1182,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 601,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1021,6 +1190,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 602,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1028,6 +1198,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 603,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1035,6 +1206,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 604,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1042,6 +1214,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
       "line": 605,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1049,6 +1222,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/content.gts",
       "line": 128,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1056,6 +1230,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/content.gts",
       "line": 129,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1063,6 +1238,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
       "line": 16,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1070,6 +1246,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
       "line": 18,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1077,6 +1254,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
       "line": 22,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1084,6 +1262,7 @@
       "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
       "line": 24,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1091,6 +1270,7 @@
       "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
       "line": 78,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
     },
@@ -1098,6 +1278,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 33,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1105,6 +1286,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 34,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1112,6 +1294,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 35,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1119,6 +1302,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 42,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1126,6 +1310,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 43,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1133,6 +1318,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 44,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1140,6 +1326,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 51,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1147,6 +1334,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 52,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1154,6 +1342,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 64,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<optgroup> element is not permitted as content under <div>"
     },
@@ -1161,6 +1350,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 69,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<optgroup> element is not permitted as content under <div>"
     },
@@ -1168,6 +1358,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 109,
       "column": 26,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1175,6 +1366,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 110,
       "column": 26,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1182,6 +1374,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 133,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1189,6 +1382,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 134,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1196,6 +1390,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 154,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1203,6 +1398,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 155,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1210,6 +1406,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 156,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1217,6 +1414,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 167,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1224,6 +1422,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 168,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1231,6 +1430,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/base-control.gts",
       "line": 169,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1238,6 +1438,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 39,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1245,6 +1446,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 40,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1252,6 +1454,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 52,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1259,6 +1462,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 53,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1266,6 +1470,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 66,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1273,6 +1478,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 67,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1280,6 +1486,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 79,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1287,6 +1494,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 80,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1294,6 +1502,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 94,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1301,6 +1510,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 95,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1308,6 +1518,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 109,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1315,6 +1526,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 110,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1322,6 +1534,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 130,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1329,6 +1542,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 131,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1336,6 +1550,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 139,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1343,6 +1558,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 140,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1350,6 +1566,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 156,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1357,6 +1574,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 157,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1364,6 +1582,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 172,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<optgroup> element is not permitted as content under <div>"
     },
@@ -1371,6 +1590,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 177,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<optgroup> element is not permitted as content under <div>"
     },
@@ -1378,6 +1598,7 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 201,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1385,13 +1606,71 @@
       "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
       "line": 202,
       "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 158,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 80,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 111,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 144,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 176,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 207,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 240,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
       "line": 33,
       "column": 17,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1399,6 +1678,7 @@
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
       "line": 47,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -1406,6 +1686,7 @@
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
       "line": 80,
       "column": 17,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1413,6 +1694,7 @@
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
       "line": 130,
       "column": 22,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
@@ -1420,6 +1702,7 @@
       "file": "showcase/app/components/page-components/modal/sub-sections/demo.gts",
       "line": 161,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -1427,6 +1710,7 @@
       "file": "showcase/app/components/page-components/modal/sub-sections/demo.gts",
       "line": 168,
       "column": 18,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <form>"
     },
@@ -1434,6 +1718,7 @@
       "file": "showcase/app/components/page-components/modal/sub-sections/demo.gts",
       "line": 578,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
@@ -1441,6 +1726,7 @@
       "file": "showcase/app/components/page-components/pagination/sub-sections/responsiveness.gts",
       "line": 13,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1448,6 +1734,7 @@
       "file": "showcase/app/components/page-components/pagination/sub-sections/responsiveness.gts",
       "line": 15,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1455,6 +1742,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 116,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1462,6 +1750,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 117,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1469,6 +1758,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 118,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1476,6 +1766,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 210,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1483,6 +1774,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 211,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1490,6 +1782,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 212,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1497,6 +1790,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 223,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1504,6 +1798,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 224,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1511,6 +1806,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 225,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1518,6 +1814,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 39,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1525,6 +1822,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 40,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1532,6 +1830,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 41,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1539,6 +1838,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 69,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1546,6 +1846,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 70,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1553,6 +1854,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 71,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1560,6 +1862,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 101,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1567,6 +1870,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 102,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1574,6 +1878,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 103,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1581,6 +1886,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 129,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1588,6 +1894,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 130,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1595,6 +1902,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 131,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1602,6 +1910,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 170,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1609,6 +1918,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 171,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1616,6 +1926,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 172,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1623,6 +1934,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 196,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1630,6 +1942,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 197,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1637,6 +1950,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 198,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1644,6 +1958,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 220,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1651,6 +1966,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 221,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1658,6 +1974,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 222,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1665,6 +1982,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 248,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1672,6 +1990,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 249,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1679,6 +1998,7 @@
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/states.gts",
       "line": 250,
       "column": 14,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1686,6 +2006,7 @@
       "file": "showcase/app/components/page-components/stepper/nav/sub-sections/responsiveness.gts",
       "line": 13,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1693,6 +2014,7 @@
       "file": "showcase/app/components/page-components/stepper/nav/sub-sections/responsiveness.gts",
       "line": 15,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1700,6 +2022,7 @@
       "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
       "line": 167,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <abbr>"
     },
@@ -1707,6 +2030,7 @@
       "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
       "line": 169,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <abbr>"
     },
@@ -1714,6 +2038,7 @@
       "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
       "line": 171,
       "column": 12,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <abbr>"
     },
@@ -1721,6 +2046,7 @@
       "file": "showcase/app/components/page-components/tag/sub-sections/demos.gts",
       "line": 13,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1728,6 +2054,7 @@
       "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
       "line": 15,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1735,6 +2062,7 @@
       "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
       "line": 19,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1742,6 +2070,7 @@
       "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
       "line": 23,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1749,6 +2078,7 @@
       "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
       "line": 25,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1756,6 +2086,7 @@
       "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
       "line": 27,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1763,6 +2094,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 469,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1770,6 +2102,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 478,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1777,6 +2110,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 494,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1784,6 +2118,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 503,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1791,6 +2126,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 516,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1798,6 +2134,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 525,
       "column": 40,
+      "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
@@ -1805,6 +2142,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 675,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1812,6 +2150,7 @@
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 676,
       "column": 20,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
     },
@@ -1819,6 +2158,7 @@
       "file": "showcase/app/components/page-layouts/app-frame/sub-sections/demo.gts",
       "line": 12,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1826,6 +2166,7 @@
       "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
       "line": 9,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1833,6 +2174,7 @@
       "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
       "line": 11,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1840,6 +2182,7 @@
       "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
       "line": 13,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1847,6 +2190,7 @@
       "file": "showcase/app/components/page-layouts/grid/sub-sections/demo.gts",
       "line": 9,
       "column": 4,
+      "severity": "error",
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
     },
@@ -1854,6 +2198,7 @@
       "file": "website/app/components/doc/cards/deck.gts",
       "line": 36,
       "column": 55,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1861,6 +2206,7 @@
       "file": "website/app/components/doc/code-group/index.gts",
       "line": 292,
       "column": 12,
+      "severity": "error",
       "ruleId": "wcag/h71",
       "message": "<fieldset> must have a <legend> as the first child"
     },
@@ -1868,6 +2214,7 @@
       "file": "website/app/components/doc/code-group/language-picker.gts",
       "line": 26,
       "column": 6,
+      "severity": "error",
       "ruleId": "wcag/h71",
       "message": "<fieldset> must have a <legend> as the first child"
     },
@@ -1875,6 +2222,7 @@
       "file": "website/app/components/doc/color-card/index.gts",
       "line": 48,
       "column": 52,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1882,6 +2230,7 @@
       "file": "website/app/components/doc/color-swatch/index.gts",
       "line": 57,
       "column": 50,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1889,6 +2238,7 @@
       "file": "website/app/components/doc/component-api/property.gts",
       "line": 52,
       "column": 64,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1896,6 +2246,7 @@
       "file": "website/app/components/doc/component-api/property.gts",
       "line": 72,
       "column": 62,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1903,6 +2254,7 @@
       "file": "website/app/components/doc/content/hds-principles/index.gts",
       "line": 55,
       "column": 46,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1910,6 +2262,7 @@
       "file": "website/app/components/doc/font-helpers-list/index.gts",
       "line": 22,
       "column": 45,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1917,6 +2270,7 @@
       "file": "website/app/components/doc/font-helpers-list/index.gts",
       "line": 25,
       "column": 55,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"listitem\" on <li>"
     },
@@ -1924,6 +2278,7 @@
       "file": "website/app/components/doc/icons-list/grid.gts",
       "line": 32,
       "column": 43,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1931,6 +2286,7 @@
       "file": "website/app/components/doc/page/footer.gts",
       "line": 18,
       "column": 45,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
@@ -1938,6 +2294,7 @@
       "file": "website/app/components/doc/page/header/index.gts",
       "line": 39,
       "column": 17,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1945,6 +2302,7 @@
       "file": "website/app/components/doc/page/sidecar.gts",
       "line": 33,
       "column": 11,
+      "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
     },
@@ -1952,6 +2310,7 @@
       "file": "website/app/components/doc/table-of-contents/index.gjs",
       "line": 16,
       "column": 43,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1959,6 +2318,7 @@
       "file": "website/app/components/doc/tokens-list/grid.gts",
       "line": 22,
       "column": 41,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1966,6 +2326,7 @@
       "file": "website/app/components/doc/vars-list/index.gts",
       "line": 16,
       "column": 35,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     },
@@ -1973,6 +2334,7 @@
       "file": "website/app/templates/index.hbs",
       "line": 37,
       "column": 44,
+      "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
     }

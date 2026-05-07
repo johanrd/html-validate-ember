@@ -3,9 +3,26 @@
   "fileCount": 58,
   "findings": [
     {
+      "file": "ember-primitives/src/components/accordion/content.gts",
+      "line": 18,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "ember-primitives/src/components/accordion/header.gts",
+      "line": 20,
+      "column": 5,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
       "file": "ember-primitives/src/components/one-time-password/input.gts",
       "line": 171,
       "column": 6,
+      "severity": "error",
       "ruleId": "wcag/h71",
       "message": "<fieldset> must have a <legend> as the first child"
     },
@@ -13,13 +30,23 @@
       "file": "ember-primitives/src/components/one-time-password/input.gts",
       "line": 183,
       "column": 8,
+      "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<style> element is not permitted as content under <fieldset>"
+    },
+    {
+      "file": "ember-primitives/src/components/progress.gts",
+      "line": 134,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <progress> element"
     },
     {
       "file": "ember-primitives/src/components/rating/rating.gts",
       "line": 160,
       "column": 8,
+      "severity": "error",
       "ruleId": "wcag/h71",
       "message": "<fieldset> must have a <legend> as the first child"
     },
@@ -27,6 +54,7 @@
       "file": "ember-primitives/src/components/rating/stars.gts",
       "line": 53,
       "column": 13,
+      "severity": "error",
       "ruleId": "input-attributes",
       "message": "Attribute \"readonly\" is not allowed on <input type=\"radio\">"
     }
