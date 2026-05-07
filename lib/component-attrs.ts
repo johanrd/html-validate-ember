@@ -26,8 +26,8 @@
 //     placeholder. The blanker injects `name='   '` at the consumer's call
 //     site, and `processAttribute` (transform.ts) converts that to a
 //     DynamicValue — html-validate sees "attribute present, value
-//     unknowable", which is enough for required-attribute and
-//     element-required-attributes-style rules.
+//     unknowable", which is enough for `element-required-attributes`
+//     and similar required-attribute rules.
 //
 // Example: component template
 //
@@ -35,7 +35,8 @@
 //     <input ...attributes type='range' min='0' max='100' value={{@v}} />
 //   </template>
 //
-// extractSplattedRoot returns:
+// `extractSplattedRootFromTemplate` (called by `getSplattedRootsForFile`)
+// returns:
 //
 //   { tag: 'input', attrs: { type: 'range', min: '0', max: '100',
 //                            value: '   ' } }
