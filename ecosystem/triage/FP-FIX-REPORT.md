@@ -65,6 +65,27 @@ Approach (1) is cleaner. Symmetric to the existing input-type injection at `blan
 
 ---
 
+## 🔴 Classic Ember addon components with `.hbs` templates aren't root-tag-resolved
+
+**Affected targets:** ember-website (98 findings: `<EsCard>` from `ember-styleguide` used as list items inside `<ul>`, but plugin transparent-blanks the component so children float to `<ul>` and `element-permitted-content` fires); pending review for HDS.
+
+**Pattern.** Classic Ember addon components have `.hbs` templates and no JS-side `Signature['Element']` (no class form, no TOC `satisfies`). The plugin's existing root-tag resolution is JS-only — when no JS-side type info exists, the component is transparent-blanked and its children re-parent to the actual ancestor in the consuming template.
+
+For `<EsCard>` (template: `<li class="card" ...attributes>{{yield}}</li>`), the runtime DOM is correct — `<li>` inside `<ul>` is legal. But the plugin sees `<ul><EsCard>...</EsCard></ul>` blanked to `<ul>...</ul>` and html-validate fires `element-permitted-content` on the children.
+
+**Fix path.** Extend the existing splatted-root resolution (`getSplattedRootsForFile` in `lib/component-attrs.ts`, currently `.gts`-only) to also walk `.hbs` files. For a component reference resolved via Ember's lookup rules (kebab-cased name, addon `addon/templates/components/foo.hbs` or app `app/components/foo.hbs`), parse the root native element and feed its tag into `componentTagMap`.
+
+**Substantial extension.** Has to handle:
+- Component-name → template-path resolution (kebab-case, addon vs app, classic vs MU).
+- Component templates may have non-trivial root structure (a `{{#if}}` wrapping multiple roots, or a `{{yield}}` wrapping the whole thing).
+- Reading from the consuming project's `node_modules`.
+
+May not fit in a single fix branch. If too invasive, land on `failing-test/fp-classic-addon-template-resolution` with a regression test that locks in the assertion.
+
+**Test.** Add fixture under `test/glint-fixtures/` (or new `test/classic-addon-fixtures/`) with a fake `node_modules/<addon>/addon/templates/components/foo.hbs` containing `<li>{{yield}}</li>`, plus a consuming `.gts` that uses `<Foo>` inside `<ul>`. Assert `componentTagMap` resolves `Foo` → `li`.
+
+---
+
 ## 🔴 Mysterious `<abbr>` ancestor resolution (Glint generic `HTMLElement` fallback?)
 
 **Affected targets:** ember-power-select (1 finding at `src/components/power-select.gts:1443:12` — `<div>` not permitted under `<abbr>`); pending review for others.
