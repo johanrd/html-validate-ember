@@ -110,8 +110,13 @@ export const __multipassBranchedRanges = new Map<string, Array<[number, number]>
 // `MATCH_DIRECTIVE` regex; no newline so we can compensate with a single
 // column-shift on the Source.
 //
-// Keep the rule list in sync with `MULTIPASS_INCOMPATIBLE_RULES` in
-// `lib/multipass-dedupe.ts`.
+// The branched-template caller adds `no-unused-disable` to its rule list;
+// that one specific rule must stay in sync with `MULTIPASS_INCOMPATIBLE_RULES`
+// in `lib/multipass-dedupe.ts` (the post-report dedupe drops the same rule
+// for branched ranges). The structural-yield rules (`wcag/h32`, `wcag/h71`)
+// passed in by `BlankResult.disableForRules` are intentionally NOT in that
+// set — they're suppressions specific to a yield-bearing source, not
+// dedupe-incompatible-with-multipass rules.
 function buildDisableDirective(rules: ReadonlyArray<string>): string {
   if (rules.length === 0) return '';
   return `<!--html-validate-disable ${rules.join(' ')}-->`;

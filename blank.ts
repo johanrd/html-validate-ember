@@ -1321,8 +1321,10 @@ function detectStructuralYieldRules(ast: AST.Template): string[] {
 // `disable wcag/h32` directive would itself be flagged "unused" by
 // `no-unused-disable`. The opaque-only check avoids that.
 //
-// Whitespace-only text and other mustaches/comments don't disqualify;
-// any concrete child element does.
+// Text content (whitespace or otherwise), mustaches, and comments don't
+// disqualify — wcag/h32 / wcag/h71 only care about structural children
+// (a `<button type='submit'>` or `<legend>`), not text. Any concrete
+// child ElementNode does disqualify.
 function isElementBodyYieldOnlyOpaque(node: AST.ElementNode): boolean {
   let hasYield = false;
   function walk(stmts: ReadonlyArray<AST.Statement>): boolean {
