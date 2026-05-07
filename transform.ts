@@ -121,13 +121,20 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
-    // Bare-mustache attribute values (`id={{x}}`) are emitted as a
-    // whitespace-only placeholder (see blank.ts). The exact sentinel
-    // is owned by `lib/dynamic-value.ts` (`DYNAMIC_VALUE_PLACEHOLDER` /
-    // `isDynamicValuePlaceholder`); both blank.ts and
-    // component-attrs.ts inject through that constant so this stays in
-    // sync if the sentinel ever changes. Convert to DynamicValue so
-    // rules see "attribute present, value unknowable".
+    // Bare-mustache attribute values (`id={{x}}`) reach this hook as
+    // whitespace-only strings. Two upstream sources produce them:
+    //   1. `blank.ts` blanks each mustache span in place — the
+    //      resulting whitespace is the same length as the original
+    //      mustache (variable, can be much longer than the sentinel).
+    //   2. Explicit injections by `blank.ts` and `component-attrs.ts`
+    //      use the literal `DYNAMIC_VALUE_PLACEHOLDER` from
+    //      `lib/dynamic-value.ts` (a fixed-length 3-space string at
+    //      the time of writing).
+    // `isDynamicValuePlaceholder` accepts both: any whitespace-only
+    // string of length >= the sentinel's length. This is intentional —
+    // we want the same DynamicValue conversion for either source so
+    // rules see "attribute present, value unknowable" regardless of
+    // how the placeholder was produced.
     if (isDynamicValuePlaceholder(attr.value)) {
       return [{ ...attr, value: new DynamicValue('') as unknown as DynamicValueESM }];
     }
