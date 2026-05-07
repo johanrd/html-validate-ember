@@ -12,7 +12,7 @@ A "stylistic" finding here means: removing it never changes the rendered DOM, ne
 | `attribute-boolean-style` | 7 (ember-website) | ember-website | `checked="checked"` vs `checked`. Pure preference. |
 | `prefer-button` | 2 (ember-website) | ember-website | `<input type="submit">` vs `<button>`. Both valid. |
 | `tel-non-breaking` | 3 (super-rentals so far) | super-rentals | Telephone-number typography (`&nbsp;` between groups, `&#8209;` for hyphens). Pure preference; some users argue this is a11y-adjacent (line-break prevention). |
-| `no-inline-style` | 20 (ember-primitives + ember-power-select + limber) | ember-primitives, ember-power-select, limber | All in docs/demo/UI code; common in static demo prose and quick UI affordances. Real preference but not a bug. Largest stylistic cluster across the ecosystem so far — strong default-off candidate. |
+| `no-inline-style` | 30 (ember-primitives + ember-power-select + limber + HDS) | ember-primitives, ember-power-select, limber, HDS | All in docs/demo/UI code; common in static demo prose and quick UI affordances. Real preference but not a bug. |
 | `prefer-native-element` (region only) | 1 (ember-primitives accordion) | ember-primitives | `<div role="region">` ↔ `<section>` choice — both are correct landmarks; native vs ARIA-attribute is style. Other `prefer-native-element` cases (heading, progressbar) are real recommendations and not stylistic. |
 | (rules added as more targets are triaged) | | | |
 
