@@ -1327,10 +1327,13 @@ function detectStructuralYieldRules(ast: AST.Template): string[] {
 // injected `<!--html-validate-disable wcag/h32-->` would itself be
 // flagged "unused" by `no-unused-disable`. So we bail in that case.
 //
-// "Statically-detectable submit" means any `<button>` (default type
-// inside a form is `submit`) or `<input>` with `type='submit'` or
-// `type='image'`. Bare-mustache types are conservatively treated as
-// MAYBE submit (we bail) — better an extra real wcag/h32 fire than an
+// "Statically-detectable submit" means a `<button>` whose `type` is
+// absent (default `submit` inside a form) or statically equals
+// `submit` (ASCII case-insensitive); a `<button type='button'>` /
+// `type='reset'` is explicitly non-submit and does NOT disqualify.
+// For `<input>`, `type='submit'` / `type='image'` (case-insensitive)
+// counts. Bare-mustache types are conservatively treated as MAYBE
+// submit (we bail) — better an extra real wcag/h32 fire than an
 // unused-disable cascade.
 function elementYieldsAndLacksSubmit(form: AST.ElementNode): boolean {
   let hasYield = false;
@@ -1353,7 +1356,11 @@ function elementYieldsAndLacksSubmit(form: AST.ElementNode): boolean {
         continue;
       }
       if (stmt.type === 'ElementNode') {
-        if (stmt.tag === 'button' || isSubmitInput(stmt) || isAmbiguouslyTypedInputOrButton(stmt)) {
+        if (
+          isStaticSubmitButton(stmt) ||
+          isSubmitInput(stmt) ||
+          isAmbiguouslyTypedInputOrButton(stmt)
+        ) {
           hasStaticSubmit = true;
           return;
         }
@@ -1403,12 +1410,29 @@ function elementYieldsAndLacksLegend(fieldset: AST.ElementNode): boolean {
   return hasYield && !hasStaticLegend;
 }
 
+// `<button>` with no `type` attribute (default = submit inside a form)
+// or with a static `type='submit'` (ASCII case-insensitive). Explicit
+// `type='button'` / `type='reset'` returns false.
+function isStaticSubmitButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      return attr.value.chars.toLowerCase() === 'submit';
+    }
+    // Dynamic value — handled by isAmbiguouslyTypedInputOrButton.
+    return false;
+  }
+  return true;
+}
+
 function isSubmitInput(node: AST.ElementNode): boolean {
   if (node.tag !== 'input') return false;
   for (const attr of node.attributes ?? []) {
     if (attr.name !== 'type') continue;
     if (attr.value.type === 'TextNode') {
-      return attr.value.chars === 'submit' || attr.value.chars === 'image';
+      const v = attr.value.chars.toLowerCase();
+      return v === 'submit' || v === 'image';
     }
     return false;
   }

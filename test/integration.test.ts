@@ -224,6 +224,31 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form: <button type="button"> alongside yield does NOT disqualify suppression', async () => {
+    // An explicit non-submit `<button>` must not be treated as a
+    // submit. wcag/h32 still FP-fires on the blanked output (no
+    // statically-detectable submit), so suppression must remain active.
+    const r = await validate('yield-form-with-non-submit-button.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire — <button type='button'> isn't a submit and shouldn't disqualify suppression; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: <input type="Submit"> (uppercase) IS a static submit — suppression must NOT activate', async () => {
+    // HTML attribute values are ASCII case-insensitive. html-validate
+    // recognizes `type='Submit'` as a real submit, so wcag/h32 wouldn't
+    // fire — and our injected disable would itself trigger
+    // `no-unused-disable`. Static-submit detection must normalize.
+    const r = await validate('yield-form-with-uppercase-submit-input.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — case-insensitive submit detection should keep suppression off; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {
     // The .hbs path normally uses line/column/offset = 1/1/0; with a
     // prefix directive it goes negative. Verify html-validate handles
