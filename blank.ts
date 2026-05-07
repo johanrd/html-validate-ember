@@ -761,10 +761,13 @@ function tryInjectComponentAttrs(
   const plan = Object.keys(attrs)
     .filter((name) => !existingNonGlimmer.has(name))
     .map((attrName) => {
+      // Boolean attrs (`disabled`, `required`, `selected`, …) emit
+      // presence-only regardless of the recorded value. Per HTML5 any
+      // value (including `''`, `'disabled'`, the DynamicValue
+      // placeholder, etc.) is equivalent to "true"; emitting
+      // `name='value'` would unnecessarily fire `attribute-boolean-style`.
+      if (isBooleanAttr(resolvedTag, attrName)) return { text: attrName };
       const literal = lookupComponentAttr(node, ctx, attrName);
-      if (literal === '' && isBooleanAttr(resolvedTag, attrName)) {
-        return { text: attrName };
-      }
       if (isLiteralSafeForAttr(literal)) return { text: `${attrName}='${literal}'` };
       return { text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
     });
@@ -890,6 +893,12 @@ function substituteSelfClosingComponent(
   let extraAttrs = '';
   for (const [name, value] of Object.entries(attrCtx?.attrs ?? {})) {
     if (resolved === 'button' && name === 'type') continue; // already in typeAttr
+    // Boolean attrs emit presence-only; see tryInjectComponentAttrs's
+    // matching branch for the rationale.
+    if (isBooleanAttr(resolved, name)) {
+      extraAttrs += ` ${name}`;
+      continue;
+    }
     const safeValue = isLiteralSafeForAttr(value) ? value : DYNAMIC_VALUE_PLACEHOLDER;
     extraAttrs += ` ${name}='${safeValue}'`;
   }

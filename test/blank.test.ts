@@ -595,6 +595,28 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain("disabled=");
   });
 
+  it('block-form: boolean attr recorded as DynamicValue placeholder still emits bare', () => {
+    // `<button ...attributes disabled={{@x}}>` registers
+    // `disabled: '   '` (the DynamicValue placeholder) via literalAttrs.
+    // Boolean attrs must always emit presence-only — emitting
+    // `disabled='   '` would FP-fire `attribute-boolean-style` even
+    // though the consumer's actual runtime value is binary.
+    const src = "<MyButton @veryLongFirstAttr={{val}}>click</MyButton>";
+    const tagMap = new Map([[locKey(src, 'MyButton'), 'button']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyButton'),
+        { tag: 'button', attrs: { disabled: '   ' }, hasSplat: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toMatch(/<button\s+disabled\s/);
+    expect(r.content).not.toContain("disabled='   '");
+    expect(r.content).not.toContain("disabled=");
+  });
+
   it('block-form: empty-string literal on a non-boolean attr falls back to placeholder', () => {
     // Bare emission would be wrong for non-boolean attrs: the AST
     // can't distinguish `<div aria-label ...attributes>` from

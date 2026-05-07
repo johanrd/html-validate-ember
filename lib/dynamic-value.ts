@@ -2,9 +2,9 @@
 // signal: an attribute value of pure whitespace, length >= 3.
 //
 // Convention shared by:
-//   - blank.ts (`tryInjectInputType`, `tryInjectImgRequiredAttrs`,
-//     `tryInjectComponentAttrs`, `substituteSelfClosingComponent`,
-//     etc.) — emits `name='   '` into the blanked output.
+//   - blank.ts — multiple injection sites (input type, splatted-root
+//     attrs, self-closing-non-void substitution) emit `name='   '` into
+//     the blanked output.
 //   - lib/component-attrs.ts (`literalAttrs`) — records arg-bound /
 //     concat-mustache attrs with the same placeholder so the blanker
 //     injects them at the consumer's call site.
