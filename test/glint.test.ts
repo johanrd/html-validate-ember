@@ -127,6 +127,14 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       abbrEntry,
       `Element: HTMLElement (generic) must NOT resolve to 'abbr'; got: ${JSON.stringify(entries)}`,
     ).toBeUndefined();
+    // And it should resolve as 'transparent' explicitly — null would let
+    // blank.ts's built-in name-based fallback fire (e.g. `<Input>` → input
+    // even when Glint correctly resolved the user's component).
+    const transparentEntry = entries.find(([, tag]) => tag === 'transparent');
+    expect(
+      transparentEntry,
+      `expected componentTagMap to record the component as 'transparent'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
   });
 
   it('does not crash when the imported .gts does not exist', () => {

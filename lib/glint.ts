@@ -603,8 +603,24 @@ function resolveComponentElement(
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
     return 'transparent';
   }
-  // Pick a single tag for unions: take the first branch's mapping.
+  // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
+  // resolved as transparent rather than falling through to `null`. A null
+  // return signals "no Glint resolution at all" and lets blank.ts apply
+  // built-in name-based fallbacks (e.g. `<Input>` → `<input>`); for a
+  // user component declaring `Signature['Element'] = HTMLElement` Glint
+  // DID succeed and we just don't know which specific tag — transparent
+  // (children float to parent) is the right semantic.
   const branches = elementType.isUnion() ? elementType.types : [elementType];
+  let allGenericBase = true;
+  for (const branch of branches) {
+    const name = branch.getSymbol()?.name;
+    if (!name || !GENERIC_BASE_ELEMENT_TYPES.has(name)) {
+      allGenericBase = false;
+      break;
+    }
+  }
+  if (allGenericBase) return 'transparent';
+  // Pick a single tag for unions: take the first branch's mapping.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
