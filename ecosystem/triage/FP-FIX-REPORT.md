@@ -2,9 +2,24 @@
 
 Plugin-side false positives surfaced by ecosystem CI triage. Each entry summarizes a *pattern* (one or many findings across one or many targets) with a concrete fix path.
 
+## Phase 1 summary (10 targets, ~708 findings, 7 distinct FP patterns)
+
+| # | Pattern | Targets | Findings | Effort |
+|---|---|---|---|---|
+| 1 | `<img ...attributes>` → required-attr | super-rentals | 2 | small (symmetric to existing `<input type=' '>` injection) |
+| 2 | Yield-only `<form>` / `<fieldset>` → structural rules | ember-primitives, HDS | 14 | medium |
+| 3 | TOC `satisfies TOC<{Element: T}>` not resolved | ember-a11y-testing | 4 | medium |
+| 4 | Arg-bound required attributes | HDS | 39 | medium |
+| 5 | `<abbr>` mystery (HTMLElement fallback) | ember-power-select, HDS | 9+ | small if root cause is clear |
+| 6 | Yielded curried-component resolution | HDS | 107 | large — likely `failing-test/` |
+| 7 | Classic Ember addon `.hbs` root-tag resolution | ember-website, HDS | 123+ | large — likely `failing-test/` |
+
+Plus the bonus fix already on `fix/fp-blank-component-yield`: block-param `as |B|` clause was leaking into html-validate as a fake attribute on Glint-resolved block-form components. (881 → 0 attr-case findings on HDS.)
+
 ## Status legend
 
 - 🔴 OPEN — not yet fixed
+- 🟡 FAILING-TEST — test exists pinpointing the bug; fix is too invasive for this batch
 - 🟢 FIXED — landed in a PR; baseline updated reflects the drop
 
 ---
