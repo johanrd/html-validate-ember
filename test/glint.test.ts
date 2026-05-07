@@ -147,6 +147,26 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('does NOT resolve a classic addon `.hbs` whose root is itself a component (non-native tag)', () => {
+    // `composing-addon`'s template is `<AnotherComponent
+    // ...attributes>{{yield}}</AnotherComponent>` — the root is a
+    // PascalCase component, not a native HTML tag. Without the
+    // isNativeTag guard, `AnotherComponent` would land in
+    // componentTagMap and blank.ts's substitution path would rename
+    // `<ComposedCard>` to `<AnotherComponent>` (a non-native tag
+    // emitted into the validated output, breaking content-model
+    // checks). The guard rejects non-native tags so the caller falls
+    // back to transparent blanking.
+    const { filename, contents } = readFixture('composed-card-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const nonNative = entries.find(([, tag]) => tag === 'AnotherComponent');
+    expect(
+      nonNative,
+      `componentTagMap must NOT cache a non-native tag from an addon's .hbs root; got: ${JSON.stringify(entries)}`,
+    ).toBeUndefined();
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'

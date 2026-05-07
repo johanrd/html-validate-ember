@@ -13,6 +13,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
+import { isNativeTag } from '../blank.js';
 import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
@@ -890,19 +891,27 @@ function findComponentDeclSourceFile(
 // when the addon isn't found in node_modules, when no template file
 // exists at the expected paths, or when the template parses to no
 // element root (e.g. `{{outlet}}`-only).
-// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs (or null
-// for negative resolutions). Templates with many invocations of the same
-// addon component otherwise hit the dir walk + multiple existsSync probes
-// + read+parse on every call. Keyed on the consumer file's directory so a
-// monorepo with multiple node_modules trees stays correct (different
-// projects can resolve the same addonName to different physical paths).
-// Cache only POSITIVE results. Caching negatives indefinitely would
-// permanently hide a template that's later installed (linked workspace
-// addons, IDE/watch mode where the user installs an addon mid-session).
-// The negative path is cheap — regex + a handful of existsSync calls
-// up to the filesystem root — so re-probing is acceptable; what we
-// actually wanted to skip with caching was the file read + Glimmer
-// parse on positive hits, which still applies.
+// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs.
+// POSITIVE results only — the map type enforces that. Caching negatives
+// indefinitely would permanently hide a template that's later installed
+// (linked workspace addons, IDE/watch mode where the user installs an
+// addon mid-session). Templates with many invocations of the same addon
+// component would otherwise hit the dir walk + multiple existsSync
+// probes + read+parse on every call; what we actually wanted to skip
+// with caching is the file read + Glimmer parse on positive hits.
+// Negatives stay cheap (regex + a handful of existsSync calls up to
+// the filesystem root) and re-probe each call.
+//
+// Keyed on the consumer file's directory so a monorepo with multiple
+// node_modules trees stays correct (different projects can resolve the
+// same addonName to different physical paths).
+//
+// Note: this in-memory cache is independent of the disk cache in
+// `lib/cache.ts`, which keys by consumer file content + mtime; that
+// disk cache will preserve a prior negative resolution until the
+// consumer file changes. Hot-installing a new addon mid-session may
+// require an editor restart to pick up if the consumer file's mtime
+// hasn't moved.
 const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
 
 function resolveAddonHbsTemplate(
@@ -978,7 +987,17 @@ function resolveAddonHbsTemplate(
             return null;
           }
           const result = extractSplattedRootFromTemplate(contents);
-          if (result) addonHbsResolutionCache.set(cacheKey, result);
+          // Guard: only return when the addon's root element is a
+          // native HTML tag. If the addon template's root is itself a
+          // component (PascalCase tag) we'd otherwise feed that
+          // non-native name into `componentTagMap`, and blank.ts's
+          // substitution path would rename the consumer's invocation
+          // to that PascalCase string — making content-model checks
+          // worse than the transparent-blanking fallback. In that
+          // case treat as unresolved so the caller falls back to
+          // `'transparent'` (children float to the actual parent).
+          if (!result || !isNativeTag(result.tag)) return null;
+          addonHbsResolutionCache.set(cacheKey, result);
           return result;
         }
       }
