@@ -41,13 +41,6 @@
       "exclude": []
     },
     {
-      "name": "ember-a11y-testing",
-      "repo": "ember-a11y/ember-a11y-testing",
-      "ref": "c79cfb8ba87e31c2c03e8401fd85cd5334a8c86d",
-      "include": ["demo-app/**/*.{gts,gjs,hbs}"],
-      "exclude": []
-    },
-    {
       "name": "hds-design-system",
       "repo": "hashicorp/design-system",
       "ref": "9db0ff66136c04789d756d7b1454f3e48fc635ae",
