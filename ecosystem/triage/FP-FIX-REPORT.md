@@ -21,4 +21,34 @@ Plugin-side false positives surfaced by ecosystem CI triage. Each entry summariz
 
 ---
 
+## 🔴 TOC components with `satisfies TOC<{Element: ...}>` aren't Glint-resolved
+
+**Affected targets:** ember-a11y-testing (4 findings: `<button>`, `<input>`, `<code>`, `<img>` flagged as not permitted under `<ul>`, all because `<ViolationsGridItem>` — which renders `<li>` — wasn't resolved to `li`); pending review for others.
+
+**Pattern.** Glint's `Signature['Element']` resolution works for the class form (`class Foo extends Component<Sig>` with `Sig['Element'] = HTMLButtonElement` — covered by `test/glint-fixtures/typed-button.gts`) but not for the TOC form:
+
+```ts
+const ViolationsGridItem = <template>
+  <li class="..." ...attributes>{{yield}}</li>
+</template> satisfies TOC<{
+  Element: HTMLLIElement;
+  Args: { title: string };
+  Blocks: { default: [] };
+}>;
+```
+
+When Glint can't resolve the component to a native tag, the plugin falls back to transparent blanking, which floats the children up to the *actual* parent. In this case the actual parent is `<ul>`, so html-validate's `element-permitted-content` correctly observes `<button>` directly inside `<ul>` (not allowed) — but the runtime DOM has `<button>` inside `<li>` inside `<ul>` (legal). FP.
+
+**Fix.** Extend `lib/glint.ts` to recognize the `satisfies TOC<{Element: T}>` pattern when extracting `componentTagMap`. The TOC type is from `@ember/component/template-only`; its second type parameter shape is `{ Element?: ...; Args?: ...; Blocks?: ... }`. Resolution can use the existing element-class → tag-name mapping; only the discovery step changes.
+
+**Test.** Add a fixture in `test/glint-fixtures/` (e.g., `toc-list-item.gts`) and a consumer that uses it inside `<ul>`. Test asserts `componentTagMap` resolves to `'li'`.
+
+---
+
+## Stylistic / preset-policy review
+
+Tracked separately in `STYLISTIC-FINDINGS.md` — these aren't FPs but are recommended-preset-default candidates.
+
+---
+
 (More entries will be appended as additional targets are triaged.)
