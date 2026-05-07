@@ -10,7 +10,7 @@ A "stylistic" finding here means: removing it never changes the rendered DOM, ne
 |---|---|---|---|
 | `void-style` | 6 (super-rentals so far) | super-rentals | Plugin sets `void-style: ['error', { style: 'selfclosing' }]` in `:gts-recommended`. Forces `<br />` over `<br>`. Pure preference. |
 | `tel-non-breaking` | 3 (super-rentals so far) | super-rentals | Telephone-number typography (`&nbsp;` between groups, `&#8209;` for hyphens). Pure preference; some users argue this is a11y-adjacent (line-break prevention). |
-| `no-inline-style` | 10 (ember-primitives docs + ember-power-select demo/docs) | ember-primitives, ember-power-select | All in docs/demo code; common in static demo prose. Real preference but not a bug. |
+| `no-inline-style` | 20 (ember-primitives + ember-power-select + limber) | ember-primitives, ember-power-select, limber | All in docs/demo/UI code; common in static demo prose and quick UI affordances. Real preference but not a bug. Largest stylistic cluster across the ecosystem so far — strong default-off candidate. |
 | `prefer-native-element` (region only) | 1 (ember-primitives accordion) | ember-primitives | `<div role="region">` ↔ `<section>` choice — both are correct landmarks; native vs ARIA-attribute is style. Other `prefer-native-element` cases (heading, progressbar) are real recommendations and not stylistic. |
 | (rules added as more targets are triaged) | | | |
 
