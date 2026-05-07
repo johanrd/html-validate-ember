@@ -626,8 +626,9 @@ function matchElementTypeToTag(
 //   `const X: TOC<{ Element: T }> = <template>...</template>;`
 //
 // Glint's TOC overload reaches the same `.element` property surface as the
-// class form, but for the `satisfies` form `.element` ends up as `any` even
-// though `T` is statically known. Walk the component reference back to its
+// class form, but for the `satisfies` and `: TOC<…> =` forms `.element`
+// surfaces as `unknown` (or `any` in cascading-error files) even though
+// `T` is statically known. Walk the component reference back to its
 // declaration, find the TOC<…> annotation (either `satisfies` clause or
 // type annotation), and pull `Element` off the type-arg directly.
 //
