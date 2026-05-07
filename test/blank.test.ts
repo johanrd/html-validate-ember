@@ -109,7 +109,7 @@ describe('mustache blanking', () => {
     expect(
       out.content,
       `expected blanked output to contain a placeholder src= attribute; got: ${JSON.stringify(out.content)}`,
-    ).toMatch(/src='\s+'/);
+    ).toMatch(/src='\s{3,}'/);
   });
 
   it('injects both src and alt on `<img>` when there are multiple Glimmer-only slots', () => {
@@ -120,8 +120,8 @@ describe('mustache blanking', () => {
     const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    expect(out.content).toMatch(/src='\s+'/);
-    expect(out.content).toMatch(/alt='\s+'/);
+    expect(out.content).toMatch(/src='\s{3,}'/);
+    expect(out.content).toMatch(/alt='\s{3,}'/);
   });
 
   it('does not inject placeholder src/alt when the consumer wrote them explicitly', () => {
@@ -137,8 +137,8 @@ describe('mustache blanking', () => {
     expect(out.content).toContain('alt="bar"');
     // No injected `src='   '` / `alt='   '` placeholder anywhere — the
     // splat slot stays blanked instead.
-    expect(out.content).not.toMatch(/src='\s+'/);
-    expect(out.content).not.toMatch(/alt='\s+'/);
+    expect(out.content).not.toMatch(/src='\s{3,}'/);
+    expect(out.content).not.toMatch(/alt='\s{3,}'/);
   });
 });
 
