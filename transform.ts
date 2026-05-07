@@ -11,6 +11,7 @@ import type {
 import { createRequire } from 'node:module';
 
 import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
 
@@ -121,15 +122,11 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
     // Bare-mustache attribute values (`id={{x}}`) are emitted as
-    // `id="<spaces>"` (see blank.ts). Detect that pattern and replace
-    // the value with a DynamicValue so rules see "attribute present,
-    // value unknowable". The minimum length 3 matches the shortest
-    // possible original mustache `{{x}}` (5 chars → `"<3 spaces>"`).
-    if (
-      typeof attr.value === 'string' &&
-      attr.value.length >= 3 &&
-      /^\s+$/u.test(attr.value)
-    ) {
+    // `id="<spaces>"` (see blank.ts). Detect that placeholder via the
+    // shared `isDynamicValuePlaceholder` predicate (3-char whitespace,
+    // matching what blank.ts and component-attrs.ts inject) and convert
+    // to DynamicValue so rules see "attribute present, value unknowable".
+    if (isDynamicValuePlaceholder(attr.value)) {
       return [{ ...attr, value: new DynamicValue('') as unknown as DynamicValueESM }];
     }
     return [attr];

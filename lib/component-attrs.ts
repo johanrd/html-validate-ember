@@ -6,6 +6,18 @@
 // this attribute info is propagated to the substituted output so
 // html-validate sees the runtime-provided attributes as present.
 //
+// Where this info lands at the consumer call site is controlled by
+// `blank.ts`:
+//   - Block-form (`<MyComp>...</MyComp>`): `tryInjectComponentAttrs`
+//     injects each attr into a Glimmer-only blank slot in the open tag.
+//   - Self-closing void native (e.g. component → `<input>`):
+//     `substituteSelfClosingVoidComponent` does an in-place tag rename;
+//     `tryInjectInputType` injects `type` for `<input>`. Other attrs are
+//     not currently embedded.
+//   - Self-closing non-void native (e.g. component → `<iframe>`):
+//     `substituteSelfClosingComponent` rewrites the whole element span
+//     to `<RESOLVED ...attrs></RESOLVED>` and embeds every recorded attr.
+//
 // Two value forms are recorded:
 //   - Literal `TextNode` values are recorded verbatim — html-validate then
 //     sees the actual value (e.g. `type='range'` enables enum checks).
@@ -42,6 +54,7 @@ import type { AST } from '@glimmer/syntax';
 import fs from 'node:fs';
 
 import type { ComponentAttrs } from './builtin-components.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from './dynamic-value.js';
 
 const preprocessor = new Preprocessor();
 
@@ -66,13 +79,6 @@ function elementHasSplat(node: AST.ElementNode): boolean {
   }
   return false;
 }
-
-// Whitespace-of-length-≥3 sentinel — `processAttribute` in `transform.ts`
-// converts attribute values matching `/^\s+$/` of length >= 3 into a
-// DynamicValue. Keeping the sentinel here in sync with that threshold lets
-// the blanker treat arg-bound attrs as "present, value unknowable" without
-// the consumer's value or any literal leaking into html-validate's checks.
-const DYNAMIC_VALUE_PLACEHOLDER = '   ';
 
 function literalAttrs(node: AST.ElementNode): Record<string, string> {
   const attrs: Record<string, string> = {};

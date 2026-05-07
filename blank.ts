@@ -27,6 +27,7 @@ import type { MetaDataTable } from 'html-validate';
 import { lookupBuiltinComponent } from './lib/builtin-components.js';
 import type { ComponentAttrs } from './lib/builtin-components.js';
 import type { AttrTypeInfo } from './lib/cache.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from './lib/dynamic-value.js';
 
 // ---------------------------------------------------------------------------
 // Schema-derived metadata (computed once at module load).
@@ -595,7 +596,7 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
     if (VOID_ELEMENTS.has(resolved)) {
       return substituteSelfClosingVoidComponent(node, ctx, resolved) ? resolved : null;
     }
-    return substituteSelfClosingComponent(node, ctx, resolved) ? resolved : null;
+    return substituteSelfClosingComponent(node, ctx, resolved, attrCtx) ? resolved : null;
   }
 
   // Block-form: rename open and close tags in place. Children stay visible
@@ -672,7 +673,8 @@ function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
   // Build the injected text. Prefer a literal value when known and
   // safe (no embedded quotes / HTML-altering chars).
   const valueLiteral = isLiteralSafeForAttr(literalType) ? literalType : null;
-  const TYPE_TEXT = valueLiteral !== null ? `type='${valueLiteral}'` : "type='   '";
+  const TYPE_TEXT =
+    valueLiteral !== null ? `type='${valueLiteral}'` : `type='${DYNAMIC_VALUE_PLACEHOLDER}'`;
   const candidates: Range[] = [];
   for (const attr of node.attributes ?? []) {
     if (isGlimmerOnlyAttr(attr.name)) {
@@ -764,7 +766,7 @@ function tryInjectComponentAttrs(
         return { text: attrName };
       }
       if (isLiteralSafeForAttr(literal)) return { text: `${attrName}='${literal}'` };
-      return { text: `${attrName}='   '` };
+      return { text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
     });
   plan.sort((a, b) => b.text.length - a.text.length);
   const used = new Set<number>();
@@ -862,6 +864,7 @@ function substituteSelfClosingComponent(
   node: AST.ElementNode,
   ctx: Context,
   resolved: string,
+  attrCtx: ComponentAttrs | undefined,
 ): boolean {
   const elementStart = startOffset(node);
   const elementEnd = endOffset(node);
@@ -874,9 +877,23 @@ function substituteSelfClosingComponent(
   let typeAttr = '';
   if (resolved === 'button') {
     const literal = lookupComponentAttr(node, ctx, 'type');
-    typeAttr = isLiteralSafeForAttr(literal) ? ` type='${literal}'` : " type='   '";
+    typeAttr = isLiteralSafeForAttr(literal)
+      ? ` type='${literal}'`
+      : ` type='${DYNAMIC_VALUE_PLACEHOLDER}'`;
   }
-  const openTag = `<${resolved}${typeAttr}>`;
+  // Embed the rest of the splatted-root attrs (other than type, handled
+  // above for button). Without this, components whose Signature['Element']
+  // resolves to a non-void native carrying *required* attrs sourced from
+  // arg-bindings (e.g. `<iframe title={{@label}} src={{@src}}>`) would
+  // emit a bare `<iframe></iframe>` and FP-fire
+  // `element-required-attributes`.
+  let extraAttrs = '';
+  for (const [name, value] of Object.entries(attrCtx?.attrs ?? {})) {
+    if (resolved === 'button' && name === 'type') continue; // already in typeAttr
+    const safeValue = isLiteralSafeForAttr(value) ? value : DYNAMIC_VALUE_PLACEHOLDER;
+    extraAttrs += ` ${name}='${safeValue}'`;
+  }
+  const openTag = `<${resolved}${typeAttr}${extraAttrs}>`;
   const closeTag = `</${resolved}>`;
   const minLen = openTag.length + closeTag.length;
   const sourceLen = elementEnd - elementStart;

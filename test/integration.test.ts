@@ -156,6 +156,29 @@ describe('end-to-end fixtures', () => {
     expect(r.valid).toBe(true);
   });
 
+  it('typed-iframe-consumer: self-closing <TypedFrame /> embeds arg-bound title/src so element-required-attributes does not fire', async () => {
+    // End-to-end check for the arg-bound-required-attrs fix. Glint
+    // resolves TypedFrame → <iframe>; lib/component-attrs.ts records
+    // title/src as DynamicValue placeholders (they're arg-bound in
+    // the addon's template); blank.ts's substituteSelfClosingComponent
+    // embeds those placeholders in the rewritten <iframe ...></iframe>.
+    // Without the embed step, html-validate would FP-fire
+    // `element-required-attributes` (`title`) on the substituted iframe.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validateRaw('typed-iframe-consumer.gts');
+      const required = r.messages.filter((m) => m.rule === 'element-required-attributes');
+      expect(
+        required,
+        `element-required-attributes must not fire on substituted <iframe>; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the
