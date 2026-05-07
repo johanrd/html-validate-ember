@@ -600,7 +600,8 @@ function resolveComponentElement(
     if (fromTOC !== null) return fromTOC;
     return 'transparent';
   }
-  // Pick a single tag for unions: take the first branch's mapping.
+  // Pick a single tag for unions: take the first matching branch
+  // (branches with no DOM mapping are skipped, see matchElementTypeToTag).
   return matchElementTypeToTag(elementType, elementTypeToTag);
 }
 
@@ -647,21 +648,8 @@ function resolveElementFromTOCDeclaration(
   emitComponentCall: TS.CallExpression,
   elementTypeToTag: Map<string, string>,
 ): string | null {
-  // emitCall is `emitComponent(resolve(Comp)({...}))`. Navigate to the
-  // component reference: emitCall.args[0] is the inner call, its expression
-  // is the resolve() call, whose first argument is the component identifier.
-  // Same path findComponentDeclSourceFile uses.
-  const innerCall = emitComponentCall.arguments[0];
-  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
-  const resolveCall = innerCall.expression;
-  if (!ts.isCallExpression(resolveCall)) return null;
-  const componentRef = resolveCall.arguments[0];
-  if (!componentRef) return null;
-  let symbol = checker.getSymbolAtLocation(componentRef);
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitComponentCall);
   if (!symbol) return null;
-  if (symbol.flags & ts.SymbolFlags.Alias) {
-    symbol = checker.getAliasedSymbol(symbol);
-  }
   const declarations = symbol.declarations ?? [];
   for (const decl of declarations) {
     if (!ts.isVariableDeclaration(decl)) continue;
@@ -939,18 +927,23 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   return result;
 }
 
-// Resolve the source file containing a component's declaration. Glint's
-// rewrite emits component invocations as
+// Recover the de-aliased symbol of the component invoked by an
+// emitComponent call. Glint's rewrite emits invocations as
 //   __glintDSL__.emitComponent(__glintDSL__.resolve(Comp)({...}))
 // so we navigate the AST: emitCall.arguments[0] is the resolve()(...)
 // call, whose expression is resolve(Comp), whose first argument is the
 // component reference. Aliased imports (the common case) are de-aliased
 // via `checker.getAliasedSymbol` to land on the original declaration.
-function findComponentDeclSourceFile(
+//
+// Shared by `findComponentDeclSourceFile` and
+// `resolveElementFromTOCDeclaration` — they both need the same symbol;
+// keeping the AST navigation in one place means callers stay in sync if
+// Glint's emitted shape changes.
+function getComponentSymbolFromEmitCall(
   ts: typeof TS,
   checker: TS.TypeChecker,
   emitCall: TS.CallExpression,
-): string | null {
+): TS.Symbol | null {
   const innerCall = emitCall.arguments[0];
   if (!innerCall || !ts.isCallExpression(innerCall)) return null;
   const resolveCall = innerCall.expression;
@@ -962,7 +955,17 @@ function findComponentDeclSourceFile(
   if (symbol.flags & ts.SymbolFlags.Alias) {
     symbol = checker.getAliasedSymbol(symbol);
   }
-  const decl = symbol.declarations?.[0];
+  return symbol;
+}
+
+// Resolve the source file containing a component's declaration.
+function findComponentDeclSourceFile(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitCall: TS.CallExpression,
+): string | null {
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+  const decl = symbol?.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
 }
