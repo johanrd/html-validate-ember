@@ -32,16 +32,37 @@ const TRANSFORMER_ARTIFACT_RULES: RuleConfig = {
   'no-raw-characters': 'off',
 };
 
-// Ember/Glimmer ecosystem style preferences, baked in for projects that
-// want their lint to match `ember-template-lint` conventions out of the
-// box. Layered on top of TRANSFORMER_ARTIFACT_RULES in `:gts-recommended`.
-const EMBER_STYLE_RULES: RuleConfig = {
-  // Ember/Glimmer convention is self-closing for void elements (`<input />`,
-  // `<br />`, `<img />`). `ember-template-lint`'s `self-closing-void-elements`
-  // rule enforces this. html-validate's default is the omitted form
-  // (`<input>`), which would fight every Ember template — match the
-  // ecosystem default. Rule still fires on style-mixing.
-  'void-style': ['error', { style: 'selfclosing' }],
+// Stylistic rules from `html-validate:recommended` that fire on
+// legitimate Ember/Glimmer code without catching real bugs. Disabled
+// here so the lint experience is signal-first ("did I write something
+// that breaks at runtime / fails a11y / produces invalid HTML?") rather
+// than pedantic-first ("did I follow our preferred attribute style?").
+//
+// Each entry is a deliberate choice: the rule has a legitimate
+// motivation, but its trade-offs in an Ember context tip toward noise.
+// Projects that want them back can re-enable per-rule.
+const STYLISTIC_NOISE_OFF: RuleConfig = {
+  // Bans the `style="..."` attribute. Breaks legitimate runtime
+  // style-binding (`<div style={{this.computedStyle}}>`) — a common
+  // pattern when computed style depends on component args. Use a
+  // separate stylelint pipeline for inline-style policy if needed.
+  'no-inline-style': 'off',
+  // Insists on either `<input>` (omit) or `<input />` (selfclosing) —
+  // never both. html-validate defaults to omit; Ember/Glimmer
+  // convention is selfclosing; mixing is harmless. Rather than pick a
+  // side and litter every Ember project with violations of the
+  // opposite default, disable the rule entirely. (`ember-template-lint`
+  // already enforces selfclosing if a project wants that policy.)
+  'void-style': 'off',
+  // `prefer-native-element` flags `<div role="button">` and similar
+  // ARIA-on-generic-element patterns, suggesting the user reach for
+  // `<button>` instead. Real a11y signal — but design systems
+  // (HDS, ember-primitives, internal libraries) intentionally wrap
+  // generic elements with role+keyboard handling when the use case
+  // doesn't fit the native semantics. Demote to `warn` so it surfaces
+  // in lint output but doesn't fail builds; teams can promote back to
+  // `error` per-project if they want that policy.
+  'prefer-native-element': 'warn',
 };
 
 const plugin: Plugin = {
@@ -50,20 +71,26 @@ const plugin: Plugin = {
     default: transform,
   },
   configs: {
-    // Minimal preset: transformer essentials only. Pick this if you want
-    // to take all html-validate / project-level defaults and only have
-    // this plugin disable the rules that fire on transformer artifacts.
+    // Recommended preset for Ember/Glimmer projects. Disables:
+    //   - rules that fire on transformer-emission artifacts (required
+    //     for the plugin to work correctly), and
+    //   - stylistic rules from `html-validate:recommended` whose
+    //     trade-offs tip toward noise in an Ember codebase.
+    // Otherwise inherits `html-validate:recommended` as-is (a11y rules,
+    // content-model rules, required-attribute rules, etc.).
     recommended: {
       elements: ELEMENTS,
-      rules: TRANSFORMER_ARTIFACT_RULES,
+      rules: { ...TRANSFORMER_ARTIFACT_RULES, ...STYLISTIC_NOISE_OFF },
     },
-    // Opinionated preset for Ember/Glimmer projects. Includes everything
-    // in `:recommended` plus style preferences that match
-    // `ember-template-lint` conventions (self-closing void elements,
-    // etc.). Most Ember projects should extend this.
+    // Backwards-compat alias. `:gts-recommended` previously layered
+    // Ember-style opinions (self-closing void elements) on top of
+    // `:recommended`; those have been folded back out (`void-style` is
+    // now off, see STYLISTIC_NOISE_OFF). The two presets are currently
+    // identical; the alias stays so existing consumers don't need to
+    // edit their `extends`.
     'gts-recommended': {
       elements: ELEMENTS,
-      rules: { ...TRANSFORMER_ARTIFACT_RULES, ...EMBER_STYLE_RULES },
+      rules: { ...TRANSFORMER_ARTIFACT_RULES, ...STYLISTIC_NOISE_OFF },
     },
   },
 };
