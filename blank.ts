@@ -1586,11 +1586,20 @@ function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
 }
 
 // True when a component invocation (`<MyButton>`, `<This.Foo>`)
-// resolves via Glint or builtin maps to a native `<button>`/`<input>`
-// that's either a static submit OR ambiguous on its type. Treats both
-// "definitely submit" and "could be submit" as disqualifying — the
-// goal is to avoid `no-unused-disable` cascades, so we err on the side
-// of NOT suppressing when in doubt.
+// resolves VIA GLINT to a native `<button>`/`<input>` that's either a
+// static submit OR ambiguous on its type. Treats both "definitely
+// submit" and "could be submit" as disqualifying — the goal is to
+// avoid `no-unused-disable` cascades, so we err on the side of NOT
+// suppressing when in doubt.
+//
+// Glint-only on purpose: the implementation bails early when
+// `glintComponentTagMap` is falsy. The plugin's builtin component map
+// (used by `handleGlintSubstitution` for `<Input>` / `<Textarea>` /
+// `<LinkTo>` in non-Glint runs) doesn't currently feed into submit
+// detection here. In practice the builtins that map to `<input>` are
+// rarely used as submit buttons (`<Input type='submit'>` exists but is
+// uncommon), so the missing fallback hasn't surfaced as a real FP.
+// Add it if a real-world target hits this case.
 //
 // "Static submit" cases:
 //   - Resolves to `<button>` with no static `type` attr (default
