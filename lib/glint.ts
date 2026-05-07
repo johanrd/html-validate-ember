@@ -524,6 +524,22 @@ export function preloadGlintFiles(
 // `{ a: HTMLAnchorElement; button: HTMLButtonElement; ... }`. We invert it
 // at runtime using the project's TS program — no hardcoded list to keep in
 // sync with TS lib version. SVG and MathML maps follow the same shape.
+//
+// Tags whose mapped type is the bare base class (`HTMLElement`,
+// `SVGElement`, `MathMLElement`) are *intentionally excluded* from the
+// inversion. Many tags share the bare base — `abbr`, `address`, `b`, `cite`,
+// `code`, …  all map to `HTMLElement` — so the inversion would arbitrarily
+// pick whichever appears first (currently `abbr`) and FP-attribute
+// downstream content. A component declaring `Signature['Element'] =
+// HTMLElement` (the generic) typically means "I render *some* generic
+// container; element-specific rules should not apply." Falling through to
+// 'transparent' (children float to actual parent) is the right behaviour.
+const GENERIC_BASE_ELEMENT_TYPES: ReadonlySet<string> = new Set([
+  'HTMLElement',
+  'SVGElement',
+  'MathMLElement',
+]);
+
 function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
   const map = new Map<string, string>();
   const tagNameMaps = ['HTMLElementTagNameMap', 'SVGElementTagNameMap', 'MathMLElementTagNameMap'];
@@ -544,7 +560,7 @@ function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, 
             ts.isTypeReferenceNode(member.type) && ts.isIdentifier(member.type.typeName)
               ? member.type.typeName.text
               : null;
-          if (tag && typeName && !map.has(typeName)) {
+          if (tag && typeName && !GENERIC_BASE_ELEMENT_TYPES.has(typeName) && !map.has(typeName)) {
             map.set(typeName, tag);
           }
         }
@@ -587,8 +603,24 @@ function resolveComponentElement(
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
     return 'transparent';
   }
-  // Pick a single tag for unions: take the first branch's mapping.
+  // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
+  // resolved as transparent rather than falling through to `null`. A null
+  // return signals "no Glint resolution at all" and lets blank.ts apply
+  // built-in name-based fallbacks (e.g. `<Input>` → `<input>`); for a
+  // user component declaring `Signature['Element'] = HTMLElement` Glint
+  // DID succeed and we just don't know which specific tag — transparent
+  // (children float to parent) is the right semantic.
   const branches = elementType.isUnion() ? elementType.types : [elementType];
+  let allGenericBase = true;
+  for (const branch of branches) {
+    const name = branch.getSymbol()?.name;
+    if (!name || !GENERIC_BASE_ELEMENT_TYPES.has(name)) {
+      allGenericBase = false;
+      break;
+    }
+  }
+  if (allGenericBase) return 'transparent';
+  // Pick a single tag for unions: take the first branch's mapping.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
