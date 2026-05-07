@@ -249,6 +249,32 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('input-driven-form: `<form {{on "input" …}}>` does not FP-fire wcag/h32', async () => {
+    // Search-as-you-type / live-filter pattern. `{{on "input"}}` updates
+    // on every keystroke; a separate submit button is ceremonial. Plugin
+    // suppresses wcag/h32 so the user doesn't scatter
+    // `<!--html-validate-disable-next wcag/h32-->` directives.
+    const r = await validate('input-driven-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on input-driven forms; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('change-driven-form: `<form {{on "change" …}}>` does not FP-fire wcag/h32', async () => {
+    // Commit-on-blur / per-field-commit pattern. `{{on "change"}}` fires
+    // when a field is committed (input blurs, select changes); the
+    // form's action runs per-field rather than at a final submit, so a
+    // submit button is ceremonial. Same suppression as `{{on "input"}}`.
+    const r = await validate('change-driven-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on change-driven forms; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('yield-only-form: asymmetric {{#if}}/{{else}} branches — multipass passes get branch-correct suppression', async () => {
     // Program arm has `{{yield}}`, inverse arm has `<button type='submit'>`.
     // Without per-branch detection, the program pass's `disableForRules`

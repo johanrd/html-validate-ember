@@ -1293,15 +1293,26 @@ function blankTemplateContent(
   };
 }
 
-// Detect structural elements (`<form>`, `<fieldset>`) whose body contains
-// `{{yield}}` (or `{{has-block}}`) AND lacks a statically-detectable
-// submit/legend — those are the cases where wcag/h32 / wcag/h71 would
-// FP-fire on the blanked output. Wrapper markup like
-// `<form><div>{{yield}}</div></form>` IS suppressed (the yield is the
-// structural content, just wrapped); a form with a real
-// `<button type='submit'>` alongside the yield is NOT suppressed (the
-// rule wouldn't fire and the disable would itself trigger
-// `no-unused-disable`).
+// Detect cases where a structural rule would FP-fire on the blanked
+// output, and add the rule to `disableForRules` so the transformer can
+// inject a one-shot disable directive into this Source.
+//
+// Two FP classes covered today:
+//
+//   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
+//      detectable submit/legend (the suppression target rule fires
+//      because the yield was blanked away). Wrapper markup like
+//      `<form><div>{{yield}}</div></form>` IS suppressed; a form with
+//      a real `<button type='submit'>` alongside the yield is NOT
+//      (the rule wouldn't fire and the disable would itself trigger
+//      `no-unused-disable`).
+//
+//   2. Input-driven `<form {{on "input" …}}>` — search-as-you-type /
+//      live-filter pattern. The `{{on "input"}}` modifier signals that
+//      the form's action is driven by input events, not submission;
+//      a separate submit button would be ceremonial (helps no real
+//      user). wcag/h32 is suppressed regardless of submit-button or
+//      yield presence.
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
@@ -1349,16 +1360,18 @@ function detectStructuralYieldRules(
         continue;
       }
       if (stmt.type === 'ElementNode') {
-        if (
-          stmt.tag === 'form' &&
-          elementYieldsAndLacksSubmit(
-            stmt,
-            branchSelections,
-            glintComponentTagMap,
-            glintComponentAttrMap,
-          )
-        ) {
-          out.push('wcag/h32');
+        if (stmt.tag === 'form') {
+          if (
+            formHasInputModifier(stmt) ||
+            elementYieldsAndLacksSubmit(
+              stmt,
+              branchSelections,
+              glintComponentTagMap,
+              glintComponentAttrMap,
+            )
+          ) {
+            out.push('wcag/h32');
+          }
         } else if (
           stmt.tag === 'fieldset' &&
           elementYieldsAndLacksLegend(stmt, branchSelections)
@@ -1408,6 +1421,33 @@ function selectBranch(
 // counts. Bare-mustache types are conservatively treated as MAYBE
 // submit (we bail) — better an extra real wcag/h32 fire than an
 // unused-disable cascade.
+// True when a `<form>` carries an event modifier that signals
+// input-event-driven UX (rather than submission-driven). Two events
+// trigger the suppression:
+//   - `{{on "input" …}}` — search-as-you-type / live-filter; updates
+//     on every keystroke.
+//   - `{{on "change" …}}` — commit-on-blur / per-field-commit; the
+//     form's action runs as fields are committed individually rather
+//     than on a final submit.
+//
+// Both patterns make a separate submit button ceremonial. Conservative
+// on the event-name argument: we require a static string literal;
+// bare-mustache event names like `{{on @event …}}` could resolve to
+// anything at runtime, so we don't trust them as a suppression signal.
+const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+function formHasInputModifier(form: AST.ElementNode): boolean {
+  for (const modifier of form.modifiers ?? []) {
+    if (modifier.path.type !== 'PathExpression') continue;
+    if (modifier.path.original !== 'on') continue;
+    const firstParam = modifier.params?.[0];
+    if (firstParam?.type === 'StringLiteral' && INPUT_DRIVEN_FORM_EVENTS.has(firstParam.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function elementYieldsAndLacksSubmit(
   form: AST.ElementNode,
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
