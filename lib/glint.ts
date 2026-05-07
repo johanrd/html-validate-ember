@@ -578,22 +578,108 @@ function resolveComponentElement(
     return null;
   }
   const elementType = checker.getTypeOfSymbolAtLocation(elementProp, emitComponentCall);
-  // Treat `unknown` (no Element declared in Signature) and `any` (TS couldn't
-  // infer — common in big files with cascading type errors, or with
-  // `satisfies TOC<…>` patterns) the same way: transparent. Children float
-  // into parent's content model. Less wrong than forcing an `<x-c>` wrapper
-  // that fights content-model rules in places like <tfoot>, <select>,
-  // <menu>, etc.
+  // `unknown` and `any` are both ambiguous in this position. Glint's TOC
+  // overload tends to surface `.element` as `unknown` for the satisfies form
+  // (`<template>...</template> satisfies TOC<{Element: T}>`) and the type-
+  // annotation form (`const X: TOC<{Element: T}> = <template>...</template>`)
+  // even though `T` is statically known on the value's declaration. `any` can
+  // mean either the same thing, or a real type-checking failure cascading
+  // from elsewhere in the file.
+  //
+  // For both: try to recover the declared Element by walking back to the
+  // component's variable declaration and reading the TOC<…> annotation
+  // directly. If that yields nothing, fall back to transparent (children
+  // float to the actual parent — correct for genuinely yields-only TOCs).
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
+    const fromSatisfies = resolveElementFromSatisfiesTOC(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromSatisfies !== null) return fromSatisfies;
     return 'transparent';
   }
   // Pick a single tag for unions: take the first branch's mapping.
+  return matchElementTypeToTag(elementType, elementTypeToTag);
+}
+
+// Pick a tag from an element type. Unions take the first matching branch.
+// Returns null if no branch maps to a known DOM element name.
+function matchElementTypeToTag(
+  elementType: TS.Type,
+  elementTypeToTag: Map<string, string>,
+): string | null {
   const branches = elementType.isUnion() ? elementType.types : [elementType];
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
       return elementTypeToTag.get(name) ?? null;
     }
+  }
+  return null;
+}
+
+// Recover the rendered tag for a TOC declared as
+//   `const X = <template>...</template> satisfies TOC<{ Element: T }>;`
+// or
+//   `const X: TOC<{ Element: T }> = <template>...</template>;`
+//
+// Glint's TOC overload reaches the same `.element` property surface as the
+// class form, but for the `satisfies` form `.element` ends up as `any` even
+// though `T` is statically known. Walk the component reference back to its
+// declaration, find the TOC<…> annotation (either `satisfies` clause or
+// type annotation), and pull `Element` off the type-arg directly.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only TOC)
+//   - null          if no satisfies/annotation found, or it's TOC<…> without
+//                   Element, or some unexpected shape — caller falls through
+function resolveElementFromSatisfiesTOC(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  // emitCall is `emitComponent(resolve(Comp)({...}))`. Navigate to the
+  // component reference: emitCall.args[0] is the inner call, its expression
+  // is the resolve() call, whose first argument is the component identifier.
+  // Same path findComponentDeclSourceFile uses.
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  let symbol = checker.getSymbolAtLocation(componentRef);
+  if (!symbol) return null;
+  if (symbol.flags & ts.SymbolFlags.Alias) {
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  const declarations = symbol.declarations ?? [];
+  for (const decl of declarations) {
+    if (!ts.isVariableDeclaration(decl)) continue;
+    // Form A: `const X: TOC<S> = ...;` — type annotation is `TOC<S>`.
+    // Form B: `const X = <template>...</template> satisfies TOC<S>;` — the
+    // initializer is a SatisfiesExpression whose `.type` is `TOC<S>`.
+    // For both: locate the `TOC<…>` TypeReference, pull its first type
+    // argument (S), then read S['Element'].
+    let tocTypeNode: TS.TypeNode | undefined;
+    if (decl.type) tocTypeNode = decl.type;
+    else if (decl.initializer && ts.isSatisfiesExpression(decl.initializer)) {
+      tocTypeNode = decl.initializer.type;
+    }
+    if (!tocTypeNode || !ts.isTypeReferenceNode(tocTypeNode)) continue;
+    const typeArgNode = tocTypeNode.typeArguments?.[0];
+    if (!typeArgNode) continue;
+    const sigType = checker.getTypeFromTypeNode(typeArgNode);
+    const eltSym = sigType.getProperty('Element');
+    if (!eltSym) continue;
+    const eltType = checker.getTypeOfSymbolAtLocation(eltSym, typeArgNode);
+    if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+    const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+    if (tag !== null) return tag;
   }
   return null;
 }
