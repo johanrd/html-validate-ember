@@ -585,10 +585,80 @@ function resolveComponentElement(
   // that fights content-model rules in places like <tfoot>, <select>,
   // <menu>, etc.
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
+    // Glint's emit surfaces `.element` as `unknown`/`any` for several common
+    // shapes the Signature['Element']-on-the-call-type path doesn't cover:
+    //   - Block-param-yielded curried sub-components like
+    //     `<SelectBase as |C|><C.Options>...</C.Options></SelectBase>`
+    //   - TOCs declared via type annotation: `const X: TOC<S> = …;`
+    // For both, the component-reference *expression* itself has type
+    // `TOC<Signature>` (or similar generic), so we can read the
+    // `Element` property off the type-arg directly.
+    const fromRefType = resolveElementFromComponentRefType(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromRefType !== null) return fromRefType;
     return 'transparent';
   }
   // Pick a single tag for unions: take the first branch's mapping.
   const branches = elementType.isUnion() ? elementType.types : [elementType];
+  for (const branch of branches) {
+    const name = branch.getSymbol()?.name;
+    if (name && elementTypeToTag.has(name)) {
+      return elementTypeToTag.get(name) ?? null;
+    }
+  }
+  return null;
+}
+
+// Recover the rendered tag from the *type* of the component-reference
+// expression itself — for cases where Glint's `emitComponent(...).element`
+// surfaces as `unknown`/`any`. Specifically:
+//   - Block-param-yielded curried sub-components (`<C.Options>` where C
+//     is a yielded block-param providing typed sub-components): the
+//     componentRef expression has type `TOC<Sig>` because Glint's emit
+//     types the yielded sub-component reference correctly even when
+//     `.element` doesn't propagate.
+//   - TOCs declared via type annotation (`const X: TOC<Sig> = <template>…`):
+//     the componentRef has type `TOC<Sig>` directly.
+//
+// For both: `aliasTypeArguments[0]` is `Sig` — an object type with
+// `Element: T` as a property — so we read `T` and map to a tag.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only)
+//   - null          if no aliasTypeArguments / no `Element` property —
+//                   caller falls through to plain transparent.
+function resolveElementFromComponentRefType(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  // emitCall is `emitComponent(resolve(Comp)({...}))`; navigate to the
+  // component reference expression. Same path findComponentDeclSourceFile
+  // and resolveElementFromSatisfiesTOC use.
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const refType = checker.getTypeAtLocation(componentRef);
+  const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
+    .aliasTypeArguments;
+  if (!aliasArgs || aliasArgs.length === 0) return null;
+  const sigType = aliasArgs[0];
+  if (!sigType) return null;
+  const eltSym = sigType.getProperty('Element');
+  if (!eltSym) return null;
+  const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
+  if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+  // Pick a tag (unions take the first matching branch).
+  const branches = eltType.isUnion() ? eltType.types : [eltType];
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
