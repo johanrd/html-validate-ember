@@ -91,6 +91,38 @@ describe('mustache blanking', () => {
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
   });
+
+  it('injects placeholder src on minimal `<img ...attributes>` (single slot fits one attr)', () => {
+    // `<img ...attributes>` in a thin wrapper component (parent supplies
+    // src via splat) was FP-firing `element-required-attributes` (src).
+    // The blanker erases `...attributes`, leaving an attr-less `<img>`.
+    // Inject a whitespace-valued `src='   '` placeholder (≥3 chars
+    // triggers `processAttribute`'s DynamicValue conversion) so
+    // html-validate sees src as "present, value unknowable".
+    //
+    // The minimal `...attributes` slot is 13 chars; a placeholder attr
+    // (`src='   '`) is 9 chars. Only one attr fits per slot — alt
+    // gets injected when a second Glimmer-only slot exists (test below).
+    const src = '<img ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(
+      out.content,
+      `expected blanked output to contain a placeholder src= attribute; got: ${JSON.stringify(out.content)}`,
+    ).toMatch(/src='\s+'/);
+  });
+
+  it('injects both src and alt on `<img>` when there are multiple Glimmer-only slots', () => {
+    // Real-world `<img>` invocations usually have multiple Glimmer-only
+    // attrs/modifiers alongside `...attributes` (an `@arg` for typing,
+    // a `{{on "load" …}}` for lazy-loaded images, etc.) — enough total
+    // space for both `src='   '` and `alt='   '` placeholders.
+    const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toMatch(/src='\s+'/);
+    expect(out.content).toMatch(/alt='\s+'/);
+  });
 });
 
 describe('component substitution (transparent fallback)', () => {
