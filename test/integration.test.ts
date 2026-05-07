@@ -197,6 +197,20 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {
+    // The .hbs path normally uses line/column/offset = 1/1/0; with a
+    // prefix directive it goes negative. Verify html-validate handles
+    // negative offsets cleanly (no crash, no spurious diagnostics on
+    // the directive itself) for the same yield-only pattern in classic
+    // .hbs.
+    const r = await validate('yield-only-form.hbs');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on yield-only <form> in classic .hbs; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('form-submit-in-else: wcag/h32 surfaces correctly under multipass', async () => {
     // Fixture has a submit button in the {{else}} branch (Send) and a
     // type='button' in the program branch (Stop). Under multipass:

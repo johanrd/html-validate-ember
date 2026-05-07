@@ -1304,9 +1304,9 @@ function detectStructuralYieldRules(ast: AST.Template): string[] {
   const out: string[] = [];
   traverse(ast, {
     ElementNode(node) {
-      if (node.tag === 'form' && elementContainsYield(node)) {
+      if (node.tag === 'form' && isElementBodyYieldOnlyOpaque(node)) {
         out.push('wcag/h32');
-      } else if (node.tag === 'fieldset' && elementContainsYield(node)) {
+      } else if (node.tag === 'fieldset' && isElementBodyYieldOnlyOpaque(node)) {
         out.push('wcag/h71');
       }
     },
@@ -1314,29 +1314,43 @@ function detectStructuralYieldRules(ast: AST.Template): string[] {
   return [...new Set(out)];
 }
 
-function elementContainsYield(node: AST.ElementNode): boolean {
-  let found = false;
-  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+// True when an element's body contains `{{yield}}` (or `{{has-block}}`)
+// AND has no structural element children — i.e., effectively opaque
+// from html-validate's perspective. A static `<button type='submit'>`
+// in the body would mean wcag/h32 wouldn't fire and our injected
+// `disable wcag/h32` directive would itself be flagged "unused" by
+// `no-unused-disable`. The opaque-only check avoids that.
+//
+// Whitespace-only text and other mustaches/comments don't disqualify;
+// any concrete child element does.
+function isElementBodyYieldOnlyOpaque(node: AST.ElementNode): boolean {
+  let hasYield = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): boolean {
     for (const stmt of stmts) {
-      if (found) return;
+      if (stmt.type === 'TextNode') continue;
+      if (stmt.type === 'MustacheCommentStatement') continue;
+      if (stmt.type === 'CommentStatement') continue;
       if (stmt.type === 'MustacheStatement') {
         if (
           stmt.path.type === 'PathExpression' &&
           (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
         ) {
-          found = true;
-          return;
+          hasYield = true;
         }
-      } else if (stmt.type === 'BlockStatement') {
-        walk(stmt.program.body);
-        if (stmt.inverse) walk(stmt.inverse.body);
-      } else if (stmt.type === 'ElementNode') {
-        walk(stmt.children);
+        continue;
       }
+      if (stmt.type === 'BlockStatement') {
+        if (!walk(stmt.program.body)) return false;
+        if (stmt.inverse && !walk(stmt.inverse.body)) return false;
+        continue;
+      }
+      // ElementNode (or anything unexpected) = structural content; bail.
+      return false;
     }
+    return true;
   }
-  walk(node.children);
-  return found;
+  const opaque = walk(node.children);
+  return opaque && hasYield;
 }
 
 // True when the branch's body contains nothing the validator can see —
