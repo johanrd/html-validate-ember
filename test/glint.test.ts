@@ -127,6 +127,26 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves classic Ember addon `.hbs` for SCOPED package + `templates/components/` import + `app/components/` probed path', () => {
+    // Covers three dimensions the previous fixture didn't exercise:
+    //   1. `@scope/foo-addon` — the regex must accept scoped packages.
+    //   2. Import path uses `templates/components/<name>` (the other
+    //      branch of the import regex beyond `components/<name>`).
+    //   3. The `.hbs` lives at `app/components/<name>.hbs` (the second
+    //      of three probed paths inside the addon, after
+    //      `addon/templates/components/<name>.hbs`).
+    // Root element is `<section>`, so the consumer's `<main>` parent
+    // sees a section as its rendered child.
+    const { filename, contents } = readFixture('scoped-card-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const sectionEntry = entries.find(([, tag]) => tag === 'section');
+    expect(
+      sectionEntry,
+      `expected componentTagMap to resolve <ScopedCard> to 'section' from its scoped-package .hbs; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'

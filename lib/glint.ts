@@ -896,7 +896,14 @@ function findComponentDeclSourceFile(
 // + read+parse on every call. Keyed on the consumer file's directory so a
 // monorepo with multiple node_modules trees stays correct (different
 // projects can resolve the same addonName to different physical paths).
-const addonHbsResolutionCache = new Map<string, ComponentAttrs | null>();
+// Cache only POSITIVE results. Caching negatives indefinitely would
+// permanently hide a template that's later installed (linked workspace
+// addons, IDE/watch mode where the user installs an addon mid-session).
+// The negative path is cheap — regex + a handful of existsSync calls
+// up to the filesystem root — so re-probing is acceptable; what we
+// actually wanted to skip with caching was the file read + Glimmer
+// parse on positive hits, which still applies.
+const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
 
 function resolveAddonHbsTemplate(
   ts: typeof TS,
@@ -927,9 +934,8 @@ function resolveAddonHbsTemplate(
   const importPath = moduleSpecifier.text;
   const consumerDir = path.dirname(consumerFile);
   const cacheKey = `${consumerDir}\0${importPath}`;
-  if (addonHbsResolutionCache.has(cacheKey)) {
-    return addonHbsResolutionCache.get(cacheKey) ?? null;
-  }
+  const cached = addonHbsResolutionCache.get(cacheKey);
+  if (cached !== undefined) return cached;
   // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
   // Addon name follows npm package-name rules: lowercase letters, digits,
   // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
@@ -942,10 +948,7 @@ function resolveAddonHbsTemplate(
     `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
   );
   const m = importRe.exec(importPath);
-  if (!m || importPath.includes('..')) {
-    addonHbsResolutionCache.set(cacheKey, null);
-    return null;
-  }
+  if (!m || importPath.includes('..')) return null;
   const addonName = m[1]!;
   const componentName = m[2]!;
   // Walk up looking for node_modules/<addon>. Always check the current
@@ -965,29 +968,26 @@ function resolveAddonHbsTemplate(
         const hbsPath = path.join(addonRoot, subPath);
         if (fs.existsSync(hbsPath)) {
           // Read can still fail post-existsSync (TOCTOU race, perms,
-          // unreadable file). Treat any read failure as a negative
-          // resolution and cache it — same fallthrough as a missing
-          // template.
+          // unreadable file). Return null without caching — the read
+          // may succeed on a subsequent call once the underlying issue
+          // clears.
           let contents: string;
           try {
             contents = fs.readFileSync(hbsPath, 'utf8');
           } catch {
-            addonHbsResolutionCache.set(cacheKey, null);
             return null;
           }
           const result = extractSplattedRootFromTemplate(contents);
-          addonHbsResolutionCache.set(cacheKey, result);
+          if (result) addonHbsResolutionCache.set(cacheKey, result);
           return result;
         }
       }
-      addonHbsResolutionCache.set(cacheKey, null);
       return null;
     }
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
-  addonHbsResolutionCache.set(cacheKey, null);
   return null;
 }
 
