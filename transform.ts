@@ -92,6 +92,18 @@ const preprocessor = new Preprocessor();
 // rework this.
 export const __multipassBranchedRanges = new Map<string, Array<[number, number]>>();
 
+// Inline directive prepended to each branched Source so `no-unused-disable`
+// is effectively off inside any branched template — needed because
+// directives load-bearing in one branch combination look unused in another,
+// and the post-report dedupe in `lib/multipass-dedupe.ts` only runs for
+// callers that route through `dedupeMultipassReport` (the bundled CLI and
+// tests; NOT the html-validate VS Code extension, NOT the `html-validate`
+// CLI). The bracket-less form is the shortest valid spelling per
+// html-validate's `MATCH_DIRECTIVE` regex; no newline so we can compensate
+// with a single column-shift on the Source. Keep the spelling in sync with
+// `MULTIPASS_INCOMPATIBLE_RULES` in `lib/multipass-dedupe.ts`.
+const MULTIPASS_DIRECTIVE_PREFIX = '<!--html-validate-disable no-unused-disable-->';
+
 function offsetToLineCol(source: string, offset: number): { line: number; column: number } {
   let line = 1;
   let column = 1;
@@ -237,6 +249,21 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // set `HVE_MAX_CONDITIONAL_BRANCHES=0` to fall back to the
   // single-branch form-submit-aware heuristic if duplicates are
   // annoying.
+  //
+  // For the `no-unused-disable` catch-22 (a directive load-bearing in
+  // one pass looks unused in another), we DON'T rely on
+  // `dedupeMultipassReport` alone — the dedupe lives outside
+  // html-validate and direct consumers don't run it. Instead, we
+  // prepend an inline `<!--html-validate-disable no-unused-disable-->`
+  // directive to each branched Source's data, and shift the Source's
+  // `offset`/`column` by the directive's length so the original
+  // content's positions still map back to the original file. That
+  // makes the rule effectively off inside any branched template
+  // regardless of who calls html-validate. Trade-off: a *genuinely*
+  // unused directive inside a branched template stops firing too. We
+  // accept that: it's bounded (only branched templates) and chosen
+  // over the FP catch-22 that has no escape hatch for users. Keep in
+  // sync with `MULTIPASS_INCOMPATIBLE_RULES` in `lib/multipass-dedupe.ts`.
   for (const tpl of parsed) {
     if (tpl.tagName !== 'template') {
       continue;
@@ -250,7 +277,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       glintComponentTagMap,
       glintComponentAttrMap,
     );
-    if (results.length > 1) {
+    const branched = results.length > 1;
+    if (branched) {
       // Record the file-line range covered by this template's content
       // so the dedupe can scope its rule-suppression to just this
       // template (not the whole file). Multi-template files keep
@@ -269,16 +297,19 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
           `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
         );
       }
+      const sourceData = branched ? MULTIPASS_DIRECTIVE_PREFIX + result.content : result.content;
+      const sourceOffset = branched ? startOffset - MULTIPASS_DIRECTIVE_PREFIX.length : startOffset;
+      const sourceColumn = branched ? column - MULTIPASS_DIRECTIVE_PREFIX.length : column;
       // Elements whose only Glimmer source content was mustaches will look
       // empty after blanking. Hook them and append a DynamicValue placeholder
       // so html-validate's empty-heading / text-content rules see "has content,
       // unknowable" rather than truly empty.
       yield {
-        data: result.content,
+        data: sourceData,
         filename,
         line,
-        column,
-        offset: startOffset,
+        column: sourceColumn,
+        offset: sourceOffset,
         originalData,
         hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), startOffset),
       };
