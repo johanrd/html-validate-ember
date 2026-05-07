@@ -120,7 +120,11 @@ export const __multipassBranchedRanges = new Map<string, Array<[number, number]>
 // dedupe-incompatible-with-multipass rules.
 function buildDisableDirective(rules: ReadonlyArray<string>): string {
   if (rules.length === 0) return '';
-  return `<!--html-validate-disable ${rules.join(' ')}-->`;
+  // html-validate's directive grammar requires COMMA-separated rule
+  // names. Space-separated silently disables only the first rule —
+  // masking suppression in branched templates where the directive
+  // carries both `no-unused-disable` and a structural-yield rule.
+  return `<!--html-validate-disable ${rules.join(', ')}-->`;
 }
 
 function offsetToLineCol(source: string, offset: number): { line: number; column: number } {
