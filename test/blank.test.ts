@@ -123,6 +123,23 @@ describe('mustache blanking', () => {
     expect(out.content).toMatch(/src='\s+'/);
     expect(out.content).toMatch(/alt='\s+'/);
   });
+
+  it('does not inject placeholder src/alt when the consumer wrote them explicitly', () => {
+    // When the consumer's invocation already specifies src/alt (statically
+    // or via a bare-mustache value), the injection must skip — duplicate
+    // attributes are an error, and the consumer's value is what we want
+    // html-validate to see.
+    const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    // Original literal values survive.
+    expect(out.content).toContain('src="/foo.png"');
+    expect(out.content).toContain('alt="bar"');
+    // No injected `src='   '` / `alt='   '` placeholder anywhere — the
+    // splat slot stays blanked instead.
+    expect(out.content).not.toMatch(/src='\s+'/);
+    expect(out.content).not.toMatch(/alt='\s+'/);
+  });
 });
 
 describe('component substitution (transparent fallback)', () => {
