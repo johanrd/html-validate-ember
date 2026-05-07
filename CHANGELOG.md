@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-05-07)
+
+* html-validate-ember 0.4.1 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#10](https://github.com/johanrd/html-validate-ember/pull/10) Fix no-unused-disable catch-22 in editors and direct html-validate callers ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-05)
 
 * html-validate-ember 0.4.0 (minor)
