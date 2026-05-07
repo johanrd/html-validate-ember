@@ -934,11 +934,12 @@ function resolveAddonHbsTemplate(
   // Addon name follows npm package-name rules: lowercase letters, digits,
   // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
   // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
-  // Component name is kebab-case (allowing nested-by-slash like
-  // `forms/text-input`).
+  // Component name is kebab-case, lowercase only, allowing nested-by-slash
+  // like `forms/text-input`.
   const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
+  const COMPONENT = '[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)*';
   const importRe = new RegExp(
-    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/([\\w/-]+)$`,
+    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
   );
   const m = importRe.exec(importPath);
   if (!m || importPath.includes('..')) {
@@ -959,7 +960,17 @@ function resolveAddonHbsTemplate(
       ]) {
         const hbsPath = path.join(addonRoot, subPath);
         if (fs.existsSync(hbsPath)) {
-          const contents = fs.readFileSync(hbsPath, 'utf8');
+          // Read can still fail post-existsSync (TOCTOU race, perms,
+          // unreadable file). Treat any read failure as a negative
+          // resolution and cache it — same fallthrough as a missing
+          // template.
+          let contents: string;
+          try {
+            contents = fs.readFileSync(hbsPath, 'utf8');
+          } catch {
+            addonHbsResolutionCache.set(cacheKey, null);
+            return null;
+          }
           const result = extractSplattedRootFromTemplate(contents);
           addonHbsResolutionCache.set(cacheKey, result);
           return result;
