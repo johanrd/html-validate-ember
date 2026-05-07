@@ -948,9 +948,13 @@ function resolveAddonHbsTemplate(
   }
   const addonName = m[1]!;
   const componentName = m[2]!;
+  // Walk up looking for node_modules/<addon>. Always check the current
+  // dir BEFORE stepping up, so the filesystem root (e.g. POSIX `/`,
+  // Windows `C:\`) is also probed — Node's module resolver does this
+  // and we should match. A `while (dir !== path.dirname(dir))` loop
+  // would skip the root.
   let dir = consumerDir;
-  // Walk up looking for node_modules/<addon>.
-  while (dir !== path.dirname(dir)) {
+  for (;;) {
     const addonRoot = path.join(dir, 'node_modules', addonName);
     if (fs.existsSync(addonRoot)) {
       for (const subPath of [
@@ -979,7 +983,9 @@ function resolveAddonHbsTemplate(
       addonHbsResolutionCache.set(cacheKey, null);
       return null;
     }
-    dir = path.dirname(dir);
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
   addonHbsResolutionCache.set(cacheKey, null);
   return null;
