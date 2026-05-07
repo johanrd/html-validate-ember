@@ -1289,24 +1289,27 @@ function blankTemplateContent(
 }
 
 // Detect structural elements (`<form>`, `<fieldset>`) whose body contains
-// `{{yield}}` — these almost always mean "consumer provides the rest of
-// the body, including the structural child the rule wants" (a submit
-// button for form/h32; a legend for fieldset/h71). We can't statically
-// see the consumer's yielded content, so inject a Source-level disable
-// for the relevant rule.
+// `{{yield}}` (or `{{has-block}}`) AND lacks a statically-detectable
+// submit/legend — those are the cases where wcag/h32 / wcag/h71 would
+// FP-fire on the blanked output. Wrapper markup like
+// `<form><div>{{yield}}</div></form>` IS suppressed (the yield is the
+// structural content, just wrapped); a form with a real
+// `<button type='submit'>` alongside the yield is NOT suppressed (the
+// rule wouldn't fire and the disable would itself trigger
+// `no-unused-disable`).
 //
-// Conservative trade-off: if a yield-bearing form ALSO has a non-yield
-// body that genuinely lacks submit, the disable hides the real bug.
-// Acceptable because (a) yield-bearing forms are almost always thin
-// component wrappers with no extra body content, and (b) the alternative
-// is a permanent FP with no escape hatch.
+// Conservative on dynamic types: `<button type={{x}}>` and
+// `<input type={{x}}>` count as MAYBE-submit and disqualify the
+// suppression. Trade-off: a yield-bearing form whose only "submit-like"
+// element has a dynamic type stays unsuppressed (real h32 may fire) —
+// preferred to introducing a synthetic no-unused-disable.
 function detectStructuralYieldRules(ast: AST.Template): string[] {
   const out: string[] = [];
   traverse(ast, {
     ElementNode(node) {
-      if (node.tag === 'form' && isElementBodyYieldOnlyOpaque(node)) {
+      if (node.tag === 'form' && elementYieldsAndLacksSubmit(node)) {
         out.push('wcag/h32');
-      } else if (node.tag === 'fieldset' && isElementBodyYieldOnlyOpaque(node)) {
+      } else if (node.tag === 'fieldset' && elementYieldsAndLacksLegend(node)) {
         out.push('wcag/h71');
       }
     },
@@ -1314,24 +1317,27 @@ function detectStructuralYieldRules(ast: AST.Template): string[] {
   return [...new Set(out)];
 }
 
-// True when an element's body contains `{{yield}}` (or `{{has-block}}`)
-// AND has no structural element children — i.e., effectively opaque
-// from html-validate's perspective. A static `<button type='submit'>`
-// in the body would mean wcag/h32 wouldn't fire and our injected
-// `disable wcag/h32` directive would itself be flagged "unused" by
-// `no-unused-disable`. The opaque-only check avoids that.
+// True when a `<form>` body contains `{{yield}}` (or `{{has-block}}`)
+// somewhere AND has no statically-detectable submit-style child. The
+// yield means the consumer might supply a submit button at runtime;
+// the absence of a static submit means wcag/h32 would FP-fire on the
+// blanked output. Together: the suppression is needed.
 //
-// Text content (whitespace or otherwise), mustaches, and comments don't
-// disqualify — wcag/h32 / wcag/h71 only care about structural children
-// (a `<button type='submit'>` or `<legend>`), not text. Any concrete
-// child ElementNode does disqualify.
-function isElementBodyYieldOnlyOpaque(node: AST.ElementNode): boolean {
+// If a static submit DOES exist, wcag/h32 wouldn't fire and our
+// injected `<!--html-validate-disable wcag/h32-->` would itself be
+// flagged "unused" by `no-unused-disable`. So we bail in that case.
+//
+// "Statically-detectable submit" means any `<button>` (default type
+// inside a form is `submit`) or `<input>` with `type='submit'` or
+// `type='image'`. Bare-mustache types are conservatively treated as
+// MAYBE submit (we bail) — better an extra real wcag/h32 fire than an
+// unused-disable cascade.
+function elementYieldsAndLacksSubmit(form: AST.ElementNode): boolean {
   let hasYield = false;
-  function walk(stmts: ReadonlyArray<AST.Statement>): boolean {
+  let hasStaticSubmit = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
     for (const stmt of stmts) {
-      if (stmt.type === 'TextNode') continue;
-      if (stmt.type === 'MustacheCommentStatement') continue;
-      if (stmt.type === 'CommentStatement') continue;
+      if (hasStaticSubmit) return;
       if (stmt.type === 'MustacheStatement') {
         if (
           stmt.path.type === 'PathExpression' &&
@@ -1342,17 +1348,82 @@ function isElementBodyYieldOnlyOpaque(node: AST.ElementNode): boolean {
         continue;
       }
       if (stmt.type === 'BlockStatement') {
-        if (!walk(stmt.program.body)) return false;
-        if (stmt.inverse && !walk(stmt.inverse.body)) return false;
+        walk(stmt.program.body);
+        if (stmt.inverse) walk(stmt.inverse.body);
         continue;
       }
-      // ElementNode (or anything unexpected) = structural content; bail.
-      return false;
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'button' || isSubmitInput(stmt) || isAmbiguouslyTypedInputOrButton(stmt)) {
+          hasStaticSubmit = true;
+          return;
+        }
+        walk(stmt.children);
+        continue;
+      }
     }
-    return true;
   }
-  const opaque = walk(node.children);
-  return opaque && hasYield;
+  walk(form.children);
+  return hasYield && !hasStaticSubmit;
+}
+
+// True when a `<fieldset>` body contains `{{yield}}` (or `{{has-block}}`)
+// somewhere AND has no statically-detectable `<legend>` child. Same
+// rationale as elementYieldsAndLacksSubmit.
+function elementYieldsAndLacksLegend(fieldset: AST.ElementNode): boolean {
+  let hasYield = false;
+  let hasStaticLegend = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (hasStaticLegend) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          hasYield = true;
+        }
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        walk(stmt.program.body);
+        if (stmt.inverse) walk(stmt.inverse.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'legend') {
+          hasStaticLegend = true;
+          return;
+        }
+        walk(stmt.children);
+        continue;
+      }
+    }
+  }
+  walk(fieldset.children);
+  return hasYield && !hasStaticLegend;
+}
+
+function isSubmitInput(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      return attr.value.chars === 'submit' || attr.value.chars === 'image';
+    }
+    return false;
+  }
+  return false;
+}
+
+function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input' && node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    // Bare-mustache or concat-mustache value: type unknown statically;
+    // could be 'submit' at runtime. Bail conservatively.
+    if (attr.value.type !== 'TextNode') return true;
+  }
+  return false;
 }
 
 // True when the branch's body contains nothing the validator can see —

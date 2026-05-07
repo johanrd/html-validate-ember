@@ -197,6 +197,33 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form: wcag/h32 also suppressed when yield is wrapped in non-submit markup', async () => {
+    // `<form><div>{{yield}}</div></form>` — the wrapper isn't a submit-
+    // style element, so the suppression should still kick in. The
+    // earlier opaque-only check missed this; the current detection
+    // looks for yield + absence of statically-detectable submit.
+    const r = await validate('yield-only-form-with-wrapper.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a yield-bearing form with wrapper markup; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: NO suppression when a static submit button is present alongside yield', async () => {
+    // `<form>{{yield}}<button type='submit'></button></form>` — wcag/h32
+    // wouldn't fire (submit is statically present). Suppression must
+    // NOT activate, otherwise the injected
+    // `<!--html-validate-disable wcag/h32-->` would itself trigger
+    // `no-unused-disable`.
+    const r = await validate('yield-form-with-static-submit.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — wcag/h32 suppression shouldn't activate when submit is statically present; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {
     // The .hbs path normally uses line/column/offset = 1/1/0; with a
     // prefix directive it goes negative. Verify html-validate handles
