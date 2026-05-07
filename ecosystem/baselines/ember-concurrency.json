@@ -3,20 +3,6 @@
   "fileCount": 56,
   "findings": [
     {
-      "file": "packages/test-app/app/components/ajax-throttling-example.gts",
-      "line": 55,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "packages/test-app/app/components/code-template-toggle.gts",
-      "line": 88,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
       "file": "packages/test-app/app/components/github-edit.gts",
       "line": 23,
       "column": 6,
@@ -164,20 +150,6 @@
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
     {
-      "file": "packages/test-app/app/templates/application.gts",
-      "line": 17,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "packages/test-app/app/templates/application.gts",
-      "line": 21,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "packages/test-app/app/templates/docs/examples/autocomplete.gts",
       "line": 98,
       "column": 6,
@@ -204,27 +176,6 @@
       "column": 6,
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "packages/test-app/app/templates/docs/introduction.gts",
-      "line": 6,
-      "column": 8,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "packages/test-app/app/templates/docs/task-cancelation-help.gts",
-      "line": 12,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "packages/test-app/app/templates/docs/task-cancelation-help.gts",
-      "line": 46,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     }
   ]
 }

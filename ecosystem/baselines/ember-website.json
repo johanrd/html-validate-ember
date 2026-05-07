@@ -3,60 +3,11 @@
   "fileCount": 73,
   "findings": [
     {
-      "file": "app/components/community-trends.hbs",
-      "line": 8,
-      "column": 39,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/components/cta-emberconf.hbs",
-      "line": 16,
-      "column": 11,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/components/ember-community-survey/introduction.hbs",
-      "line": 10,
-      "column": 7,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/components/ember-community-survey/sponsor.hbs",
-      "line": 19,
-      "column": 7,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
       "file": "app/components/index/ember-addons.hbs",
       "line": 41,
       "column": 12,
       "ruleId": "element-permitted-content",
       "message": "<pre> element is not permitted as content under <code>"
-    },
-    {
-      "file": "app/components/index/ember-community-photos/photo.hbs",
-      "line": 9,
-      "column": 3,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/components/index/ember-ecosystem/image.hbs",
-      "line": 22,
-      "column": 3,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/about/legal.hbs",
-      "line": 36,
-      "column": 111,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     },
     {
       "file": "app/templates/browser-support.hbs",
@@ -186,94 +137,10 @@
     },
     {
       "file": "app/templates/community/index.hbs",
-      "line": 6,
-      "column": 88,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/index.hbs",
-      "line": 54,
-      "column": 107,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/index.hbs",
-      "line": 82,
-      "column": 108,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/index.hbs",
-      "line": 94,
-      "column": 88,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/index.hbs",
-      "line": 105,
-      "column": 90,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/index.hbs",
       "line": 118,
       "column": 92,
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"frameborder\" is deprecated on <iframe> element"
-    },
-    {
-      "file": "app/templates/community/invasion-of-ukraine.hbs",
-      "line": 89,
-      "column": 12,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/community/meetups/assets.hbs",
-      "line": 39,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/assets.hbs",
-      "line": 58,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/assets.hbs",
-      "line": 104,
-      "column": 104,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/assets.hbs",
-      "line": 113,
-      "column": 109,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/assets.hbs",
-      "line": 122,
-      "column": 107,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/index.hbs",
-      "line": 55,
-      "column": 124,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     },
     {
       "file": "app/templates/community/meetups/index.hbs",
@@ -281,34 +148,6 @@
       "column": 52,
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"align\" is deprecated on <img> element"
-    },
-    {
-      "file": "app/templates/community/meetups/index.hbs",
-      "line": 67,
-      "column": 84,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/community/meetups/index.hbs",
-      "line": 69,
-      "column": 186,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/editions/index.hbs",
-      "line": 26,
-      "column": 76,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/editions/index.hbs",
-      "line": 34,
-      "column": 77,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     },
     {
       "file": "app/templates/editions/polaris.hbs",
@@ -323,174 +162,6 @@
       "column": 237,
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "app/templates/ember-users.hbs",
-      "line": 32,
-      "column": 13,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/ember-users.hbs",
-      "line": 44,
-      "column": 153,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/ember-users.hbs",
-      "line": 45,
-      "column": 98,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/head.hbs",
-      "line": 1,
-      "column": 59,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <meta/> instead of omitted end-tag <meta>"
-    },
-    {
-      "file": "app/templates/head.hbs",
-      "line": 2,
-      "column": 59,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <meta/> instead of omitted end-tag <meta>"
-    },
-    {
-      "file": "app/templates/head.hbs",
-      "line": 3,
-      "column": 60,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <meta/> instead of omitted end-tag <meta>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 7,
-      "column": 100,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 32,
-      "column": 147,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 47,
-      "column": 118,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 51,
-      "column": 301,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 51,
-      "column": 305,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 56,
-      "column": 120,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 65,
-      "column": 117,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 70,
-      "column": 203,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 70,
-      "column": 207,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 76,
-      "column": 102,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 81,
-      "column": 424,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 81,
-      "column": 428,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 87,
-      "column": 124,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 92,
-      "column": 210,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 92,
-      "column": 214,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 98,
-      "column": 103,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 103,
-      "column": 464,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 103,
-      "column": 468,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/index.hbs",
@@ -557,20 +228,6 @@
     },
     {
       "file": "app/templates/index.hbs",
-      "line": 268,
-      "column": 49,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "app/templates/index.hbs",
-      "line": 268,
-      "column": 102,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/index.hbs",
       "line": 278,
       "column": 10,
       "ruleId": "element-permitted-content",
@@ -627,34 +284,6 @@
     },
     {
       "file": "app/templates/learn/index.hbs",
-      "line": 32,
-      "column": 5,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/learn/index.hbs",
-      "line": 45,
-      "column": 85,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/learn/index.hbs",
-      "line": 51,
-      "column": 92,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/learn/index.hbs",
-      "line": 57,
-      "column": 90,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/learn/index.hbs",
       "line": 116,
       "column": 12,
       "ruleId": "element-permitted-content",
@@ -689,335 +318,6 @@
       "message": "<ul> element is not permitted as content under <ul>"
     },
     {
-      "file": "app/templates/logos.hbs",
-      "line": 19,
-      "column": 91,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 20,
-      "column": 92,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 21,
-      "column": 112,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 22,
-      "column": 98,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 32,
-      "column": 115,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 33,
-      "column": 116,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 34,
-      "column": 114,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 35,
-      "column": 122,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 45,
-      "column": 118,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 46,
-      "column": 130,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 47,
-      "column": 118,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 52,
-      "column": 119,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 53,
-      "column": 131,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 54,
-      "column": 119,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 59,
-      "column": 119,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 60,
-      "column": 131,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 61,
-      "column": 119,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 66,
-      "column": 120,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 67,
-      "column": 132,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 68,
-      "column": 120,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 79,
-      "column": 110,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 80,
-      "column": 112,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 81,
-      "column": 120,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 82,
-      "column": 106,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 85,
-      "column": 112,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 86,
-      "column": 114,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 87,
-      "column": 122,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 88,
-      "column": 108,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 97,
-      "column": 106,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 98,
-      "column": 108,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 99,
-      "column": 116,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 100,
-      "column": 102,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 103,
-      "column": 110,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 104,
-      "column": 112,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 105,
-      "column": 120,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 106,
-      "column": 106,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 114,
-      "column": 107,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 115,
-      "column": 108,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 116,
-      "column": 128,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 117,
-      "column": 114,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 120,
-      "column": 107,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 121,
-      "column": 108,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 122,
-      "column": 128,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/logos.hbs",
-      "line": 123,
-      "column": 114,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 40,
-      "column": 13,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 59,
-      "column": 13,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 99,
-      "column": 78,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
       "file": "app/templates/mascots/commission.hbs",
       "line": 103,
       "column": 25,
@@ -1033,24 +333,10 @@
     },
     {
       "file": "app/templates/mascots/commission.hbs",
-      "line": 110,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
       "line": 118,
       "column": 25,
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 124,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
     },
     {
       "file": "app/templates/mascots/commission.hbs",
@@ -1061,24 +347,10 @@
     },
     {
       "file": "app/templates/mascots/commission.hbs",
-      "line": 138,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
       "line": 146,
       "column": 25,
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 152,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
     },
     {
       "file": "app/templates/mascots/commission.hbs",
@@ -1089,31 +361,10 @@
     },
     {
       "file": "app/templates/mascots/commission.hbs",
-      "line": 166,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
       "line": 174,
       "column": 25,
       "ruleId": "form-dup-name",
       "message": "Duplicate form control name \"Field8\""
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 181,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 196,
-      "column": 17,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
     },
     {
       "file": "app/templates/mascots/commission.hbs",
@@ -1123,60 +374,11 @@
       "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
     },
     {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 209,
-      "column": 13,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 220,
-      "column": 11,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/mascots/commission.hbs",
-      "line": 227,
-      "column": 81,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/mascots/faq.hbs",
-      "line": 15,
-      "column": 8,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <hr/> instead of omitted end-tag <hr>"
-    },
-    {
-      "file": "app/templates/mascots/faq.hbs",
-      "line": 17,
-      "column": 70,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/mascots/faq.hbs",
-      "line": 21,
-      "column": 65,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
       "file": "app/templates/mascots/faq.hbs",
       "line": 41,
       "column": 65,
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"width\" has invalid value \"90%\""
-    },
-    {
-      "file": "app/templates/mascots/faq.hbs",
-      "line": 41,
-      "column": 69,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     },
     {
       "file": "app/templates/mascots/payment.hbs",
@@ -1256,62 +458,6 @@
       "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
     },
     {
-      "file": "app/templates/mascots/payment.hbs",
-      "line": 311,
-      "column": 81,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/releases/canary.hbs",
-      "line": 20,
-      "column": 10,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/releases/index.hbs",
-      "line": 16,
-      "column": 8,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/sponsors.hbs",
-      "line": 24,
-      "column": 103,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/sponsors.hbs",
-      "line": 29,
-      "column": 20,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/sponsors.hbs",
-      "line": 52,
-      "column": 148,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/sponsors.hbs",
-      "line": 80,
-      "column": 103,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/sponsors.hbs",
-      "line": 85,
-      "column": 20,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
       "file": "app/templates/survey/2017.hbs",
       "line": 105,
       "column": 10,
@@ -1324,20 +470,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2017.hbs",
-      "line": 111,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2017.hbs",
-      "line": 111,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2017.hbs",
@@ -1366,20 +498,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2017.hbs",
-      "line": 149,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2017.hbs",
-      "line": 149,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2017.hbs",
@@ -1467,20 +585,6 @@
     },
     {
       "file": "app/templates/survey/2018.hbs",
-      "line": 84,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 84,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
       "line": 90,
       "column": 10,
       "ruleId": "element-permitted-content",
@@ -1523,20 +627,6 @@
     },
     {
       "file": "app/templates/survey/2018.hbs",
-      "line": 117,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 117,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
       "line": 140,
       "column": 10,
       "ruleId": "element-permitted-content",
@@ -1548,34 +638,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 146,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 146,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 148,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 148,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2018.hbs",
@@ -1593,20 +655,6 @@
     },
     {
       "file": "app/templates/survey/2018.hbs",
-      "line": 160,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 160,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
       "line": 166,
       "column": 10,
       "ruleId": "element-permitted-content",
@@ -1621,48 +669,6 @@
     },
     {
       "file": "app/templates/survey/2018.hbs",
-      "line": 172,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 172,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 174,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 174,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 176,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 176,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
       "line": 182,
       "column": 10,
       "ruleId": "element-permitted-content",
@@ -1674,20 +680,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 188,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 188,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2018.hbs",
@@ -1716,20 +708,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 211,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2018.hbs",
-      "line": 211,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2019.hbs",
@@ -1793,20 +771,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2019.hbs",
-      "line": 386,
-      "column": 14,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/survey/2019.hbs",
-      "line": 386,
-      "column": 18,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/survey/2019.hbs",
@@ -1912,48 +876,6 @@
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<blockquote> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "app/templates/survey/2021.hbs",
-      "line": 35,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/survey/2021.hbs",
-      "line": 51,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/survey/2021.hbs",
-      "line": 67,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/survey/2024.hbs",
-      "line": 35,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/survey/2024.hbs",
-      "line": 51,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
-      "file": "app/templates/survey/2024.hbs",
-      "line": 67,
-      "column": 9,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     }
   ]
 }

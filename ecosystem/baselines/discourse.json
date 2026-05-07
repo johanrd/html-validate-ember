@@ -10,13 +10,6 @@
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "frontend/discourse/admin/components/admin-config-area-card-section.gjs",
-      "line": 31,
-      "column": 9,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
       "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
       "line": 40,
       "column": 14,
@@ -283,13 +276,6 @@
       "message": "Attribute \"readonly\" has invalid value \"true\""
     },
     {
-      "file": "frontend/discourse/admin/components/modal/delete-user-posts-progress.gjs",
-      "line": 70,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/admin/components/modal/form-template-validation-options.gjs",
       "line": 45,
       "column": 18,
@@ -332,34 +318,6 @@
       "message": "Stray end tag '</p>'"
     },
     {
-      "file": "frontend/discourse/admin/components/schema-setting/editor/child-tree-node.gjs",
-      "line": 6,
-      "column": 5,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <a> element"
-    },
-    {
-      "file": "frontend/discourse/admin/components/schema-setting/editor/child-tree.gjs",
-      "line": 31,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "frontend/discourse/admin/components/schema-setting/editor/tree-node.gjs",
-      "line": 53,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <a> element"
-    },
-    {
-      "file": "frontend/discourse/admin/components/schema-setting/editor/tree.gjs",
-      "line": 12,
-      "column": 9,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <a> element"
-    },
-    {
       "file": "frontend/discourse/admin/components/schema-setting/types/string.gjs",
       "line": 54,
       "column": 7,
@@ -386,27 +344,6 @@
       "column": 8,
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
-    },
-    {
-      "file": "frontend/discourse/admin/components/site-settings/upload.gjs",
-      "line": 282,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/admin/components/site-settings/upload.gjs",
-      "line": 329,
-      "column": 17,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <progress> element"
-    },
-    {
-      "file": "frontend/discourse/admin/components/site-settings/upload.gjs",
-      "line": 332,
-      "column": 43,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/admin/components/themes-list-item.gjs",
@@ -505,13 +442,6 @@
       "column": 17,
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"href\" is missing value"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-email/server-settings.gjs",
-      "line": 15,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-email/server-settings.gjs",
@@ -1089,13 +1019,6 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
-      "line": 31,
-      "column": 26,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
       "line": 34,
       "column": 12,
       "ruleId": "wcag/h63",
@@ -1263,20 +1186,6 @@
       "message": "<p> element is not permitted as content under <button>"
     },
     {
-      "file": "frontend/discourse/app/components/anonymous-topic-footer-buttons.gjs",
-      "line": 29,
-      "column": 10,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <section> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/avatar-flair.gjs",
-      "line": 52,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/avatar-uploader.gjs",
       "line": 76,
       "column": 10,
@@ -1368,13 +1277,6 @@
       "message": "Prefer to use the native <hN> element"
     },
     {
-      "file": "frontend/discourse/app/components/bread-crumbs.gjs",
-      "line": 89,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/bulk-actions/notification-level.gjs",
       "line": 46,
       "column": 14,
@@ -1387,27 +1289,6 @@
       "column": 8,
       "ruleId": "no-implicit-input-type",
       "message": "<input> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/categories-boxes-with-topics.gjs",
-      "line": 43,
-      "column": 11,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/categories-boxes.gjs",
-      "line": 59,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/categories-boxes.gjs",
-      "line": 97,
-      "column": 25,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/categories-only.gjs",
@@ -1443,34 +1324,6 @@
       "column": 24,
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "frontend/discourse/app/components/categories-topic-list.gjs",
-      "line": 16,
-      "column": 12,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/cdn-img.gjs",
-      "line": 25,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/color-palette-preview.gjs",
-      "line": 49,
-      "column": 10,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/composer-action-title.gjs",
-      "line": 159,
-      "column": 34,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
     },
     {
       "file": "frontend/discourse/app/components/composer-container.gjs",
@@ -1515,34 +1368,6 @@
       "message": "<div> element is not permitted as content under <span>"
     },
     {
-      "file": "frontend/discourse/app/components/d-icon-grid-picker/content.gjs",
-      "line": 290,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/d-icon-grid-picker/content.gjs",
-      "line": 310,
-      "column": 9,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/d-icon-grid-picker/index.gjs",
-      "line": 155,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/d-multi-select.gjs",
-      "line": 32,
-      "column": 50,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/d-otp/index.gjs",
       "line": 176,
       "column": 10,
@@ -1569,27 +1394,6 @@
       "column": 15,
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"autofocus\" should omit value"
-    },
-    {
-      "file": "frontend/discourse/app/components/directory-item.gjs",
-      "line": 32,
-      "column": 58,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/directory-item.gjs",
-      "line": 42,
-      "column": 46,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/directory-item.gjs",
-      "line": 58,
-      "column": 54,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
     },
     {
       "file": "frontend/discourse/app/components/discovery/topics.gjs",
@@ -1788,13 +1592,6 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/app/components/header/contents.gjs",
-      "line": 125,
-      "column": 26,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <nav> element"
-    },
-    {
       "file": "frontend/discourse/app/components/header/sidebar-toggle.gjs",
       "line": 29,
       "column": 8,
@@ -1802,32 +1599,11 @@
       "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "frontend/discourse/app/components/horizontal-overflow-nav.gjs",
-      "line": 154,
-      "column": 11,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/horizontal-overflow-nav.gjs",
-      "line": 181,
-      "column": 11,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
       "file": "frontend/discourse/app/components/iframed-html.gjs",
       "line": 17,
       "column": 6,
       "ruleId": "element-required-attributes",
       "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/image-carousel.gjs",
-      "line": 187,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/link-to-input.gjs",
@@ -1912,20 +1688,6 @@
       "column": 10,
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/create-invite.gjs",
-      "line": 339,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/discard-draft.gjs",
-      "line": 27,
-      "column": 35,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
     },
     {
       "file": "frontend/discourse/app/components/modal/flag.gjs",
@@ -2131,13 +1893,6 @@
       "message": "<h4> element is not permitted as content under <ul>"
     },
     {
-      "file": "frontend/discourse/app/components/nested/post.gjs",
-      "line": 331,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/nested/sort-selector.gjs",
       "line": 20,
       "column": 5,
@@ -2152,39 +1907,11 @@
       "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "frontend/discourse/app/components/page-loading-slider.gjs",
-      "line": 81,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/parent-category-row.gjs",
-      "line": 40,
-      "column": 11,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/parent-category-row.gjs",
-      "line": 139,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/pinned-options.gjs",
       "line": 48,
       "column": 6,
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/post/menu/post-users-menu.gjs",
-      "line": 94,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/post/meta-data/reply-to-tab.gjs",
@@ -2199,27 +1926,6 @@
       "column": 7,
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/related-messages.gjs",
-      "line": 42,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <aside> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/responsive-table.gjs",
-      "line": 7,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <table> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/responsive-table.gjs",
-      "line": 9,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/reviewable/item.gjs",
@@ -2292,20 +1998,6 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "frontend/discourse/app/components/search-result-entries.gjs",
-      "line": 9,
-      "column": 37,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <ul> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/search-result-entry.gjs",
-      "line": 82,
-      "column": 11,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
-    },
-    {
       "file": "frontend/discourse/app/components/second-factor-form.gjs",
       "line": 85,
       "column": 13,
@@ -2356,13 +2048,6 @@
     },
     {
       "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/categories-modal.gjs",
-      "line": 278,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/categories-modal.gjs",
       "line": 295,
       "column": 22,
       "ruleId": "element-permitted-content",
@@ -2395,41 +2080,6 @@
       "column": 18,
       "ruleId": "element-permitted-content",
       "message": "<p> element is not permitted as content under <label>"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
-      "line": 103,
-      "column": 32,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
-      "line": 119,
-      "column": 32,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
-      "line": 137,
-      "column": 32,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <td> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/section-link-prefix.gjs",
-      "line": 45,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/sidebar/section-link-prefix.gjs",
-      "line": 64,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/sidebar/section-link.gjs",
@@ -2474,20 +2124,6 @@
       "message": "Prefer to use the native <li> element"
     },
     {
-      "file": "frontend/discourse/app/components/sub-category-row.gjs",
-      "line": 14,
-      "column": 11,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/sub-category-row.gjs",
-      "line": 46,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/subcategories-with-featured-topics.gjs",
       "line": 62,
       "column": 22,
@@ -2495,20 +2131,6 @@
       "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "frontend/discourse/app/components/suggested-topics.gjs",
-      "line": 21,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <aside> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/table-header-toggle.gjs",
-      "line": 111,
-      "column": 9,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
       "file": "frontend/discourse/app/components/tag-settings.gjs",
       "line": 267,
       "column": 14,
@@ -2535,13 +2157,6 @@
       "column": 14,
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-footer-buttons.gjs",
-      "line": 138,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <section> element"
     },
     {
       "file": "frontend/discourse/app/components/topic-list/header/bulk-select-cell.gjs",
@@ -2586,20 +2201,6 @@
       "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "frontend/discourse/app/components/topic-list/item.gjs",
-      "line": 311,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-list/item/topic-cell.gjs",
-      "line": 47,
-      "column": 35,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
-    },
-    {
       "file": "frontend/discourse/app/components/topic-list/new-list-header-controls.gjs",
       "line": 41,
       "column": 6,
@@ -2621,25 +2222,11 @@
       "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "frontend/discourse/app/components/topic-list/participant-groups.gjs",
-      "line": 6,
-      "column": 5,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <ul> element"
-    },
-    {
       "file": "frontend/discourse/app/components/topic-map/private-message-map.gjs",
       "line": 120,
       "column": 10,
       "ruleId": "element-permitted-content",
       "message": "<a> element is not permitted as a descendant of <a>"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-progress.gjs",
-      "line": 131,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/topic-status.gjs",
@@ -2656,81 +2243,11 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/app/components/topic-timeline/container.gjs",
-      "line": 607,
-      "column": 11,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-timeline/container.gjs",
-      "line": 613,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-timeline/container.gjs",
-      "line": 633,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-timeline/container.gjs",
-      "line": 638,
-      "column": 45,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/topic-timeline/scroller.gjs",
-      "line": 33,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/components/topic-timer-info.gjs",
       "line": 179,
       "column": 12,
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <h3>"
-    },
-    {
-      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
-      "line": 177,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
-      "line": 182,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
-      "line": 191,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
-      "line": 257,
-      "column": 17,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <progress> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
-      "line": 260,
-      "column": 43,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/components/user-autocomplete-results.gjs",
@@ -2817,53 +2334,11 @@
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "frontend/discourse/app/components/welcome-banner.gjs",
-      "line": 214,
-      "column": 11,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/components/welcome-banner.gjs",
-      "line": 218,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/form-kit/components/fk/control/color.gjs",
-      "line": 241,
-      "column": 21,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/form-kit/components/fk/control/color.gjs",
-      "line": 260,
-      "column": 23,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/form-kit/components/fk/control/color.gjs",
-      "line": 285,
-      "column": 17,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/helpers/element.gjs",
       "line": 21,
       "column": 6,
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "frontend/discourse/app/static/dev-tools/block-debug/conditions-tree.gjs",
-      "line": 165,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/app/static/dev-tools/mobile-view/button.gjs",
@@ -2887,13 +2362,6 @@
       "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "frontend/discourse/app/static/dev-tools/toolbar.gjs",
-      "line": 68,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/static/dev-tools/verbose-localization/button.gjs",
       "line": 20,
       "column": 6,
@@ -2909,13 +2377,6 @@
     },
     {
       "file": "frontend/discourse/app/static/prosemirror/components/image-node-view.gjs",
-      "line": 604,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "frontend/discourse/app/static/prosemirror/components/image-node-view.gjs",
       "line": 605,
       "column": 7,
       "ruleId": "prefer-native-element",
@@ -2927,20 +2388,6 @@
       "column": 14,
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/application.gjs",
-      "line": 92,
-      "column": 48,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <main> element"
-    },
-    {
-      "file": "frontend/discourse/app/templates/discovery/categories.gjs",
-      "line": 41,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
     },
     {
       "file": "frontend/discourse/app/templates/email-login.gjs",
@@ -3181,13 +2628,6 @@
       "message": "Attribute \"autofocus\" should omit value"
     },
     {
-      "file": "frontend/discourse/app/templates/login-preferences.gjs",
-      "line": 9,
-      "column": 8,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/templates/login.gjs",
       "line": 42,
       "column": 14,
@@ -3405,13 +2845,6 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/app/templates/user.gjs",
-      "line": 180,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "frontend/discourse/app/templates/user/summary.gjs",
       "line": 290,
       "column": 16,
@@ -3452,13 +2885,6 @@
       "column": 16,
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/select-kit/components/color-palettes/color-palettes-row.gjs",
-      "line": 41,
-      "column": 29,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "frontend/discourse/select-kit/components/selected-choice.gjs",

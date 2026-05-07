@@ -3,25 +3,11 @@
   "fileCount": 14,
   "findings": [
     {
-      "file": "app/components/map.gjs",
-      "line": 28,
-      "column": 7,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
-    },
-    {
       "file": "app/components/rental/image.gjs",
       "line": 15,
       "column": 8,
       "ruleId": "wcag/h37",
       "message": "<img> is missing required \"alt\" attribute"
-    },
-    {
-      "file": "app/components/rental/image.gjs",
-      "line": 15,
-      "column": 25,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
     },
     {
       "file": "app/components/rentals.gjs",
@@ -36,27 +22,6 @@
       "column": 12,
       "ruleId": "no-implicit-input-type",
       "message": "<input> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "app/components/rentals.gjs",
-      "line": 28,
-      "column": 57,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
-    },
-    {
-      "file": "app/templates/contact.gjs",
-      "line": 8,
-      "column": 62,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
-    },
-    {
-      "file": "app/templates/contact.gjs",
-      "line": 14,
-      "column": 36,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     },
     {
       "file": "app/templates/contact.gjs",
@@ -78,13 +43,6 @@
       "column": 46,
       "ruleId": "tel-non-breaking",
       "message": "\"-\" should be replaced with \"&#8209;\" (non-breaking hyphen) in telephone number"
-    },
-    {
-      "file": "app/templates/contact.gjs",
-      "line": 17,
-      "column": 58,
-      "ruleId": "void-style",
-      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
     }
   ]
 }

@@ -3,48 +3,6 @@
   "fileCount": 58,
   "findings": [
     {
-      "file": "docs-app/app/templates/index.gts",
-      "line": 54,
-      "column": 12,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs-app/app/templates/index.gts",
-      "line": 60,
-      "column": 12,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs-app/app/templates/index.gts",
-      "line": 68,
-      "column": 29,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs-app/app/templates/index.gts",
-      "line": 241,
-      "column": 8,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "ember-primitives/src/components/accordion/content.gts",
-      "line": 18,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <section> element"
-    },
-    {
-      "file": "ember-primitives/src/components/accordion/header.gts",
-      "line": 20,
-      "column": 5,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <hN> element"
-    },
-    {
       "file": "ember-primitives/src/components/one-time-password/input.gts",
       "line": 171,
       "column": 6,
@@ -57,13 +15,6 @@
       "column": 8,
       "ruleId": "element-permitted-content",
       "message": "<style> element is not permitted as content under <fieldset>"
-    },
-    {
-      "file": "ember-primitives/src/components/progress.gts",
-      "line": 134,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <progress> element"
     },
     {
       "file": "ember-primitives/src/components/rating/rating.gts",

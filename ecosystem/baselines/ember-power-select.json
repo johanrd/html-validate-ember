@@ -3,83 +3,6 @@
   "fileCount": 114,
   "findings": [
     {
-      "file": "demo-app/components/custom-multiple-search-placeholder.gts",
-      "line": 14,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "demo-app/components/custom-placeholder.gts",
-      "line": 12,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 53,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 60,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 67,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 74,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 81,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 88,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/code-example.gts",
-      "line": 96,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "docs/app/components/snippets/action-handling-5.gts",
-      "line": 40,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs/app/components/snippets/the-search-2.gts",
-      "line": 16,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "docs/app/templates/public-pages/cookbook/css-animations.gts",
       "line": 48,
       "column": 4,
@@ -92,20 +15,6 @@
       "column": 4,
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "docs/app/templates/public-pages/cookbook/material-theme.gts",
-      "line": 74,
-      "column": 12,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "docs/app/templates/public-pages/cookbook/material-theme.gts",
-      "line": 88,
-      "column": 12,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "docs/app/templates/public-pages/docs/architecture.gts",
@@ -204,41 +113,6 @@
       "column": 12,
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "src/components/power-select/no-matches-message.gts",
-      "line": 26,
-      "column": 46,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "src/components/power-select/search-message.gts",
-      "line": 23,
-      "column": 44,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "src/components/power-select/trigger.gts",
-      "line": 175,
-      "column": 19,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "src/components/power-select/trigger.gts",
-      "line": 300,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "src/components/power-select/trigger.gts",
-      "line": 304,
-      "column": 13,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
     }
   ]
 }

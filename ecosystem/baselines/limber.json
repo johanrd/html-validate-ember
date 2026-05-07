@@ -3,27 +3,6 @@
   "fileCount": 67,
   "findings": [
     {
-      "file": "apps/repl/app/components/menu.gts",
-      "line": 109,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "apps/repl/app/components/verify-danger.gts",
-      "line": 143,
-      "column": 55,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "apps/repl/app/components/verify-danger.gts",
-      "line": 146,
-      "column": 17,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "apps/repl/app/components/verify-danger.gts",
       "line": 155,
       "column": 12,
@@ -36,20 +15,6 @@
       "column": 12,
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "apps/repl/app/languages.gts",
-      "line": 94,
-      "column": 13,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "apps/repl/app/languages.gts",
-      "line": 96,
-      "column": 15,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "apps/repl/app/templates/docs/embedding.gts",
@@ -192,32 +157,11 @@
       "message": "<input> is missing recommended \"type\" attribute"
     },
     {
-      "file": "apps/repl/app/templates/edit.gts",
-      "line": 27,
-      "column": 10,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "apps/repl/app/templates/edit/format-buttons.gts",
       "line": 39,
       "column": 10,
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "apps/repl/app/templates/edit/layout/controls/index.gts",
-      "line": 46,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "apps/repl/app/templates/edit/layout/resize-handle.gts",
-      "line": 189,
-      "column": 7,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "apps/repl/app/templates/edit/layout/status.gts",
@@ -255,25 +199,11 @@
       "message": "Stray end tag '</p>'"
     },
     {
-      "file": "apps/repl/app/templates/output.gts",
-      "line": 20,
-      "column": 10,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "apps/tutorial/app/components/selection.gts",
       "line": 50,
       "column": 8,
       "ruleId": "element-permitted-content",
       "message": "<style> element is not permitted as content under <label>"
-    },
-    {
-      "file": "packages/limber-ui/src/code.gts",
-      "line": 225,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     }
   ]
 }

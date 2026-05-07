@@ -3,20 +3,6 @@
   "fileCount": 859,
   "findings": [
     {
-      "file": "packages/components/src/components/hds/advanced-table/th-reorder-handle.gts",
-      "line": 112,
-      "column": 7,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "packages/components/src/components/hds/advanced-table/th.gts",
-      "line": 498,
-      "column": 20,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
       "file": "packages/components/src/components/hds/app-footer/index.gts",
       "line": 70,
       "column": 40,
@@ -102,13 +88,6 @@
     },
     {
       "file": "packages/components/src/components/hds/breadcrumb/item.gts",
-      "line": 66,
-      "column": 38,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "packages/components/src/components/hds/breadcrumb/item.gts",
       "line": 77,
       "column": 10,
       "ruleId": "no-implicit-button-type",
@@ -127,13 +106,6 @@
       "column": 6,
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/card/container.gts",
-      "line": 185,
-      "column": 11,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <li> element"
     },
     {
       "file": "packages/components/src/components/hds/dropdown/list-item/radio.gts",
@@ -1417,55 +1389,6 @@
       "message": "<option> element is not permitted as content under <div>"
     },
     {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
-      "line": 158,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 80,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 111,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 144,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 176,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 207,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
-      "line": 240,
-      "column": 15,
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
       "line": 33,
       "column": 17,
@@ -1928,34 +1851,6 @@
       "message": "<iframe> is missing required \"title\" attribute"
     },
     {
-      "file": "showcase/app/components/shw/flex/index.gts",
-      "line": 58,
-      "column": 36,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "showcase/app/components/shw/frame/index.gts",
-      "line": 92,
-      "column": 28,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "showcase/app/components/shw/grid/index.gts",
-      "line": 64,
-      "column": 36,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "showcase/app/components/shw/placeholder/index.gts",
-      "line": 83,
-      "column": 34,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "website/app/components/doc/cards/deck.gts",
       "line": 36,
       "column": 55,
@@ -1978,24 +1873,10 @@
     },
     {
       "file": "website/app/components/doc/color-card/index.gts",
-      "line": 45,
-      "column": 33,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
-      "file": "website/app/components/doc/color-card/index.gts",
       "line": 48,
       "column": 52,
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
-    },
-    {
-      "file": "website/app/components/doc/color-swatch/index.gts",
-      "line": 53,
-      "column": 9,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "website/app/components/doc/color-swatch/index.gts",
@@ -2047,13 +1928,6 @@
       "message": "Redundant role \"list\" on <ul>"
     },
     {
-      "file": "website/app/components/doc/layout/index.gts",
-      "line": 85,
-      "column": 36,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
-    },
-    {
       "file": "website/app/components/doc/page/footer.gts",
       "line": 18,
       "column": 45,
@@ -2073,13 +1947,6 @@
       "column": 11,
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "website/app/components/doc/placeholder/index.gts",
-      "line": 59,
-      "column": 34,
-      "ruleId": "no-inline-style",
-      "message": "Inline style is not allowed"
     },
     {
       "file": "website/app/components/doc/table-of-contents/index.gjs",
