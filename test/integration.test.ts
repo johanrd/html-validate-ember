@@ -62,6 +62,31 @@ async function validate(
   return { valid: report.valid, errorCount: report.errorCount, messages };
 }
 
+// Same as `validate` but skips `dedupeMultipassReport` — mirrors what
+// direct html-validate consumers (the VS Code extension, the
+// `html-validate` CLI used standalone) see. Used to assert that fixes
+// pushed into the Source itself work without the report-side dedupe.
+async function validateRaw(
+  filename: string,
+  rulesOverride?: RuleConfig,
+): Promise<ValidationResult> {
+  const v = makeValidator(rulesOverride);
+  const report = await v.validateFile(fx(filename));
+  const messages: ExpectedMessage[] = [];
+  for (const r of report.results) {
+    for (const m of r.messages) {
+      messages.push({
+        rule: m.ruleId,
+        line: m.line,
+        column: m.column,
+        message: m.message,
+        context: (m as { context?: { name?: string } }).context,
+      });
+    }
+  }
+  return { valid: report.valid, errorCount: report.errorCount, messages };
+}
+
 describe('end-to-end fixtures', () => {
   it('dir-bad: catches dir="bogus" at exact position', async () => {
     const r = await validate('dir-bad.gts');
@@ -260,6 +285,33 @@ describe('end-to-end fixtures', () => {
       h32,
       `wcag/h32 should be suppressed by the directive; got: ${JSON.stringify(r.messages)}`,
     ).toHaveLength(0);
+  });
+
+  it('multipass-disable-needed-unique-landmark: catch-22 also fixed in the no-dedupe (VS Code) path', async () => {
+    // Same shape as `multipass-disable-needed-in-some-branch.gts` but
+    // with `unique-landmark` standing in for `wcag/h32`. The fix here
+    // is not in the report-side dedupe — it's an inline directive
+    // prepended to each branched Source by the transformer, so the
+    // catch-22 disappears regardless of whether the caller runs
+    // `dedupeMultipassReport`. Assert it's gone in both the dedupe
+    // path AND the raw path (mirroring the html-validate VS Code
+    // extension, which doesn't run our dedupe).
+    for (const [label, run] of [
+      ['dedupe', validate],
+      ['raw', validateRaw],
+    ] as const) {
+      const r = await run('multipass-disable-needed-unique-landmark.gts');
+      const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+      const landmark = r.messages.filter((m) => m.rule === 'unique-landmark');
+      expect(
+        unused,
+        `[${label}] no-unused-disable must not fire when the directive was load-bearing in another branch; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+      expect(
+        landmark,
+        `[${label}] unique-landmark should be suppressed by the directive; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    }
   });
 
   it('if-else-branch-errors: errors in BOTH branches are reported (multipass default)', async () => {
