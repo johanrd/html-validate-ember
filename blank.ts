@@ -691,6 +691,58 @@ function substituteSelfClosingVoidComponent(
 //
 // No-op when no suitable attr area is found — `no-implicit-input-type`
 // will still fire in that case, but the user can silence per-site.
+
+// Symmetric to tryInjectInputType but for void natives whose required attrs
+// can be supplied by the consumer via `...attributes`. Without injection,
+// `<img ...attributes>` blanks to an attribute-less `<img>` and html-validate
+// FP-fires `element-required-attributes` (src) and `wcag/h37` (alt) even
+// though both come from the splat at runtime.
+//
+// Injects whitespace-valued placeholders (`src='   '` / `alt='   '`) into
+// Glimmer-only blank regions in the open tag; `processAttribute`'s
+// DynamicValue conversion (>=3-char whitespace threshold) then surfaces them
+// as "present, value unknowable". Skipped when the consumer already wrote
+// `src=` / `alt=` explicitly.
+//
+// Currently scoped to <img>; the same shape applies to
+// <source>/<track>/<area>/<iframe> if real-world FPs surface there.
+function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
+  const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
+  if (!hasSplat) return;
+  const present = new Set((node.attributes ?? []).map((a) => a.name));
+  const wanted: string[] = [];
+  if (!present.has('src')) wanted.push("src='   '");
+  if (!present.has('alt')) wanted.push("alt='   '");
+  if (wanted.length === 0) return;
+  const candidates: Range[] = [];
+  for (const attr of node.attributes ?? []) {
+    if (isGlimmerOnlyAttr(attr.name)) {
+      candidates.push([startOffset(attr), endOffset(attr)]);
+    }
+  }
+  for (const m of node.modifiers ?? []) {
+    candidates.push([startOffset(m), endOffset(m)]);
+  }
+  // Sort candidates widest first. Both injected attrs (`src='   '` and
+  // `alt='   '`) are 9 chars, so picking the widest candidate first
+  // doesn't starve a later attr. This is a slot-side ordering only;
+  // tryInjectComponentAttrs additionally sorts the *attrs* by descending
+  // text length to prevent starvation when attrs have varying widths —
+  // not needed here because both wanted attrs are the same length.
+  candidates.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
+  for (const text of wanted) {
+    for (let i = 0; i < candidates.length; i++) {
+      const [s, e] = candidates[i]!;
+      if (e - s < text.length) continue;
+      const slice = ctx.content.slice(s, s + text.length);
+      if (/[\n\r]/.test(slice)) continue;
+      ctx.renames.push([s, s + text.length, text]);
+      candidates.splice(i, 1);
+      break;
+    }
+  }
+}
+
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
   const literalType = lookupComponentAttr(node, ctx, 'type');
   // Build the injected text. Prefer a literal value when known and
@@ -1041,6 +1093,12 @@ function handleElementNode(node: AST.ElementNode, ctx: Context): void {
   // Native element (or block-form Glint-substituted as native).
   if (elementHasDynamicContent(node)) {
     ctx.dynamicContentOffsets.push(start);
+  }
+  // For void natives whose required attrs can come from `...attributes`,
+  // inject placeholders before the splat is blanked. Currently <img>; see
+  // tryInjectImgRequiredAttrs for the rationale and scope.
+  if (effectiveTag === 'img') {
+    tryInjectImgRequiredAttrs(node, ctx);
   }
   for (const attr of node.attributes ?? []) {
     emitAttribute(attr, ctx, effectiveTag);
