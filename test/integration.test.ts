@@ -249,6 +249,42 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form: asymmetric {{#if}}/{{else}} branches — multipass passes get branch-correct suppression', async () => {
+    // Program arm has `{{yield}}`, inverse arm has `<button type='submit'>`.
+    // Without per-branch detection, the program pass's `disableForRules`
+    // would skip wcag/h32 (because the walker saw the inverse arm's
+    // submit too) and the FP would surface. With per-branch detection,
+    // each pass's disable list matches its own blanked content. The
+    // inverse pass must NOT inject the disable (no-unused-disable
+    // cascade prevention).
+    const r = await validate('yield-form-asymmetric-branches.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      h32,
+      `wcag/h32 must not fire on the yield-only program arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    expect(
+      unused,
+      `no-unused-disable must not fire on the inverse arm (submit visible); got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: <SubmitButton /> resolving to <button type="submit"> IS a static submit — no suppression', async () => {
+    // The component's splatted root is `<button type='submit'
+    // ...attributes>`; Glint resolves <SubmitButton /> to native
+    // `<button>` with static `type='submit'`. After substitution the
+    // blanked output has a real submit, so wcag/h32 wouldn't fire.
+    // Suppression must NOT activate or no-unused-disable cascades on
+    // the injected disable directive.
+    const r = await validate('yield-form-with-component-submit.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — static-submit detection must recognize the component as submit; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {
     // The .hbs path normally uses line/column/offset = 1/1/0; with a
     // prefix directive it goes negative. Verify html-validate handles
