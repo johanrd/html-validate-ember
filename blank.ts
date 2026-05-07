@@ -1492,14 +1492,22 @@ function elementYieldsAndLacksSubmit(
   return hasYield && !hasStaticSubmit;
 }
 
-// True when a `<fieldset>` body contains `{{yield}}` (or `{{has-block}}`)
-// somewhere AND has no statically-detectable `<legend>` child. Same
-// rationale as elementYieldsAndLacksSubmit.
+// True when a `<fieldset>` body has opaque legend-source content AND
+// no statically-detectable `<legend>` child. "Opaque legend-source"
+// means either a literal `{{yield}}` / `{{has-block}}` mustache OR a
+// non-native tag (component invocation) — components may render their
+// own `<legend>` at runtime, and we can't see inside them, so we err
+// toward suppression rather than letting wcag/h71 FP-fire.
+//
+// The component-invocation case handles ember-primitives' OTP-input
+// pattern: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}`.
+// In multipass the inverse arm produces `<C />` only — without this
+// rule the walker would see no yield, no legend, and let h71 fire.
 function elementYieldsAndLacksLegend(
   fieldset: AST.ElementNode,
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
 ): boolean {
-  let hasYield = false;
+  let hasOpaqueLegendSource = false;
   let hasStaticLegend = false;
   function walk(stmts: ReadonlyArray<AST.Statement>): void {
     for (const stmt of stmts) {
@@ -1509,7 +1517,7 @@ function elementYieldsAndLacksLegend(
           stmt.path.type === 'PathExpression' &&
           (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
         ) {
-          hasYield = true;
+          hasOpaqueLegendSource = true;
         }
         continue;
       }
@@ -1523,13 +1531,18 @@ function elementYieldsAndLacksLegend(
           hasStaticLegend = true;
           return;
         }
+        // Component invocation (PascalCase / dotted / `:slot`) may
+        // render `<legend>` at runtime — treat as legend-source.
+        if (!isNativeTag(stmt.tag)) {
+          hasOpaqueLegendSource = true;
+        }
         walk(stmt.children);
         continue;
       }
     }
   }
   walk(fieldset.children);
-  return hasYield && !hasStaticLegend;
+  return hasOpaqueLegendSource && !hasStaticLegend;
 }
 
 // `<button>` with no `type` attribute (default = submit inside a form)

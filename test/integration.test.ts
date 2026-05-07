@@ -249,6 +249,21 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('fieldset-with-component-content: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}</fieldset>` does not FP-fire wcag/h71 in either pass', async () => {
+    // Multipass case where the fieldset branches into either yield
+    // (program) or component invocation (inverse). Without the
+    // opaque-content fix, the inverse pass sees `<CurriedFields />`
+    // (no yield, no static legend) and lets wcag/h71 fire, even
+    // though the component may render its own `<legend>` at runtime.
+    // Mirrors ember-primitives' `one-time-password/input.gts:171`.
+    const r = await validate('fieldset-with-component-content.gts');
+    const h71 = r.messages.filter((m) => m.rule === 'wcag/h71');
+    expect(
+      h71,
+      `wcag/h71 must not fire on either arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('input-driven-form: `<form {{on "input" …}}>` does not FP-fire wcag/h32', async () => {
     // Search-as-you-type / live-filter pattern. `{{on "input"}}` updates
     // on every keystroke; a separate submit button is ceremonial. Plugin
