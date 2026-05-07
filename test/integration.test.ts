@@ -270,6 +270,28 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('yield-only-form: branched {{#if}}/{{else}} with yield in BOTH arms — multipass directive must disable BOTH no-unused-disable and wcag/h32', async () => {
+    // `<form>{{yield}}</form>` vs `<div>{{yield}}</div>` toggle —
+    // multipass triggers (different root elements per arm), so the
+    // injected directive must carry BOTH `no-unused-disable` and
+    // `wcag/h32`. html-validate's directive grammar requires
+    // COMMA-separated rule names: a space-separated list silently
+    // disables only the first rule, leaving wcag/h32 to fire on the
+    // blanked program-pass output. This test catches that regression.
+    // (Mirrors HDS `form/index.gts`.)
+    const r = await validate('yield-form-branched-both-yield.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      h32,
+      `wcag/h32 must not fire — directive must comma-separate rules so BOTH get disabled; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    expect(
+      unused,
+      `no-unused-disable must not fire on either arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('yield-only-form: <SubmitButton /> resolving to <button type="submit"> IS a static submit — no suppression', async () => {
     // The component's splatted root is `<button type='submit'
     // ...attributes>`; Glint resolves <SubmitButton /> to native
