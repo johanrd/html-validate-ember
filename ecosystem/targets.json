@@ -88,6 +88,73 @@
         "packages/app-support/shared/src/**/*.{gts,gjs,hbs}"
       ],
       "exclude": []
+    },
+    {
+      "name": "ember-concurrency",
+      "repo": "machty/ember-concurrency",
+      "ref": "fc7e0463313b2336956e7e6e64fa433d714bef1b",
+      "include": ["packages/test-app/app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "warp-drive",
+      "repo": "warp-drive-data/warp-drive",
+      "ref": "e3a30bb1ac790e76fc90c589251cfc775cffb737",
+      "include": [
+        "warp-drive-packages/ember/src/**/*.{gts,gjs,hbs}",
+        "tests/example-app-ember/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "ember-intl",
+      "repo": "ember-intl/ember-intl",
+      "ref": "4e423ec7bdc76003ac2874504336428888649c40",
+      "include": [
+        "docs/ember-intl/src/**/*.{gts,gjs,hbs}",
+        "docs/**/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "vertical-collection",
+      "repo": "html-next/vertical-collection",
+      "ref": "f01c770f1dde915394651eb2a0635df6ae77e9cc",
+      "include": [
+        "vertical-collection/src/**/*.{gts,gjs,hbs}",
+        "test-app/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "ember-resources",
+      "repo": "NullVoxPopuli/ember-resources",
+      "ref": "9d62d6986b80066e567ae63804f815c40bb9b290",
+      "include": ["test-app/app/**/*.{gts,gjs,hbs}"],
+      "exclude": []
+    },
+    {
+      "name": "cardstack-ui-components",
+      "repo": "cardstack/ui-components",
+      "ref": "589ad84bdf3afe4f35628f70497d720b9a89c193",
+      "include": [
+        "app/templates/**/*.{gts,gjs,hbs}",
+        "tests/dummy/app/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "discourse",
+      "repo": "discourse/discourse",
+      "ref": "d8aadf144c22e64d7415144839f60538d54aa440",
+      "$comment": "Discourse is a Rails app embedding Ember in `frontend/discourse/`. Most templates are classic .hbs (no Signatures), so Glint adds little value here — and `pnpm install` on the full repo is heavy. Disable Glint to keep ecosystem CI fast; lint catches plenty of real-world structural issues even without it.",
+      "glint": false,
+      "include": [
+        "frontend/discourse/app/**/*.{gts,gjs,hbs}",
+        "frontend/discourse/admin/**/*.{gts,gjs,hbs}",
+        "frontend/discourse/select-kit/**/*.{gts,gjs,hbs}"
+      ],
+      "exclude": ["**/tests/**"]
     }
   ]
 }
