@@ -591,13 +591,13 @@ function resolveComponentElement(
   // directly. If that yields nothing, fall back to transparent (children
   // float to the actual parent — correct for genuinely yields-only TOCs).
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
-    const fromSatisfies = resolveElementFromSatisfiesTOC(
+    const fromTOC = resolveElementFromTOCDeclaration(
       ts,
       checker,
       emitComponentCall,
       elementTypeToTag,
     );
-    if (fromSatisfies !== null) return fromSatisfies;
+    if (fromTOC !== null) return fromTOC;
     return 'transparent';
   }
   // Pick a single tag for unions: take the first branch's mapping.
@@ -620,24 +620,28 @@ function matchElementTypeToTag(
   return null;
 }
 
-// Recover the rendered tag for a TOC declared as
+// Recover the rendered tag for a TOC declared with a TOC type annotation,
+// in either of the two equivalent forms:
 //   `const X = <template>...</template> satisfies TOC<{ Element: T }>;`
-// or
 //   `const X: TOC<{ Element: T }> = <template>...</template>;`
 //
 // Glint's TOC overload reaches the same `.element` property surface as the
-// class form, but for the `satisfies` and `: TOC<…> =` forms `.element`
+// class form, but for both the `satisfies` and `: TOC<…> =` forms `.element`
 // surfaces as `unknown` (or `any` in cascading-error files) even though
 // `T` is statically known. Walk the component reference back to its
-// declaration, find the TOC<…> annotation (either `satisfies` clause or
-// type annotation), and pull `Element` off the type-arg directly.
+// declaration, find the TOC<…> annotation, and pull `Element` off the
+// type-arg directly.
+//
+// We gate on the type name being literally `TOC` to avoid mis-resolving
+// unrelated generic annotations that happen to have a property called
+// `Element` — a rare shape, but harmless to guard against.
 //
 // Returns:
 //   - tag name      if Element resolves to a known DOM type
 //   - 'transparent' if Element is `unknown` (yields-only TOC)
-//   - null          if no satisfies/annotation found, or it's TOC<…> without
-//                   Element, or some unexpected shape — caller falls through
-function resolveElementFromSatisfiesTOC(
+//   - null          if no TOC annotation found, no `Element` property,
+//                   or some unexpected shape — caller falls through
+function resolveElementFromTOCDeclaration(
   ts: typeof TS,
   checker: TS.TypeChecker,
   emitComponentCall: TS.CallExpression,
@@ -672,6 +676,7 @@ function resolveElementFromSatisfiesTOC(
       tocTypeNode = decl.initializer.type;
     }
     if (!tocTypeNode || !ts.isTypeReferenceNode(tocTypeNode)) continue;
+    if (!isTOCTypeName(ts, tocTypeNode.typeName)) continue;
     const typeArgNode = tocTypeNode.typeArguments?.[0];
     if (!typeArgNode) continue;
     const sigType = checker.getTypeFromTypeNode(typeArgNode);
@@ -683,6 +688,21 @@ function resolveElementFromSatisfiesTOC(
     if (tag !== null) return tag;
   }
   return null;
+}
+
+// Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
+// long-form alias both `@ember/component/template-only` and
+// `@glint/template/-private` re-export). Also handles qualified names like
+// `TOC.SomeMember` defensively (those wouldn't actually carry Element, so
+// we just match the leftmost identifier). Doesn't follow imports — a
+// project that aliases TOC to something else won't be resolved, which is
+// fine: the component falls back to transparent.
+function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
+  let id: TS.Identifier;
+  if (ts.isIdentifier(name)) id = name;
+  else if (ts.isQualifiedName(name)) id = name.right;
+  else return false;
+  return id.text === 'TOC' || id.text === 'TemplateOnlyComponent';
 }
 
 function describeType(checker: TS.TypeChecker, type: TS.Type): AttrTypeInfo {
