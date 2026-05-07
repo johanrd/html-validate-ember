@@ -552,6 +552,38 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain('x-c');
   });
 
+  it('block-form substitution blanks `as |…|` from the open tag', () => {
+    // When Glint resolves a yielding component to a native tag (e.g.
+    // `<MyList as |item|>` → div), the in-place open-tag rename leaves
+    // `as |item|` in the output, and html-validate's parser then sees
+    // `|item|` as an attribute. `attr-case` fires
+    // (`Attribute "|item|" should be lowercase`) and downstream rules
+    // cascade. The actual rendered DOM has no such attribute — block
+    // params are a Glimmer binding for yielded content, not HTML — so
+    // the blanker must erase the `as |…|` clause.
+    const src = '<MyList @items={{this.xs}} as |item|>x</MyList>';
+    const map = new Map([[locKey(src, 'MyList'), 'div']]);
+    const r = blankWithMap(src, map);
+    expect(
+      r.content,
+      `block-param syntax must not leak into the blanked open tag; got: ${JSON.stringify(r.content)}`,
+    ).not.toMatch(/\|item\|/);
+    // Sanity: the substitution itself still happened.
+    expect(r.content).toMatch(/<div\s+/);
+    expect(r.content).toMatch(/<\/div\s*>/);
+  });
+
+  it('block-form substitution blanks multi-param and typed `as |a, b|` clauses', () => {
+    // Multiple block params (`as |a b|` after Glimmer's normalize, or
+    // `as |a, b|` in source) and typed forms (`as |item: T|`) must all
+    // get blanked — regex `\|[^|]*\|` covers any non-pipe contents.
+    const src = '<Each @items={{this.xs}} as |item index|>x</Each>';
+    const map = new Map([[locKey(src, 'Each'), 'ul']]);
+    const r = blankWithMap(src, map);
+    expect(r.content).not.toMatch(/\|item index\|/);
+    expect(r.content).toMatch(/<ul\s+/);
+  });
+
   it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
     // Naive first-fit walking attrs in declaration order would let
     // `a='x'` (5 chars) consume the wide @veryLongFirstAttr slot and
