@@ -264,6 +264,28 @@ templates/admin.gts:18: error [input-attributes] Attribute "readonly" not allowe
 
 ---
 
+## How this fits in the Ember linting stack
+
+Three layers, three different questions:
+
+| Tool | Question it answers |
+| --- | --- |
+| `eslint-plugin-ember` | Is this idiomatic Ember? — JS/TS rules and Glimmer-semantic template rules: invocation conventions, reactivity (`{{this.X}}`), `@arg` / `...attributes`, modifier API, built-in components (`<LinkTo>`, `<Input>`), deprecations. |
+| `html-validate-ember` (this plugin) | Is the rendered HTML spec-correct and accessible? — html-validate's content model, ARIA / WCAG, form correctness, attribute validity, and document-scope checks (duplicate IDs, unique landmarks), applied to Glimmer templates via the transformer. |
+| `prettier-plugin-ember` | Is the source formatted consistently? — indentation, attribute layout, quote style. |
+
+These layers don't overlap by design. `eslint-plugin-ember` knows nothing about content models or whether `<p>` is allowed to contain `<div>`; `html-validate-ember` knows nothing about whether a curly invocation is preferred over an angle-bracket one.
+
+There is some legacy overlap inside `eslint-plugin-ember`'s `template-*` rules — checks that predate Ember template support in html-validate and reproduce things html-validate's HTML5 + WCAG packs cover natively. Projects running both can disable the overlapping template rules if they want a single source of truth for HTML correctness; the Ember-specific template rules stay where they belong.
+
+### What about `html-eslint`?
+
+`@html-eslint/eslint-plugin-{react,svelte,angular-template}` ship a deliberately small set of seven element-local rules (`class-spacing`, `no-duplicate-class[name]`, `no-ineffective-attrs`, `no-invalid-attr-value`, `no-obsolete-attrs`, `no-obsolete-tags`, `use-baseline`) — single-pass checks that don't require ancestor walking, document scope, or content-model knowledge. The structural rules in html-eslint's *core* plugin (`no-duplicate-id`, `require-img-alt`, `no-nested-interactive`, `head-order`, etc.) aren't carried into the framework adapters.
+
+There is no Ember adapter today. Building one would add little over `html-validate-ember`: of those seven rules, html-validate already covers five (`no-duplicate-class` ↔ `no-dup-class`, `no-invalid-attr-value` ↔ `attribute-allowed-values`, `no-obsolete-attrs` ↔ `no-deprecated-attr`, `no-obsolete-tags` ↔ `deprecated` / `element-name`, `no-ineffective-attrs` ↔ `attribute-misuse`). The two genuinely-new ones — `class-spacing` (formatting; prettier covers) and `use-baseline` (Web Platform Baseline) — are smaller in scope than the parser + adapter plumbing an Ember integration would require, and `use-baseline` could ship as a small custom html-validate rule against `web-features` data with no second adapter to maintain.
+
+---
+
 ## Inline errors in VS Code
 
 Install the official extension: [html-validate.vscode-html-validate](https://marketplace.visualstudio.com/items?itemName=html-validate.vscode-html-validate).
