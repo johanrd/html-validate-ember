@@ -1,0 +1,153 @@
+{
+  "ref": "589ad84bdf3afe4f35628f70497d720b9a89c193",
+  "fileCount": 31,
+  "findings": [
+    {
+      "file": "app/templates/components/choose-contact-type.hbs",
+      "line": 10,
+      "column": 8,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <hr/> instead of omitted end-tag <hr>"
+    },
+    {
+      "file": "app/templates/components/cta.hbs",
+      "line": 1,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/emails.hbs",
+      "line": 5,
+      "column": 8,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/file-upload-dialog.hbs",
+      "line": 20,
+      "column": 71,
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "app/templates/components/file-upload-dialog.hbs",
+      "line": 21,
+      "column": 101,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "app/templates/components/password-field/visibility-toggle.hbs",
+      "line": 1,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/phone-number-fields.hbs",
+      "line": 10,
+      "column": 8,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/street-addresses.hbs",
+      "line": 9,
+      "column": 8,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "tests/dummy/app/templates/components/custom-option.hbs",
+      "line": 1,
+      "column": 47,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 6,
+      "column": 75,
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 6,
+      "column": 194,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 7,
+      "column": 75,
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 7,
+      "column": 194,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 8,
+      "column": 229,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 12,
+      "column": 148,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 12,
+      "column": 194,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 13,
+      "column": 140,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 13,
+      "column": 186,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <br/> instead of omitted end-tag <br>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 14,
+      "column": 144,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <input/> instead of omitted end-tag <input>"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/contact-info.hbs",
+      "line": 12,
+      "column": 4,
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "tests/dummy/app/templates/freestyle.hbs",
+      "line": 211,
+      "column": 57,
+      "ruleId": "void-style",
+      "message": "Expected self-closing element <img/> instead of omitted end-tag <img>"
+    }
+  ]
+}

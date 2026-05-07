@@ -10,6 +10,13 @@
       "message": "Prefer to use the native <button> element"
     },
     {
+      "file": "packages/components/src/components/hds/advanced-table/th.gts",
+      "line": 498,
+      "column": 20,
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
       "file": "packages/components/src/components/hds/app-footer/index.gts",
       "line": 70,
       "column": 40,
@@ -290,25 +297,11 @@
       "message": "<a> element is not permitted as a descendant of <a>"
     },
     {
-      "file": "packages/components/src/components/hds/form/fieldset/index.gts",
-      "line": 99,
-      "column": 6,
-      "ruleId": "wcag/h71",
-      "message": "<fieldset> must have a <legend> as the first child"
-    },
-    {
       "file": "packages/components/src/components/hds/form/index.gts",
       "line": 81,
       "column": 8,
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "packages/components/src/components/hds/form/key-value-inputs/index.gts",
-      "line": 201,
-      "column": 6,
-      "ruleId": "wcag/h71",
-      "message": "<fieldset> must have a <legend> as the first child"
     },
     {
       "file": "packages/components/src/components/hds/form/label/index.gts",

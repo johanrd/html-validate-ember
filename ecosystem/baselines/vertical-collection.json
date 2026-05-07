@@ -1,0 +1,76 @@
+{
+  "ref": "f01c770f1dde915394651eb2a0635df6ae77e9cc",
+  "fileCount": 14,
+  "findings": [
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 22,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 23,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 24,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 26,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 27,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 28,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/acceptance-tests/record-array/template.hbs",
+      "line": 29,
+      "column": 2,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "test-app/app/routes/application/template.hbs",
+      "line": 4,
+      "column": 30,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "test-app/app/routes/application/template.hbs",
+      "line": 5,
+      "column": 56,
+      "ruleId": "no-inline-style",
+      "message": "Inline style is not allowed"
+    },
+    {
+      "file": "test-app/app/routes/examples/reduce-debug/template.hbs",
+      "line": 24,
+      "column": 10,
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    }
+  ]
+}

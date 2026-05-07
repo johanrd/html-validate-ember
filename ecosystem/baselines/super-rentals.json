@@ -13,13 +13,6 @@
       "file": "app/components/rental/image.gjs",
       "line": 15,
       "column": 8,
-      "ruleId": "element-required-attributes",
-      "message": "<img> is missing required \"src\" attribute"
-    },
-    {
-      "file": "app/components/rental/image.gjs",
-      "line": 15,
-      "column": 8,
       "ruleId": "wcag/h37",
       "message": "<img> is missing required \"alt\" attribute"
     },
