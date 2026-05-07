@@ -573,10 +573,14 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toMatch(/<\/div\s*>/);
   });
 
-  it('block-form substitution blanks multi-param and typed `as |a, b|` clauses', () => {
-    // Multiple block params (`as |a b|` after Glimmer's normalize, or
-    // `as |a, b|` in source) and typed forms (`as |item: T|`) must all
-    // get blanked — regex `\|[^|]*\|` covers any non-pipe contents.
+  it('block-form substitution blanks multi-param `as |a b|` clauses', () => {
+    // After Glimmer normalization block params look like `as |item index|`
+    // (space-separated). The blanker's regex `\|[^|]*\|` covers any
+    // non-pipe contents, so multi-param forms get blanked uniformly.
+    // Typed forms (`as |item: T|`) are stripped earlier by
+    // `stripBlockParamTypeAnnotations` before Glimmer's parser sees them,
+    // so by the time the AST reaches the blanker the type annotations are
+    // gone — no extra coverage needed at this layer.
     const src = '<Each @items={{this.xs}} as |item index|>x</Each>';
     const map = new Map([[locKey(src, 'Each'), 'ul']]);
     const r = blankWithMap(src, map);
