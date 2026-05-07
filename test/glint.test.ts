@@ -137,6 +137,27 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves a yielded curried sub-component to its declared Element', () => {
+    // `<SelectBase as |C|><C.Options><option/></C.Options></SelectBase>`:
+    // the parent yields a curried sub-component as a block-param. Glint's
+    // `emitComponent(...).element` surfaces as `any` for the curried ref,
+    // but the componentRef expression's *type* is `TOC<OptionsSig>`, so
+    // `resolveElementFromComponentRefType` reads `Element` off
+    // `aliasTypeArguments[0]` directly.
+    //
+    // Without resolution, `<C.Options>` transparent-blanks and the
+    // `<option>` children float to `<SelectBase>`'s `<div>` —
+    // `element-permitted-content` then FP-fires.
+    const { filename, contents } = readFixture('yielded-curried-component.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const selectEntry = entries.find(([, tag]) => tag === 'select');
+    expect(
+      selectEntry,
+      `expected componentTagMap to resolve <C.Options> to 'select'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'
