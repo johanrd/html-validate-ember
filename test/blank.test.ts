@@ -92,53 +92,59 @@ describe('mustache blanking', () => {
     expect(out.content).not.toContain('...attributes');
   });
 
-  it('injects placeholder src on minimal `<img ...attributes>` (single slot fits one attr)', () => {
+  it('records `<img ...attributes>` start offset for hook-time src/alt injection', () => {
     // `<img ...attributes>` in a thin wrapper component (parent supplies
-    // src via splat) was FP-firing `element-required-attributes` (src).
-    // The blanker erases `...attributes`, leaving an attr-less `<img>`.
-    // Inject a whitespace-valued `src='   '` placeholder (≥3 chars
-    // triggers `processAttribute`'s DynamicValue conversion) so
-    // html-validate sees src as "present, value unknowable".
+    // src AND alt via splat). The blanker erases `...attributes` to
+    // whitespace; the transformer's `processElement` hook is responsible
+    // for synthesizing src and alt as DynamicValue at parse time. Here
+    // we just assert that the offset is recorded so the hook knows
+    // which `<img>` to augment.
     //
-    // The minimal `...attributes` slot is 13 chars; a placeholder attr
-    // (`src='   '`) is 9 chars. Only one attr fits per slot — alt
-    // gets injected when a second Glimmer-only slot exists (test below).
+    // Why hook-time (not source-rewrite): the minimal `...attributes`
+    // slot is 13 chars, but no two-attr form html-validate accepts fits
+    // (bare `src alt` triggers attribute-allowed-values-missing-value;
+    // empty quoted `src=''` triggers attribute-allowed-values-invalid;
+    // wide `src='   ' alt='   '` is 19+ chars). Hook-time setAttribute
+    // bypasses the slot-width problem.
     const src = '<img ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('...attributes');
     expect(
-      out.content,
-      `expected blanked output to contain a placeholder src= attribute; got: ${JSON.stringify(out.content)}`,
-    ).toMatch(/src='\s{3,}'/);
+      out.imgSplatOffsets,
+      `expected the <img ...attributes> offset to be recorded for hook-time injection`,
+    ).toEqual([0]);
   });
 
-  it('injects both src and alt on `<img>` when there are multiple Glimmer-only slots', () => {
-    // Real-world `<img>` invocations usually have multiple Glimmer-only
-    // attrs/modifiers alongside `...attributes` (an `@arg` for typing,
-    // a `{{on "load" …}}` for lazy-loaded images, etc.) — enough total
-    // space for both `src='   '` and `alt='   '` placeholders.
+  it('records the offset even when there are multiple Glimmer-only slots', () => {
+    // Real-world `<img>` invocations often have @args / {{on …}} alongside
+    // `...attributes`. The hook still needs to know about this img so it
+    // can synthesize src/alt — same mechanism regardless of slot count.
     const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    expect(out.content).toMatch(/src='\s{3,}'/);
-    expect(out.content).toMatch(/alt='\s{3,}'/);
+    expect(out.imgSplatOffsets).toEqual([0]);
   });
 
-  it('does not inject placeholder src/alt when the consumer wrote them explicitly', () => {
-    // When the consumer's invocation already specifies src/alt (statically
-    // or via a bare-mustache value), the injection must skip — duplicate
-    // attributes are an error, and the consumer's value is what we want
-    // html-validate to see.
+  it('does not record offset when the consumer wrote both src and alt explicitly', () => {
+    // When src AND alt are both already on the element, no injection is
+    // needed — leave the offset out of the set so the hook skips it.
     const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     // Original literal values survive.
     expect(out.content).toContain('src="/foo.png"');
     expect(out.content).toContain('alt="bar"');
-    // No injected `src='   '` / `alt='   '` placeholder anywhere — the
-    // splat slot stays blanked instead.
-    expect(out.content).not.toMatch(/src='\s{3,}'/);
-    expect(out.content).not.toMatch(/alt='\s{3,}'/);
+    expect(out.imgSplatOffsets).toEqual([]);
+  });
+
+  it('records offset when only ONE of src/alt is consumer-written (other still synthesized)', () => {
+    // When the consumer wrote only `src=` but not `alt=`, alt still needs
+    // synthesis — record the offset; the hook checks per-attr presence
+    // and synthesizes only the missing one.
+    const src = '<img src="/foo.png" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.imgSplatOffsets).toEqual([0]);
   });
 });
 

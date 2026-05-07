@@ -477,6 +477,7 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
+  imgSplatOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -674,11 +675,17 @@ function substituteSelfClosingVoidComponent(
 // FP-fires `element-required-attributes` (src) and `wcag/h37` (alt) even
 // though both come from the splat at runtime.
 //
-// Injects whitespace-valued placeholders (`src='   '` / `alt='   '`) into
-// Glimmer-only blank regions in the open tag; `processAttribute`'s
-// DynamicValue conversion (>=3-char whitespace threshold) then surfaces them
-// as "present, value unknowable". Skipped when the consumer already wrote
-// `src=` / `alt=` explicitly.
+// We don't rewrite the source — the minimal `...attributes` slot is 13
+// chars and html-validate accepts no two-attr form that fits (bare
+// `src alt` triggers `attribute-allowed-values`-missing-value, empty
+// quoted `src=''` triggers `attribute-allowed-values`-invalid-value,
+// and the wide whitespace form `src='   ' alt='   '` is 19+ chars).
+//
+// Instead, record the element's start offset; the transformer's
+// `processElement` hook reads this list and calls `setAttribute` with
+// a DynamicValue at parse time, sidestepping source-side slot width
+// entirely. Skipped when the consumer already wrote `src=` / `alt=`
+// explicitly (no FP to suppress).
 //
 // Currently scoped to <img>; the same shape applies to
 // <source>/<track>/<area>/<iframe> if real-world FPs surface there.
@@ -686,37 +693,8 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
   if (!hasSplat) return;
   const present = new Set((node.attributes ?? []).map((a) => a.name));
-  const wanted: string[] = [];
-  if (!present.has('src')) wanted.push("src='   '");
-  if (!present.has('alt')) wanted.push("alt='   '");
-  if (wanted.length === 0) return;
-  const candidates: Range[] = [];
-  for (const attr of node.attributes ?? []) {
-    if (isGlimmerOnlyAttr(attr.name)) {
-      candidates.push([startOffset(attr), endOffset(attr)]);
-    }
-  }
-  for (const m of node.modifiers ?? []) {
-    candidates.push([startOffset(m), endOffset(m)]);
-  }
-  // Sort candidates widest first. Both injected attrs (`src='   '` and
-  // `alt='   '`) are 9 chars, so picking the widest candidate first
-  // doesn't starve a later attr. This is a slot-side ordering only;
-  // tryInjectComponentAttrs additionally sorts the *attrs* by descending
-  // text length to prevent starvation when attrs have varying widths —
-  // not needed here because both wanted attrs are the same length.
-  candidates.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
-  for (const text of wanted) {
-    for (let i = 0; i < candidates.length; i++) {
-      const [s, e] = candidates[i]!;
-      if (e - s < text.length) continue;
-      const slice = ctx.content.slice(s, s + text.length);
-      if (/[\n\r]/.test(slice)) continue;
-      ctx.renames.push([s, s + text.length, text]);
-      candidates.splice(i, 1);
-      break;
-    }
-  }
+  if (present.has('src') && present.has('alt')) return;
+  ctx.imgSplatOffsets.push(startOffset(node));
 }
 
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
@@ -1228,12 +1206,21 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Offsets of `<img ...attributes>` elements (start of `<` byte) where
+  // the consumer-side `...attributes` is expected to provide required
+  // attrs (src/alt) at runtime. The transformer's processElement hook
+  // synthesizes these attrs as DynamicValue at parse-time so html-
+  // validate sees them as "present, value unknowable" — sidesteps the
+  // narrow-slot problem where source-side rewrite can't fit two 9-char
+  // `attr='   '` placeholders into a 13-char `...attributes` slot.
+  imgSplatOffsets: number[];
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  imgSplatOffsets?: undefined;
 }
 
 function blankTemplateContent(
@@ -1271,6 +1258,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
+    imgSplatOffsets: [],
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1333,6 +1321,7 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    imgSplatOffsets: ctx.imgSplatOffsets,
   };
 }
 
