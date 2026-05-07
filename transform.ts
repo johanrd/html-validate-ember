@@ -121,11 +121,13 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
-    // Bare-mustache attribute values (`id={{x}}`) are emitted as
-    // `id="<spaces>"` (see blank.ts). Detect that placeholder via the
-    // shared `isDynamicValuePlaceholder` predicate (3-char whitespace,
-    // matching what blank.ts and component-attrs.ts inject) and convert
-    // to DynamicValue so rules see "attribute present, value unknowable".
+    // Bare-mustache attribute values (`id={{x}}`) are emitted as a
+    // whitespace-only placeholder (see blank.ts). The exact sentinel
+    // is owned by `lib/dynamic-value.ts` (`DYNAMIC_VALUE_PLACEHOLDER` /
+    // `isDynamicValuePlaceholder`); both blank.ts and
+    // component-attrs.ts inject through that constant so this stays in
+    // sync if the sentinel ever changes. Convert to DynamicValue so
+    // rules see "attribute present, value unknowable".
     if (isDynamicValuePlaceholder(attr.value)) {
       return [{ ...attr, value: new DynamicValue('') as unknown as DynamicValueESM }];
     }

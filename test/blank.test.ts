@@ -5,6 +5,7 @@ import type { AST } from '@glimmer/syntax';
 import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from '../blank.js';
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);
@@ -535,7 +536,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const src = '<MyButton @label={{a}} @click={{b}} />';
     const map = new Map([[locKey(src, 'MyButton'), 'button']]);
     const r = blankWithMap(src, map);
-    expect(r.content).toContain("<button type='   '>");
+    expect(r.content).toContain(`<button type='${DYNAMIC_VALUE_PLACEHOLDER}'>`);
     expect(r.content).toContain('</button>');
     expect(r.dynamicContentOffsets).toContain(0);
   });
@@ -591,7 +592,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
     expect(r.content).toMatch(/<button\s+disabled\s/);
-    expect(r.content).not.toContain("disabled='   '");
+    expect(r.content).not.toContain(`disabled='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     expect(r.content).not.toContain("disabled=");
   });
 
@@ -606,14 +607,14 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const attrMap = new Map<string, ComponentAttrs>([
       [
         locKey(src, 'MyButton'),
-        { tag: 'button', attrs: { disabled: '   ' }, hasSplat: true },
+        { tag: 'button', attrs: { disabled: DYNAMIC_VALUE_PLACEHOLDER }, hasSplat: true },
       ],
     ]);
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
     expect(r.content).toMatch(/<button\s+disabled\s/);
-    expect(r.content).not.toContain("disabled='   '");
+    expect(r.content).not.toContain(`disabled='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     expect(r.content).not.toContain("disabled=");
   });
 
@@ -635,7 +636,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
-    expect(r.content).toContain("aria-label='   '");
+    expect(r.content).toContain(`aria-label='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
   it('block-form: builtin attrs apply when Glint resolves the tag without an attrCtx entry', () => {
@@ -711,7 +712,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     // @value blanked.
     expect(r.content).not.toContain("@value");
     // type='   ' injected (3 spaces — converted to DynamicValue by hook).
-    expect(r.content).toContain("type='   '");
+    expect(r.content).toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // No open+close pair (void).
     expect(r.content).not.toContain('</input>');
   });
@@ -724,7 +725,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toContain('alt="logo"');
     expect(r.content).not.toContain('@src');
     // Only input gets type injection — not other voids.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     expect(r.content).not.toContain('</img>');
   });
 
@@ -743,7 +744,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toHaveLength(src.length);
     // Real literal value, not the placeholder.
     expect(r.content).toContain("type='range'");
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // Parent attrs still preserved.
     expect(r.content).toContain("id='s'");
     expect(r.content).toContain("class='w-full'");
@@ -759,7 +760,7 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toMatch(/<input\s/);
     expect(r.content).toContain("id='s'");
     // No type injection since there was no Glimmer-attr area to use.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 });
 
@@ -783,7 +784,7 @@ describe('Built-in Ember components (Input / Textarea / LinkTo)', () => {
     expect(r.content).toMatch(/<input\s/);
     // type='   ' (3 spaces) injected via tryInjectInputType — converted
     // to DynamicValue by the processAttribute hook.
-    expect(r.content).toContain("type='   '");
+    expect(r.content).toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
     // Parent attrs preserved.
     expect(r.content).toContain("id='name'");
     expect(r.content).toContain("name='name'");
@@ -798,7 +799,7 @@ describe('Built-in Ember components (Input / Textarea / LinkTo)', () => {
     expect(r.content).toContain('<textarea');
     expect(r.content).toContain('</textarea>');
     // No type injection for textarea.
-    expect(r.content).not.toContain("type='   '");
+    expect(r.content).not.toContain(`type='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
   it('<LinkTo>label</LinkTo> block-form substitutes to <a>label</a> in place', () => {

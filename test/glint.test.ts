@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
 import { getSplattedRootsForFile, _clearCache as clearComponentAttrsCache } from '../lib/component-attrs.js';
+import { isDynamicValuePlaceholder } from '../lib/dynamic-value.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -83,10 +84,10 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
     // them, html-validate's `element-required-attributes` FP-fires on
     // consumers like <TypedFrame @label='...' @src='...' />.
     //
-    // literalAttrs records bare-mustache / concat-mustache attrs with a
-    // 3-space placeholder so the blanker injects `name='   '` and
-    // processAttribute converts to DynamicValue. html-validate then sees
-    // the attribute as present.
+    // literalAttrs records bare-mustache / concat-mustache attrs with
+    // the DynamicValue whitespace placeholder so the blanker injects
+    // `name='<placeholder>'` and processAttribute converts to
+    // DynamicValue. html-validate then sees the attribute as present.
     const filename = path.join(fixturesDir, 'typed-iframe.gts');
     // Use the lower-level extraction directly — we don't need the consumer
     // here, just the splatted-root attrs from the component file itself.
@@ -94,12 +95,17 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
     const roots = getSplattedRootsForFile(filename);
     expect(roots).toHaveLength(1);
     expect(roots[0]!.tag).toBe('iframe');
-    // Placeholder must be ≥3 whitespace chars — that's the threshold
-    // `processAttribute` (transform.ts) uses to convert a value to
-    // DynamicValue. A 1- or 2-space placeholder would silently regress
-    // to a literal value and stop satisfying required-attribute rules.
-    expect(roots[0]!.attrs.title, `title should be ≥3-char whitespace placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`).toMatch(/^\s{3,}$/);
-    expect(roots[0]!.attrs.src).toMatch(/^\s{3,}$/);
+    // Assert via the shared `isDynamicValuePlaceholder` predicate so
+    // the test follows any future change to the sentinel
+    // (DYNAMIC_VALUE_PLACEHOLDER in lib/dynamic-value.ts) — a 1- or
+    // 2-char regression would silently break required-attribute rules,
+    // and the predicate is the single source of truth used by
+    // `processAttribute`.
+    expect(
+      isDynamicValuePlaceholder(roots[0]!.attrs.title),
+      `title should be a DynamicValue placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`,
+    ).toBe(true);
+    expect(isDynamicValuePlaceholder(roots[0]!.attrs.src)).toBe(true);
   });
 
   it('falls back to first element when no element has ...attributes', () => {
