@@ -13,7 +13,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
-import { getSplattedRootsForFile } from './component-attrs.js';
+import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -813,6 +813,19 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             }
           }
         }
+        // Classic Ember addon fallback: when the JS-driven resolution
+        // didn't yield a concrete tag (null, or 'transparent' meaning
+        // unknown/any element type), try the component's `.hbs` template
+        // via the addon's import path. Modern shapes (class form, TOC
+        // forms, curried block-params) already resolved above take
+        // priority — this only runs as a last resort.
+        if (tag === null || tag === 'transparent') {
+          const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
+          if (addonRoot) {
+            componentTagMap.set(key, addonRoot.tag);
+            componentAttrMap.set(key, addonRoot);
+          }
+        }
       }
     }
 
@@ -858,6 +871,80 @@ function findComponentDeclSourceFile(
   const decl = symbol.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
+}
+
+// Resolve the rendered tag (and splatted-root attrs) for a classic Ember
+// addon component imported as `import X from '<addon>/components/<name>'`
+// — addons whose template lives at `addon/templates/components/<name>.hbs`
+// (legacy v1 addon) or `app/components/<name>.hbs` (Module Unification /
+// authored-as-app shim). These have no JS-side `Signature['Element']`, no
+// `satisfies TOC<…>`, so the JS-driven resolution paths return null.
+//
+// We extract the import's `moduleSpecifier` from the AST, match the
+// addon-component shape, walk up from the consumer file to find
+// `node_modules/<addon>`, and probe the canonical template paths. The
+// `.hbs` file is parsed with the same `extractSplattedRootFromTemplate`
+// helper used for `.gts` splatted-root extraction.
+//
+// Returns null when the import doesn't match an addon-component shape,
+// when the addon isn't found in node_modules, when no template file
+// exists at the expected paths, or when the template parses to no
+// element root (e.g. `{{outlet}}`-only).
+function resolveAddonHbsTemplate(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  consumerFile: string,
+): ComponentAttrs | null {
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const symbol = checker.getSymbolAtLocation(componentRef);
+  if (!symbol) return null;
+  let importDecl: TS.Node | undefined;
+  for (const decl of symbol.declarations ?? []) {
+    let n: TS.Node | undefined = decl;
+    while (n && !ts.isImportDeclaration(n)) n = n.parent;
+    if (n && ts.isImportDeclaration(n)) {
+      importDecl = n;
+      break;
+    }
+  }
+  if (!importDecl || !ts.isImportDeclaration(importDecl)) return null;
+  const moduleSpecifier = importDecl.moduleSpecifier;
+  if (!ts.isStringLiteral(moduleSpecifier)) return null;
+  const importPath = moduleSpecifier.text;
+  // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
+  // Addon name may be scoped (`@org/pkg`); component name is kebab-case
+  // (allowing nested-by-slash like `forms/text-input`).
+  const m = /^(@[\w-]+\/[\w-]+|[\w-]+)\/(?:templates\/)?components\/([\w/-]+)$/.exec(importPath);
+  if (!m) return null;
+  const addonName = m[1]!;
+  const componentName = m[2]!;
+  let dir = path.dirname(consumerFile);
+  // Walk up looking for node_modules/<addon>.
+  while (dir !== path.dirname(dir)) {
+    const addonRoot = path.join(dir, 'node_modules', addonName);
+    if (fs.existsSync(addonRoot)) {
+      for (const subPath of [
+        `addon/templates/components/${componentName}.hbs`,
+        `app/components/${componentName}.hbs`,
+        `addon/components/${componentName}.hbs`,
+      ]) {
+        const hbsPath = path.join(addonRoot, subPath);
+        if (fs.existsSync(hbsPath)) {
+          const contents = fs.readFileSync(hbsPath, 'utf8');
+          return extractSplattedRootFromTemplate(contents);
+        }
+      }
+      return null;
+    }
+    dir = path.dirname(dir);
+  }
+  return null;
 }
 
 // Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.

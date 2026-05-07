@@ -108,6 +108,25 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves classic Ember addon `.hbs` component root tag (no JS-side Signature)', () => {
+    // `fake-card-addon` is a fixture `node_modules` entry whose
+    // component template is `addon/templates/components/fake-card.hbs`
+    // containing `<li class="fake-card" ...attributes>{{yield}}</li>`.
+    // Classic Ember addon shape: no JS-side type info, no Signature,
+    // no satisfies-TOC. `resolveAddonHbsTemplate` matches the import
+    // path `<addon>/components/<name>` and parses the addon's `.hbs`
+    // root element to extract the rendered tag (`li`) plus splatted-
+    // root attrs for `componentAttrMap`.
+    const { filename, contents } = readFixture('fake-card-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected componentTagMap to resolve <FakeCard> to 'li' from its .hbs template; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'
