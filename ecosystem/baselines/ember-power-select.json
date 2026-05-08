@@ -179,14 +179,6 @@
       "message": "<br> element is not permitted as content under <ol>"
     },
     {
-      "file": "src/components/power-select.gts",
-      "line": 1443,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
       "file": "src/components/power-select/no-matches-message.gts",
       "line": 26,
       "column": 46,
@@ -206,14 +198,6 @@
       "file": "src/components/power-select/trigger.gts",
       "line": 175,
       "column": 19,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "src/components/power-select/trigger.gts",
-      "line": 300,
-      "column": 13,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"

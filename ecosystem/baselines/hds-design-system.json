@@ -35,6 +35,86 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 71,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 71,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 77,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 77,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 80,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 80,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 86,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 86,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 92,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 92,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
       "file": "packages/components/src/components/hds/app-footer/link.gts",
       "line": 32,
       "column": 8,
@@ -49,6 +129,14 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/status-link.gts",
+      "line": 111,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
       "file": "packages/components/src/components/hds/app-header/home-link.gts",
@@ -107,14 +195,6 @@
       "message": "<div> element is not permitted as content under <button>"
     },
     {
-      "file": "packages/components/src/components/hds/app-side-nav/portal/index.gts",
-      "line": 28,
-      "column": 28,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
       "file": "packages/components/src/components/hds/breadcrumb/item.gts",
       "line": 77,
       "column": 10,
@@ -145,6 +225,14 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <li> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/copy/button/index.gts",
+      "line": 130,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/dropdown/list-item/radio.gts",
@@ -195,20 +283,12 @@
       "message": "<div> element is not permitted as content under <button>"
     },
     {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
-      "line": 295,
-      "column": 14,
+      "file": "packages/components/src/components/hds/filter-bar/filter-group/clear-button.gts",
+      "line": 24,
+      "column": 20,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <fieldset>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
-      "line": 300,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <fieldset>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/filter-bar/filter-group/date.gts",
@@ -227,70 +307,6 @@
       "message": "<input> element is not permitted as a descendant of <a>"
     },
     {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 201,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 230,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 237,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 245,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 253,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/index.gts",
-      "line": 277,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
-      "line": 287,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <fieldset>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
-      "line": 292,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <fieldset>"
-    },
-    {
       "file": "packages/components/src/components/hds/filter-bar/filter-group/numerical.gts",
       "line": 301,
       "column": 14,
@@ -307,12 +323,36 @@
       "message": "<input> element is not permitted as a descendant of <a>"
     },
     {
+      "file": "packages/components/src/components/hds/filter-bar/filters-dropdown.gts",
+      "line": 169,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/filter-bar/filters-dropdown.gts",
+      "line": 171,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
       "file": "packages/components/src/components/hds/filter-bar/index.gts",
       "line": 352,
       "column": 10,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<a> element is not permitted as a descendant of <a>"
+    },
+    {
+      "file": "packages/components/src/components/hds/filter-bar/index.gts",
+      "line": 352,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/filter-bar/index.gts",
@@ -331,6 +371,30 @@
       "message": "<a> element is not permitted as a descendant of <a>"
     },
     {
+      "file": "packages/components/src/components/hds/filter-bar/index.gts",
+      "line": 395,
+      "column": 30,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/form/key-value-inputs/add-row-button.gts",
+      "line": 59,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/form/key-value-inputs/delete-row-button.gts",
+      "line": 76,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
       "file": "packages/components/src/components/hds/form/label/index.gts",
       "line": 61,
       "column": 8,
@@ -347,20 +411,44 @@
       "message": "<div> element is not permitted as content under <legend>"
     },
     {
-      "file": "packages/components/src/components/hds/form/super-select/single/base.gts",
-      "line": 213,
-      "column": 10,
+      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
+      "line": 49,
+      "column": 28,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
     },
     {
-      "file": "packages/components/src/components/hds/form/text-input/field.gts",
-      "line": 102,
-      "column": 10,
+      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
+      "line": 59,
+      "column": 28,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <abbr>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
+      "line": 62,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/pagination/compact/index.gts",
+      "line": 247,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/pagination/compact/index.gts",
+      "line": 248,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/pagination/nav/arrow.gts",
@@ -379,20 +467,44 @@
       "message": "\"aria-label\" cannot be used on this element"
     },
     {
+      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
+      "line": 469,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
+      "line": 483,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
+      "line": 492,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/reveal/toggle/button.gts",
+      "line": 33,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
       "file": "packages/components/src/components/hds/stepper/list/index.gts",
       "line": 57,
       "column": 34,
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/stepper/nav/index.gts",
-      "line": 271,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<abbr> element is not permitted as content under <ol>"
     },
     {
       "file": "packages/components/src/components/hds/stepper/nav/step.gts",
@@ -412,8 +524,24 @@
     },
     {
       "file": "packages/components/src/components/hds/table/index.gts",
-      "line": 399,
+      "line": 401,
       "column": 19,
+      "severity": "error",
+      "ruleId": "no-deprecated-attr",
+      "message": "Attribute \"scope\" is deprecated on <td> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/table/index.gts",
+      "line": 410,
+      "column": 19,
+      "severity": "error",
+      "ruleId": "no-deprecated-attr",
+      "message": "Attribute \"scope\" is deprecated on <td> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/table/th-selectable.gts",
+      "line": 124,
+      "column": 7,
       "severity": "error",
       "ruleId": "no-deprecated-attr",
       "message": "Attribute \"scope\" is deprecated on <td> element"
@@ -507,20 +635,12 @@
       "message": "Class \"hds-advanced-table__thead\" duplicated"
     },
     {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/demos.gts",
-      "line": 14,
-      "column": 4,
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/basic.gts",
+      "line": 51,
+      "column": 5,
       "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/demos.gts",
-      "line": 16,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
+      "ruleId": "attribute-misuse",
+      "message": "\"target\" attribute cannot be used on <a> in this context: requires \"href\" attribute to be present"
     },
     {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/functional-examples.gts",
@@ -547,38 +667,6 @@
       "message": "<option> element is not permitted as content under <div>"
     },
     {
-      "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
-      "line": 14,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
-      "line": 16,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
-      "line": 22,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-header/sub-sections/frames.gts",
-      "line": 26,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 59,
       "column": 12,
@@ -598,14 +686,6 @@
       "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
       "line": 76,
       "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 88,
-      "column": 8,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
@@ -649,46 +729,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<span> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
-      "line": 15,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
-      "line": 17,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
-      "line": 23,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
-      "line": 27,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/frames.gts",
-      "line": 31,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
     },
     {
       "file": "showcase/app/components/page-components/card/sub-sections/tag.gts",
@@ -955,20 +995,140 @@
       "message": "<div> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/filter-bar/sub-sections/demos.gts",
-      "line": 44,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/flyout/sub-sections/demo.gts",
       "line": 291,
       "column": 12,
       "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 25,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 28,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 36,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 39,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 42,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 45,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 53,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 56,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 59,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 68,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 71,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 74,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 77,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "line": 87,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-demo-instructions.gts",
+      "line": 22,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-demo-instructions.gts",
+      "line": 76,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-dynamic-inputs.gts",
@@ -1011,22 +1171,6 @@
       "message": "<option> element is not permitted as content under <div>"
     },
     {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/demos.gts",
-      "line": 38,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/demos.gts",
-      "line": 42,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/field.gts",
       "line": 106,
       "column": 24,
@@ -1049,54 +1193,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 14,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 16,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 20,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 22,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 26,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/responsiveness.gts",
-      "line": 28,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
     },
     {
       "file": "showcase/app/components/page-components/form/layout/sub-sections/components.gts",
@@ -1233,38 +1329,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
-      "line": 16,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
-      "line": 18,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
-      "line": 22,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/responsiveness.gts",
-      "line": 24,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
     },
     {
       "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
@@ -1723,22 +1787,6 @@
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "showcase/app/components/page-components/pagination/sub-sections/responsiveness.gts",
-      "line": 13,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/pagination/sub-sections/responsiveness.gts",
-      "line": 15,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/segmented-group/sub-sections/content.gts",
       "line": 116,
       "column": 14,
@@ -2003,94 +2051,6 @@
       "message": "<option> element is not permitted as content under <div>"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/responsiveness.gts",
-      "line": 13,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/responsiveness.gts",
-      "line": 15,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
-      "line": 167,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
-      "line": 169,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
-      "line": 171,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<option> element is not permitted as content under <abbr>"
-    },
-    {
-      "file": "showcase/app/components/page-components/tag/sub-sections/demos.gts",
-      "line": 13,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
-      "line": 15,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
-      "line": 19,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
-      "line": 23,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
-      "line": 25,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/breakpoints/sub-sections/demo.gts",
-      "line": 27,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
       "line": 469,
       "column": 40,
@@ -2153,46 +2113,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<option> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/app-frame/sub-sections/demo.gts",
-      "line": 12,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
-      "line": 9,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
-      "line": 11,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/app-frame/sub-sections/framed.gts",
-      "line": 13,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/grid/sub-sections/demo.gts",
-      "line": 9,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<iframe> is missing required \"title\" attribute"
     },
     {
       "file": "website/app/components/doc/cards/deck.gts",

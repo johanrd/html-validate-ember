@@ -3,22 +3,6 @@
   "fileCount": 14,
   "findings": [
     {
-      "file": "app/components/rental/image.gjs",
-      "line": 15,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h37",
-      "message": "<img> is missing required \"alt\" attribute"
-    },
-    {
-      "file": "app/components/rentals.gjs",
-      "line": 25,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "app/components/rentals.gjs",
       "line": 28,
       "column": 12,

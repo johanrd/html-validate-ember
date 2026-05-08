@@ -227,6 +227,14 @@
       "message": "Stray end tag '</p>'"
     },
     {
+      "file": "apps/tutorial/app/components/layout.gts",
+      "line": 33,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-required-attributes",
+      "message": "<iframe> is missing required \"title\" attribute"
+    },
+    {
       "file": "apps/tutorial/app/components/selection.gts",
       "line": 50,
       "column": 8,

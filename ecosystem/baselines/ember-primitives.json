@@ -20,14 +20,6 @@
     },
     {
       "file": "ember-primitives/src/components/one-time-password/input.gts",
-      "line": 171,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "wcag/h71",
-      "message": "<fieldset> must have a <legend> as the first child"
-    },
-    {
-      "file": "ember-primitives/src/components/one-time-password/input.gts",
       "line": 183,
       "column": 8,
       "severity": "error",
@@ -43,20 +35,20 @@
       "message": "Prefer to use the native <progress> element"
     },
     {
-      "file": "ember-primitives/src/components/rating/rating.gts",
-      "line": 160,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h71",
-      "message": "<fieldset> must have a <legend> as the first child"
-    },
-    {
       "file": "ember-primitives/src/components/rating/stars.gts",
       "line": 53,
       "column": 13,
       "severity": "error",
       "ruleId": "input-attributes",
       "message": "Attribute \"readonly\" is not allowed on <input type=\"radio\">"
+    },
+    {
+      "file": "ember-primitives/src/components/tabs.gts",
+      "line": 247,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
     }
   ]
 }
