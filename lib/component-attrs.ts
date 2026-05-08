@@ -76,14 +76,14 @@ function isGlimmerOnlyAttr(name: string | undefined): boolean {
   return name.startsWith('@') || name === '...attributes' || name === 'as' || name.startsWith('|');
 }
 
-function elementHasSplat(node: AST.ElementNode): boolean {
+export function elementHasSplat(node: AST.ElementNode): boolean {
   for (const attr of node.attributes ?? []) {
     if (attr.name === '...attributes') return true;
   }
   return false;
 }
 
-function literalAttrs(node: AST.ElementNode): Record<string, string> {
+export function literalAttrs(node: AST.ElementNode): Record<string, string> {
   const attrs: Record<string, string> = {};
   for (const attr of node.attributes ?? []) {
     if (isGlimmerOnlyAttr(attr.name)) continue;

@@ -39,37 +39,101 @@ import { preprocess, traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
 import { isNativeTag } from '../blank.js';
+import { elementHasSplat, literalAttrs } from './component-attrs.js';
 
 const preprocessor = new Preprocessor();
 
+// Result of resolving a component's runtime DOM outermost tag, plus
+// the attrs extracted from each level of the wrapper chain. Used by
+// `lib/glint.ts` to override both `componentTagMap` and
+// `componentAttrMap` when the component's leaf-style Element type
+// (e.g. `<a>`) is hidden inside a wrapper structure that determines
+// the consumer-side parent context.
+//
+// The `attrs` field is a UNION of attrs from each native level walked,
+// with INNER (closer to the DOM) wins on conflicts. That mirrors
+// Glimmer's runtime semantics: a wrapper's `<X ...attributes>` flows
+// the consumer's attrs INTO `<X>`, but `<X>`'s own literal attrs
+// (e.g. `<a href={{@href}}>`) are still applied and visible on the
+// rendered DOM.
+//
+// Why we need this: a component declares `Element: HTMLAnchorElement`
+// (Glint reads → 'a'); its template wraps the anchor in another
+// component (`<HdsInteractive ...attributes>`); HdsInteractive's
+// template renders `<a href={{@href}} ...>`. With only the
+// outermost-splatted-root attrs, we'd inject `class` + `aria-label`
+// (HdsInteractive-level) but miss `href`. html-validate's
+// `aria-label-misuse` then fires because aria-label on an `<a>`
+// without href is invalid.
+export interface OuterWrapperResolution {
+  tag: string;
+  attrs: Record<string, string>;
+  // Whether the template's actual native leaf has `...attributes` on
+  // it. Forwarded from the leaf level so component-attr injection
+  // logic that depends on splat-presence (e.g. `lookupComponentAttr`'s
+  // builtin-fallback in blank.ts) sees the right value.
+  hasSplat: boolean;
+}
+
 // Cache resolved outer-wrappers per absolute filename. Process-
 // lifetime; cleared via `_clearOuterWrapperCache` for tests.
-const cache = new Map<string, string | null>();
+const cache = new Map<string, OuterWrapperResolution | null>();
 
 // Cap recursion depth — components in the wild are unlikely to nest
 // wrappers more than a few levels, and a higher cap risks pathological
 // performance on cycles or accidental fan-out.
 const MAX_DEPTH = 8;
 
-// Find the topmost ElementNode in a template — the OUTERMOST wrapper.
-// Returns null if the template has no element children (e.g. just
-// `{{yield}}` or text).
+// Find the OUTERMOST wrapper in a template — the element that
+// determines the consumer-side parent context.
+//
+// Walk rules:
+//   - DO descend through `BlockStatement` bodies (`{{#if}}/{{else}}`,
+//     `{{#each}}`, etc.) so we can see top-level elements gated by
+//     conditionals — e.g. HdsInteractive's
+//     `{{#if @route}}<LinkTo>{{else if @href}}<a>{{else}}<button>{{/if}}`.
+//   - DO NOT descend into `ElementNode` children: a child is INSIDE
+//     a wrapper, not at the outermost level. `<ListItem><a>...</a>`
+//     should yield `<ListItem>`, not `<a>`.
+//   - SKIP dotted (`<this.X>`, `<F.Options>`) and slot-named
+//     (`<:foo>`) elements — not statically resolvable. Keep walking
+//     siblings / further branches.
+//
+// Among reachable candidates, prefer:
+//   1. The first NATIVE element.
+//   2. Else the first resolvable PascalCase wrapper.
+//
+// Returns null if no usable element exists.
 function findOutermostElement(ast: AST.Template): AST.ElementNode | null {
-  let outermost: AST.ElementNode | null = null;
-  // We want the FIRST top-level element only, not nested children.
-  // `traverse`'s `ElementNode.enter` would visit every descendant;
-  // bail after the first hit at depth 0.
-  let foundAtDepth0 = false;
-  traverse(ast, {
-    ElementNode: {
-      enter(node) {
-        if (foundAtDepth0) return;
-        outermost = node;
-        foundAtDepth0 = true;
-      },
-    },
-  });
-  return outermost;
+  let firstNative: AST.ElementNode | null = null;
+  let firstResolvableWrapper: AST.ElementNode | null = null;
+  function isUnresolvable(tag: string): boolean {
+    return tag.includes('.') || tag.startsWith(':');
+  }
+  function visit(stmts: ReadonlyArray<AST.Statement | AST.TopLevelStatement>): void {
+    for (const stmt of stmts) {
+      if (firstNative !== null) return;
+      if (stmt.type === 'ElementNode') {
+        if (isUnresolvable(stmt.tag)) continue;
+        if (isNativeTag(stmt.tag)) {
+          firstNative = stmt;
+          return;
+        }
+        if (firstResolvableWrapper === null) firstResolvableWrapper = stmt;
+        // Don't descend into ElementNode children — they're nested
+        // content, not outermost candidates.
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        visit(stmt.program.body);
+        if (firstNative !== null) return;
+        if (stmt.inverse) visit(stmt.inverse.body);
+        continue;
+      }
+    }
+  }
+  visit(ast.body);
+  return firstNative ?? firstResolvableWrapper;
 }
 
 // Resolve a PascalCase component name in `consumerFile`'s source to
@@ -311,22 +375,21 @@ function resolveImportPath(fromFile: string, importSpec: string): string | null 
   return null;
 }
 
-// Resolve the outermost native wrapper tag for the component declared
-// in `filename`'s first `<template>` block. Recurses through nested
-// PascalCase wrappers via local imports.
+// Resolve the outermost native wrapper tag and accumulated attrs for
+// the component declared in `filename`'s first `<template>` block.
+// Recurses through nested PascalCase wrappers via local imports.
 //
 // Returns:
-//   - tag name (e.g. 'li', 'div')  if a native wrapper is found.
-//   - null                          if no native wrapper exists in the
-//                                   template chain (e.g. all wrappers
-//                                   are unresolvable PascalCase, or
-//                                   template has no element root).
+//   - {tag, attrs} if a native wrapper is found anywhere in the chain.
+//     `attrs` is the UNION of attrs from each level walked (literal and
+//     mustache-bound), inner-wins on conflicts.
+//   - null         if no native wrapper exists in the template chain.
 //
 // Single-template-block assumption: most component files have one
 // `<template>` block; multi-template files (helper exports + default)
 // would need declaration-to-template matching. The first block is a
 // reasonable default for the common case.
-export function resolveOuterWrapperTag(filename: string): string | null {
+export function resolveOuterWrapperTag(filename: string): OuterWrapperResolution | null {
   return resolveOuterWrapperTagInner(filename, new Set(), 0);
 }
 
@@ -334,7 +397,7 @@ function resolveOuterWrapperTagInner(
   filename: string,
   visited: Set<string>,
   depth: number,
-): string | null {
+): OuterWrapperResolution | null {
   if (depth > MAX_DEPTH) return null;
   if (visited.has(filename)) return null; // cycle guard
   const cached = cache.get(filename);
@@ -368,9 +431,21 @@ function resolveOuterWrapperTagInner(
     const outermost = findOutermostElement(ast);
     if (!outermost) continue;
 
+    // Extract attrs at THIS level — directly off the outermost
+    // element returned by `findOutermostElement`. Reading attrs off a
+    // different element (e.g. via `extractSplattedRootFromTemplate`'s
+    // own splatted-root selection) could miss attrs on the actual
+    // chain wrapper.
+    const levelAttrs = literalAttrs(outermost);
+
     if (isNativeTag(outermost.tag)) {
-      if (depth === 0) cache.set(filename, outermost.tag);
-      return outermost.tag;
+      const result = {
+        tag: outermost.tag,
+        attrs: levelAttrs,
+        hasSplat: elementHasSplat(outermost),
+      };
+      if (depth === 0) cache.set(filename, result);
+      return result;
     }
 
     // Skip dotted invocations (`<This.Foo>`, `<F.Options>`) — those
@@ -385,8 +460,16 @@ function resolveOuterWrapperTagInner(
     if (!importPath) continue;
     const recursed = resolveOuterWrapperTagInner(importPath, visited, depth + 1);
     if (recursed !== null) {
-      if (depth === 0) cache.set(filename, recursed);
-      return recursed;
+      // Merge attrs: outer wrapper level's attrs UNDER the recursed
+      // attrs (inner wins on conflicts — closer to the rendered DOM).
+      const merged = { ...levelAttrs, ...recursed.attrs };
+      const result = {
+        tag: recursed.tag,
+        attrs: merged,
+        hasSplat: recursed.hasSplat,
+      };
+      if (depth === 0) cache.set(filename, result);
+      return result;
     }
   }
 
@@ -408,7 +491,7 @@ function resolveOuterWrapperTagInner(
 export function resolveOuterWrapperFromConsumerImport(
   consumerFile: string,
   componentName: string,
-): string | null {
+): OuterWrapperResolution | null {
   const sourceFile = resolveComponentImport(consumerFile, componentName);
   if (sourceFile === null) return null;
   return resolveOuterWrapperTagInner(sourceFile, new Set(), 0);

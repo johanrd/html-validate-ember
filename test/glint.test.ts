@@ -233,6 +233,40 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('conditional-leaf-href-consumer.gts: chain-attr collection picks up href from a deep leaf inside conditional branches', () => {
+    // Mirrors the real-world `<HdsButton>` → `<HdsInteractive>` pattern:
+    // an outer wrapper invokes a component whose template is a top-
+    // level `{{#if @href}}<a href={{@href}}>{{else}}<button>{{/if}}`.
+    // The walker descends through the BlockStatement to find the
+    // first reachable native (`<a href={{@href}}>`), and the chain-
+    // attr collection unions:
+    //   - the outer wrapper level's attrs (`aria-label={{@label}}`)
+    //   - the leaf's attrs (`href={{@href}}`)
+    // — resulting in `componentAttrMap` recording BOTH. Without this,
+    // a consumer-side substitution to `<a aria-label='   '>` (without
+    // href) would FP-fire `aria-label-misuse` (anchor without href is
+    // non-interactive, can't carry aria-label).
+    //
+    // (Note: this asserts the AST-level chain-attr collection. The
+    // consumer-side source-substitution may still fail to fit `href`
+    // into a too-narrow Glimmer-attr slot — that's a separate
+    // concern, addressable via a hook-time fallback similar to PR #13's
+    // `imgSplatSrcOffsets` / `imgSplatAltOffsets`.)
+    const { filename, contents } = readFixture('conditional-leaf-href-consumer.gts');
+    const { componentAttrMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentAttrMap.values()];
+    const wrapperEntry = entries.find((e) => e.tag === 'a');
+    expect(wrapperEntry, `expected <OuterButton> to resolve to 'a' (leaf type)`).toBeDefined();
+    expect(
+      'href' in wrapperEntry!.attrs,
+      `expected chain-attr to include 'href' from the leaf <a> in ConditionalLeaf's template; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
+    ).toBe(true);
+    expect(
+      'aria-label' in wrapperEntry!.attrs,
+      `expected chain-attr to include 'aria-label' from OuterButton's wrapping <ConditionalLeaf>; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
+    ).toBe(true);
+  });
+
   it('cross-package-barrel-consumer.gts: import-based fallback resolves through barrel re-exports', () => {
     // Mirrors design-system-style component packages: the consumer
     // imports `<ListLink>` through `list-link-addon/components`

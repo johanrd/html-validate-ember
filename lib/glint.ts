@@ -1032,12 +1032,24 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             const outerWrapper = resolveOuterWrapperTag(gtsPath);
             const currentResolved = componentTagMap.get(key);
             sameTransitivePackageOuterRan = true;
-            if (
-              outerWrapper !== null &&
-              outerWrapper !== currentResolved &&
-              isNativeTag(outerWrapper)
-            ) {
-              componentTagMap.set(key, outerWrapper);
+            if (outerWrapper !== null && isNativeTag(outerWrapper.tag)) {
+              if (outerWrapper.tag !== currentResolved) {
+                componentTagMap.set(key, outerWrapper.tag);
+              }
+              // Always update componentAttrMap with the chain's
+              // accumulated attrs — even when the leaf tag matches the
+              // current resolution, the chain's deeper attrs (e.g. an
+              // `<a href={{@href}}>` in a wrapper's wrapper) are what
+              // make rules like `aria-label-misuse` pass. Without these,
+              // we'd inject only the SPLATTED-ROOT level's attrs (which
+              // for a non-native splatted root would be the wrapper's
+              // literal/mustache attrs only, missing the ultimately-
+              // rendered native's).
+              componentAttrMap.set(key, {
+                tag: outerWrapper.tag,
+                attrs: outerWrapper.attrs,
+                hasSplat: outerWrapper.hasSplat,
+              });
             }
           }
         }
@@ -1081,12 +1093,17 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         const componentName = node.parent.sourceNode.tag;
         const outerFromImport = resolveOuterWrapperFromConsumerImport(filename, componentName);
         const currentResolved = componentTagMap.get(key);
-        if (
-          outerFromImport !== null &&
-          outerFromImport !== currentResolved &&
-          isNativeTag(outerFromImport)
-        ) {
-          componentTagMap.set(key, outerFromImport);
+        if (outerFromImport !== null && isNativeTag(outerFromImport.tag)) {
+          if (outerFromImport.tag !== currentResolved) {
+            componentTagMap.set(key, outerFromImport.tag);
+          }
+          // Override componentAttrMap with the chain's accumulated
+          // attrs (see same-package branch above for rationale).
+          componentAttrMap.set(key, {
+            tag: outerFromImport.tag,
+            attrs: outerFromImport.attrs,
+            hasSplat: outerFromImport.hasSplat,
+          });
         }
       }
     }
