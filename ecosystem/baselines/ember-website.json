@@ -11,22 +11,6 @@
       "message": "<pre> element is not permitted as content under <code>"
     },
     {
-      "file": "app/components/mascots/mascot-list/item.hbs",
-      "line": 3,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<img> is missing required \"src\" attribute"
-    },
-    {
-      "file": "app/components/teams/team/member.hbs",
-      "line": 5,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "element-required-attributes",
-      "message": "<img> is missing required \"src\" attribute"
-    },
-    {
       "file": "app/templates/community/index.hbs",
       "line": 118,
       "column": 92,
