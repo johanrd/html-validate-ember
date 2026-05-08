@@ -1,0 +1,15 @@
+{{!--
+  Regression: classic-by-name resolver substituting <MustacheBoundImg>
+  to <img>. The addon's template binds `src={{this.src}}` (mustache,
+  not literal). Without the hook-time injection the consumer-side
+  blank slot for `@src=…` is too narrow to fit `src='   '` plus other
+  projected attrs, and `element-required-attributes` FP-fires.
+
+  The fix: when the addon's `attrCtx.attrs['src']` is set
+  (DYNAMIC_VALUE_PLACEHOLDER for mustache-bound), push the consumer's
+  offset to `imgSplatOffsets` so the processElement hook calls
+  setAttribute at parse time. This sidesteps the source-width problem.
+
+  Mirrors ember-website's `<ResponsiveImage @src="…" alt="" />` pattern.
+--}}
+<MustacheBoundImg @src="/foo.png" @width={{100}} alt="" class="x" role="presentation" />

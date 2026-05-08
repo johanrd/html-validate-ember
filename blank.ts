@@ -595,7 +595,7 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
     //     Loses parent attrs but supplies content via DynamicValue text
     //     (registered in dynamicContentOffsets) and `type=' '` for button.
     if (VOID_ELEMENTS.has(resolved)) {
-      return substituteSelfClosingVoidComponent(node, ctx, resolved) ? resolved : null;
+      return substituteSelfClosingVoidComponent(node, ctx, resolved, attrCtx) ? resolved : null;
     }
     return substituteSelfClosingComponent(node, ctx, resolved, attrCtx) ? resolved : null;
   }
@@ -661,6 +661,7 @@ function substituteSelfClosingVoidComponent(
   node: AST.ElementNode,
   ctx: Context,
   resolved: string,
+  attrCtx?: ComponentAttrs | null,
 ): boolean {
   const elementStart = startOffset(node);
   // Minimum required: room for `<RESOLVED` (tag-name rename only).
@@ -672,7 +673,38 @@ function substituteSelfClosingVoidComponent(
   if (resolved === 'input') {
     tryInjectInputType(node, ctx);
   }
+  // For <img> substitutions where the addon's splatted-root binds `src`
+  // / `alt` (literal OR mustache-driven), record the offset so the
+  // `processElement` hook synthesizes those attrs at parse time. The
+  // source-side `tryInjectComponentAttrs` path can't always fit the
+  // placeholders in the consumer's narrow Glimmer-attr slots
+  // (`@src="…"` is typically narrower than `src='   '` plus other
+  // injected attrs combined). Skipped when the consumer wrote `src=` /
+  // `alt=` explicitly.
+  if (resolved === 'img' && attrCtx) {
+    tryInjectImgRequiredAttrsViaHook(node, ctx, attrCtx);
+  }
   return true;
+}
+
+// Variant of tryInjectImgRequiredAttrs scoped to component-substituted
+// <img>: the addon's splatted-root template is recorded as
+// `attrCtx.attrs`. If `src`/`alt` are projected there (via literal OR
+// mustache) and the consumer didn't override, push the consumer's
+// element offset so the processElement hook runs setAttribute.
+function tryInjectImgRequiredAttrsViaHook(
+  node: AST.ElementNode,
+  ctx: Context,
+  attrCtx: ComponentAttrs,
+): void {
+  const present = new Set((node.attributes ?? []).map((a) => a.name));
+  // `src` / `alt` ATTRS on the consumer (not @src / @alt args) take
+  // precedence — the consumer chose to write the literal, html-validate
+  // should validate it. Skip the hook in that case.
+  const needsSrc = !present.has('src') && attrCtx.attrs['src'] !== undefined;
+  const needsAlt = !present.has('alt') && attrCtx.attrs['alt'] !== undefined;
+  if (!needsSrc && !needsAlt) return;
+  ctx.imgSplatOffsets.push(startOffset(node));
 }
 
 // Find a Glimmer-only attribute (`@arg`, modifier, `...attributes`)

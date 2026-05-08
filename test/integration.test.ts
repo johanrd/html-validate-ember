@@ -675,6 +675,38 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('classic-resolver-mustache-bound-attrs.hbs: classic-resolved <img> with addon-side `src={{this.src}}` does not FP-fire element-required-attributes', async () => {
+    // Regression for the by-name resolver's mustache-bound-attr projection.
+    // Addon's template binds `src={{this.src}}` (mustache, not literal).
+    // Without hook-time injection the source-side blank slots in the
+    // consumer (`@src="…"`, `@width={{100}}`) are too narrow to fit the
+    // projected `src='   '` placeholder, and `element-required-attributes`
+    // FP-fires on the substituted <img>.
+    //
+    // The fix: when the resolved tag is <img> and the addon records
+    // `src` (or `alt`) in `attrCtx.attrs` — including the
+    // DYNAMIC_VALUE_PLACEHOLDER for mustache-bound values — push the
+    // consumer's offset to `imgSplatOffsets`, the same hook the
+    // `<img ...attributes>` narrow-slot fix uses (PR #13).
+    //
+    // Mirrors ember-website's `<ResponsiveImage @src="…" alt="" />`
+    // pattern: addon binds `src={{this.src}}`, runtime <img> always
+    // gets a src.
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'classic-resolver-mustache-bound-attrs.hbs');
+    const rawReport = await v.validateFile(fp);
+    const messages = rawReport.results.flatMap((r) =>
+      r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+    );
+    const offenders = messages.filter(
+      (m) => m.rule === 'element-required-attributes' || m.rule === 'wcag/h37',
+    );
+    expect(
+      offenders,
+      `element-required-attributes / wcag/h37 must not fire — addon-side src/alt are mustache-bound but exist; got: ${JSON.stringify(messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('classic-resolver-no-import.hbs: PascalCase tag in `.hbs` resolves via container-style by-name lookup', async () => {
     // Classic Ember `.hbs` templates resolve PascalCase components
     // through the container resolver (kebab-case name → installed
