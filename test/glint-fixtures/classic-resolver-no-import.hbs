@@ -1,0 +1,22 @@
+{{!--
+  Classic-Ember `.hbs` consumer using <ClassicCard> with NO JS import.
+  Mirrors ember-website's `<EsCard>` pattern: PascalCase tag resolved
+  at runtime via Ember's container resolver, looking up
+  `classic-card-addon/components/classic-card`.
+
+  At runtime the component renders `<li class="classic-card"
+  ...attributes>{{yield}}</li>`. So inside `<ul>`, the resulting DOM is
+  valid (`<li>` directly under `<ul>`).
+
+  Without the by-name lookup, our plugin transparent-blanks
+  <ClassicCard>, the inner content (potentially structural like
+  another `<ul>` or `<div>`) floats directly into the outer `<ul>`,
+  and `element-permitted-content` FP-fires.
+--}}
+<ul>
+  <ClassicCard>
+    <ul>
+      <li>nested item</li>
+    </ul>
+  </ClassicCard>
+</ul>

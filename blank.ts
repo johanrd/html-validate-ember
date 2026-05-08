@@ -1391,7 +1391,7 @@ function blankTemplateContent(
 // output, and add the rule to `disableForRules` so the transformer can
 // inject a one-shot disable directive into this Source.
 //
-// Two FP classes covered today:
+// Three FP classes covered today:
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
@@ -1407,6 +1407,14 @@ function blankTemplateContent(
 //      a separate submit button would be ceremonial (helps no real
 //      user). wcag/h32 is suppressed regardless of submit-button or
 //      yield presence.
+//
+//   3. Unresolvable PascalCase / dotted wrapper containing content-
+//      restricted structural children (`<option>`/`<th>`/`<li>`/...).
+//      At runtime such wrappers typically render the structurally-
+//      correct parent (`<select>`/`<thead>`/`<ul>`) via a yield chain
+//      we can't trace statically. Suppress `element-permitted-content`
+//      so the FP doesn't surface. Same per-Source-suppression
+//      trade-off as cases 1 and 2.
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
@@ -1471,6 +1479,25 @@ function detectStructuralYieldRules(
           elementYieldsAndLacksLegend(stmt, branchSelections)
         ) {
           out.push('wcag/h71');
+        } else if (
+          !isNativeTag(stmt.tag) &&
+          containsContentRestrictedStructuralChild(stmt, glintComponentTagMap)
+        ) {
+          // Unresolvable PascalCase / dotted wrapper containing
+          // content-restricted structural children (`<option>`, `<th>`,
+          // `<li>`, `<optgroup>`, `<tr>`). At runtime such wrappers
+          // typically render the structurally-correct parent
+          // (`<select>`, `<thead>`, `<ul>`, …) via a yield chain, so
+          // the static blanker's transparent-blanking puts the
+          // structural children under whatever native ancestor
+          // happens to be in source — almost always invalid, almost
+          // always FP-firing `element-permitted-content`.
+          //
+          // We can't precisely resolve the runtime parent without
+          // multi-level cross-file yield-chain analysis (deferred).
+          // Suppress the rule for the Source instead — same per-Source
+          // suppression trade-off as the form/fieldset cases above.
+          out.push('element-permitted-content');
         }
         walk(stmt.children);
       }
@@ -1529,6 +1556,66 @@ function selectBranch(
 // bare-mustache event names like `{{on @event …}}` could resolve to
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+// HTML elements with restrictive content models — they only accept
+// specific native parents. When these appear as children of an
+// unresolvable component invocation, the wrapper is presumed to render
+// the structurally-correct parent at runtime via yield chain. Listing
+// kept narrow on purpose: every entry is a tag whose presence inside a
+// PascalCase wrapper is ambiguous evidence of "the wrapper renders my
+// only valid parent". Adding more entries widens suppression.
+const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
+  'option',
+  'optgroup',
+  'th',
+  'td',
+  'tr',
+  'thead',
+  'tbody',
+  'tfoot',
+  'caption',
+  'colgroup',
+  'col',
+  'li',
+  'legend',
+  'summary',
+]);
+
+// True when the element node has at least one direct child that is a
+// content-restricted structural element (`<option>`, `<th>`, `<li>`,
+// etc.). Mustaches and BlockStatements descend through; we only check
+// for native ElementNode children. Doesn't recurse into other
+// component invocations — those have their own rule check.
+//
+// Resolved components are excluded: if Glint already maps the wrapper
+// to a specific native tag, we trust that resolution and let
+// `element-permitted-content` fire normally. Only fully-unresolved
+// wrappers (componentTagMap miss) trigger suppression.
+function containsContentRestrictedStructuralChild(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+): boolean {
+  // If Glint has resolved this wrapper to a native tag, no heuristic
+  // needed — the precise resolution wins and the rule fires (or
+  // doesn't) on the actual parent.
+  if (glintComponentTagMap && node.loc.start) {
+    const key = `${node.loc.start.line}:${node.loc.start.column}`;
+    const resolved = glintComponentTagMap.get(key);
+    if (resolved && resolved !== 'transparent') return false;
+  }
+  function check(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'ElementNode') {
+        if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag)) return true;
+      } else if (stmt.type === 'BlockStatement') {
+        if (check(stmt.program.body)) return true;
+        if (stmt.inverse && check(stmt.inverse.body)) return true;
+      }
+    }
+    return false;
+  }
+  return check(node.children);
+}
 
 function formHasInputModifier(form: AST.ElementNode): boolean {
   for (const modifier of form.modifiers ?? []) {

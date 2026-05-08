@@ -675,6 +675,76 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('classic-resolver-no-import.hbs: PascalCase tag in `.hbs` resolves via container-style by-name lookup', async () => {
+    // Classic Ember `.hbs` templates resolve PascalCase components
+    // through the container resolver (kebab-case name → installed
+    // addon's component template). No JS `import` is involved.
+    //
+    // Mirrors the ember-website `<EsCard>` pattern: in node_modules,
+    // `classic-card-addon/addon/components/classic-card.hbs` renders
+    // `<li class="..." ...attributes>{{yield}}</li>`. The consumer
+    // wraps an inner `<ul>` in `<ClassicCard>` while inside an outer
+    // `<ul>`. Without by-name resolution the wrapper transparent-blanks
+    // and the inner `<ul>` floats to the outer `<ul>` →
+    // `element-permitted-content` FP-fires.
+    //
+    // With by-name resolution, the plugin substitutes `<ClassicCard>`
+    // to `<li>`, so the inner `<ul>` is correctly nested under `<li>`
+    // (legal) under the outer `<ul>`.
+    //
+    // Validated from `test/glint-fixtures/` instead of `examples/` so
+    // the resolver's node_modules walk finds the fake
+    // `classic-card-addon` (the `examples/` dir doesn't have a sibling
+    // node_modules of fixture addons; glint-fixtures does).
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'classic-resolver-no-import.hbs');
+    const rawReport = await v.validateFile(fp);
+    const messages = rawReport.results.flatMap((r) =>
+      r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+    );
+    const offenders = messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders,
+      `element-permitted-content must not fire — by-name resolution should map <ClassicCard> to <li>; got: ${JSON.stringify(messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('multi-level-yield-chain-options.gts: heuristic suppression silences element-permitted-content for unresolvable wrappers with structural children', async () => {
+    // Unresolvable curried sub-component case: `<F.Options>` is
+    // `PassThrough` (no specific Element type), wrapped in a
+    // `<FormSelectField>` whose outer Element is bare HTMLElement
+    // (PR #12 → 'transparent'). Without the heuristic, `<option>`
+    // floats to outer `<div>` → FP-fires
+    // `element-permitted-content`. Cross-file yield-chain analysis
+    // would resolve this precisely but is ~250+ lines and deferred.
+    //
+    // The heuristic instead recognizes the pattern: an unresolvable
+    // PascalCase wrapper containing `<option>`/`<th>`/`<li>` children
+    // is presumed to render the structurally-correct parent
+    // (`<select>`/`<thead>`/`<ul>`) at runtime via yield chain.
+    // Suppress `element-permitted-content` for the Source so the FP
+    // doesn't surface.
+    //
+    // Same per-Source-suppression trade-off as Thread B's
+    // wcag/h32 fix: real bugs at OTHER locations in the same template
+    // get suppressed too. Acceptable given the volume of these FPs
+    // in real-world Ember code (HDS's 172 entries, ember-website's
+    // 99 entries).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-level-yield-chain-options.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(
+        offenders,
+        `element-permitted-content must not fire — heuristic suppression should kick in; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('builtins.hbs: <Input>/<Textarea>/<LinkTo> substitute to native tags', async () => {
     // The built-in Ember component map provides tag substitutions for
     // these three components even without Glint. Validate clean (the

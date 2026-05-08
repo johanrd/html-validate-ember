@@ -10,7 +10,10 @@ import type {
 } from 'html-validate';
 import { createRequire } from 'node:module';
 
+import { preprocess } from '@glimmer/syntax';
+
 import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import { buildClassicComponentTagMap } from './lib/classic-resolver.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
@@ -232,7 +235,27 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // mapping to native tags. Static-text resolution covers t-helper /
   // if-helper. No top-level scope (no JS).
   if (filename.endsWith('.hbs')) {
-    const result = blankTemplateContent(data);
+    // Classic-Ember by-name component resolution: parse the template
+    // once to walk PascalCase tags, look each one up in node_modules
+    // against the canonical addon component-template paths, and feed
+    // the resulting tag/attr maps to the blanker. Lets `<EsCard>` /
+    // `<HdsCard>` / etc. substitute to their actual rendered tag
+    // (`<li>`, `<div>`, …) instead of transparent-blanking, which
+    // fixes a major class of `element-permitted-content` FPs in
+    // classic Ember apps. Glint isn't involved — `.hbs` doesn't go
+    // through TS.
+    let classicTagMap: Map<string, string> | null = null;
+    let classicAttrMap: Parameters<typeof blankTemplateContent>[4] | null = null;
+    try {
+      const ast = preprocess(data, { mode: 'codemod' });
+      const maps = buildClassicComponentTagMap(filename, ast);
+      classicTagMap = maps.componentTagMap;
+      classicAttrMap = maps.componentAttrMap;
+    } catch {
+      // Parse failure here is non-fatal — `blankTemplateContent`
+      // re-parses and reports the error. Drop the maps and continue.
+    }
+    const result = blankTemplateContent(data, undefined, undefined, classicTagMap, classicAttrMap);
     if (result.error) {
       process.stderr.write(
         `[html-validate-ember] glimmer parse failure on ${filename}: ${result.error.message}\n`,
