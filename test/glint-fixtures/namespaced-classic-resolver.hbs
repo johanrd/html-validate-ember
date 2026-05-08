@@ -1,0 +1,16 @@
+{{!--
+  Namespaced classic-Ember component invocation: `<Forms::TextInput>`.
+  At runtime Ember's container resolver maps `Forms::TextInput` to
+  `forms/text-input.hbs` — a slash-namespaced template path.
+
+  Our by-name resolver in `lib/classic-resolver.ts` only handles
+  single-segment kebab names (`<EsCard>` → `es-card.hbs`). It doesn't
+  parse the `::` namespace separator and doesn't probe nested paths
+  like `addon/components/forms/text-input.hbs`.
+
+  Documents this limitation. The accompanying test is `it.fails(...)`
+  so future namespaced-component support shows up as a passing test.
+--}}
+<form>
+  <Forms::TextInput @value="hello" />
+</form>

@@ -595,34 +595,11 @@ function resolveComponentElement(
     return null;
   }
   const elementType = checker.getTypeOfSymbolAtLocation(elementProp, emitComponentCall);
-  // `unknown` and `any` are both ambiguous in this position. Glint's TOC
-  // overload tends to surface `.element` as `unknown` for the satisfies form
-  // (`<template>...</template> satisfies TOC<{Element: T}>`) and the type-
-  // annotation form (`const X: TOC<{Element: T}> = <template>...</template>`)
-  // even though `T` is statically known on the value's declaration. `any` can
-  // mean either the same thing, or a real type-checking failure cascading
-  // from elsewhere in the file.
-  //
-  // For both: try to recover the declared Element by walking back to the
-  // component's variable declaration and reading the TOC<…> annotation
-  // directly. If that yields nothing, fall back to transparent (children
-  // float to the actual parent — correct for genuinely yields-only TOCs).
+  // `unknown` and `any` are both ambiguous in this position. Glint can surface
+  // `.element` this way for yielded-curried refs (`<C.Options>`), TOC
+  // declarations (`: TOC<…> =` / `satisfies TOC<…>`), and also in files with
+  // cascading TS errors.
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
-    // Glint's emit surfaces `.element` as `unknown`/`any` for several
-    // shapes the Signature['Element']-on-the-call-type path doesn't
-    // cover. Try the cheaper componentRef-type path first
-    // (block-param-yielded curried sub-components, TOCs declared via
-    // type annotation `const X: TOC<S>`), then fall back to the
-    // declaration-walk (which additionally covers `satisfies TOC<S>`
-    // — that form doesn't surface aliasTypeArguments on the ref
-    // expression).
-    const fromRefType = resolveElementFromComponentRefType(
-      ts,
-      checker,
-      emitComponentCall,
-      elementTypeToTag,
-    );
-    if (fromRefType !== null) return fromRefType;
     const fromTOC = resolveElementFromTOCDeclaration(
       ts,
       checker,
@@ -630,24 +607,31 @@ function resolveComponentElement(
       elementTypeToTag,
     );
     if (fromTOC !== null) return fromTOC;
+    const fromRefType = resolveElementFromComponentRefType(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromRefType !== null) return fromRefType;
     return 'transparent';
   }
+  // Pick a single tag for unions: take the first matching branch
+  // (branches with no DOM mapping are skipped, see matchElementTypeToTag).
   return matchElementTypeToTag(elementType, elementTypeToTag);
 }
 
-// Pick a tag from an element type. Unions take the first matching branch
-// (branches with no DOM mapping are skipped). Returns:
-//   - 'transparent' if every branch is a generic base class
-//     (`HTMLElement`, `SVGElement`, `MathMLElement`) — Glint DID resolve,
-//     we just don't know which specific tag, so children should float
-//     into parent's content model rather than fall through to a null
-//     that would let blank.ts apply name-based built-in fallbacks.
-//   - tag name      if some branch maps to a known DOM element name.
-//   - null          if no branch maps and no all-generic case applies.
 function matchElementTypeToTag(
   elementType: TS.Type,
   elementTypeToTag: Map<string, string>,
 ): string | null {
+  // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
+  // resolved as transparent rather than falling through to `null`. A null
+  // return signals "no Glint resolution at all" and lets blank.ts apply
+  // built-in name-based fallbacks (e.g. `<Input>` → `<input>`); for a
+  // user component declaring `Signature['Element'] = HTMLElement` Glint
+  // DID succeed and we just don't know which specific tag — transparent
+  // (children float to parent) is the right semantic.
   const branches = elementType.isUnion() ? elementType.types : [elementType];
   let allGenericBase = true;
   for (const branch of branches) {
@@ -658,12 +642,68 @@ function matchElementTypeToTag(
     }
   }
   if (allGenericBase) return 'transparent';
+  // Pick a single tag for unions: take the first matching branch.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
       return elementTypeToTag.get(name) ?? null;
     }
   }
+  return null;
+}
+
+// Recover the rendered tag from the *type* of the component-reference
+// expression itself — for cases where Glint's `emitComponent(...).element`
+// surfaces as `unknown`/`any` (for example yielded-curried block params like
+// `<C.Options>`). In these cases the component-ref expression type can still
+// carry Signature `Element` via a generic like `TOC<Sig>`.
+//
+// For both: `aliasTypeArguments[0]` is `Sig` — an object type with
+// `Element: T` as a property — so we read `T` and map to a tag.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only)
+//   - null          if no aliasTypeArguments / no `Element` property —
+//                   caller falls through to plain transparent.
+function resolveElementFromComponentRefType(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  // emitCall is `emitComponent(resolve(Comp)({...}))`; navigate to the
+  // component reference expression. Same path findComponentDeclSourceFile
+  // uses to walk back to the component identifier.
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const refType = checker.getTypeAtLocation(componentRef);
+  // Try both shapes:
+  //   - Type alias `type TOC<S> = …` — type-args land on
+  //     `aliasTypeArguments`.
+  //   - Generic interface `interface TOC<S>` — type-args land on the
+  //     TypeReference's typeArguments, accessible via the public
+  //     `checker.getTypeArguments`.
+  // We don't know which form the host project's `TOC` (or other
+  // signature-carrying generic) uses; check both.
+  const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
+    .aliasTypeArguments;
+  let sigType: TS.Type | undefined = aliasArgs?.[0];
+  if (!sigType && (refType as TS.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
+    const refArgs = checker.getTypeArguments(refType as TS.TypeReference);
+    sigType = refArgs[0];
+  }
+  if (!sigType) return null;
+  const eltSym = sigType.getProperty('Element');
+  if (!eltSym) return null;
+  const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
+  if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+  const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+  if (tag !== null) return tag;
   return null;
 }
 
@@ -724,65 +764,6 @@ function resolveElementFromTOCDeclaration(
   return null;
 }
 
-// Recover the rendered tag from the *type* of the component-reference
-// expression itself — for cases where Glint's `emitComponent(...).element`
-// surfaces as `unknown`/`any`. Specifically:
-//   - Block-param-yielded curried sub-components (`<C.Options>` where C
-//     is a yielded block-param providing typed sub-components): the
-//     componentRef expression has type `TOC<Sig>` because Glint's emit
-//     types the yielded sub-component reference correctly even when
-//     `.element` doesn't propagate.
-//   - TOCs declared via type annotation (`const X: TOC<Sig> = <template>…`):
-//     the componentRef has type `TOC<Sig>` directly.
-//
-// For both: read the type-arguments off the componentRef's type — Sig
-// is the first type-arg, an object type with `Element: T` as a
-// property — and map `T` to a tag.
-//
-// Returns:
-//   - tag name      if Element resolves to a known DOM type
-//   - 'transparent' if Element is `unknown` (yields-only)
-//   - null          if no aliasTypeArguments / no `Element` property —
-//                   caller falls through to plain transparent.
-function resolveElementFromComponentRefType(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
-  emitComponentCall: TS.CallExpression,
-  elementTypeToTag: Map<string, string>,
-): string | null {
-  // emitCall is `emitComponent(resolve(Comp)({...}))`; navigate to the
-  // component reference expression. Same path findComponentDeclSourceFile
-  // uses to walk back to the component identifier.
-  const innerCall = emitComponentCall.arguments[0];
-  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
-  const resolveCall = innerCall.expression;
-  if (!ts.isCallExpression(resolveCall)) return null;
-  const componentRef = resolveCall.arguments[0];
-  if (!componentRef) return null;
-  const refType = checker.getTypeAtLocation(componentRef);
-  // Try both shapes:
-  //   - Type alias `type TOC<S> = …` — type-args land on
-  //     `aliasTypeArguments`.
-  //   - Generic interface `interface TOC<S>` — type-args land on the
-  //     TypeReference's typeArguments, accessible via the public
-  //     `checker.getTypeArguments`.
-  // We don't know which form the host project's `TOC` (or other
-  // signature-carrying generic) uses; check both.
-  const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
-    .aliasTypeArguments;
-  let sigType: TS.Type | undefined = aliasArgs?.[0];
-  if (!sigType && (refType as TS.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
-    const refArgs = checker.getTypeArguments(refType as TS.TypeReference);
-    sigType = refArgs[0];
-  }
-  if (!sigType) return null;
-  const eltSym = sigType.getProperty('Element');
-  if (!eltSym) return null;
-  const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
-  if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
-  return matchElementTypeToTag(eltType, elementTypeToTag);
-}
-
 // Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
 // long-form alias both `@ember/component/template-only` and
 // `@glint/template/-private` re-export). Also handles qualified names like
@@ -797,7 +778,6 @@ function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
   else return false;
   return id.text === 'TOC' || id.text === 'TemplateOnlyComponent';
 }
-
 function describeType(checker: TS.TypeChecker, type: TS.Type): AttrTypeInfo {
   if (type.isStringLiteral()) {
     return { kind: 'string-literal', values: [type.value] };
