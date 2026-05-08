@@ -741,31 +741,50 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
-  it.fails(
-    'namespaced-classic-resolver.hbs: <Forms::TextInput> is NOT yet resolved by the by-name resolver (single-segment only)',
-    async () => {
-      // The classic-by-name resolver in `lib/classic-resolver.ts` only
-      // handles single-segment kebab names — `<EsCard>` → `es-card.hbs`.
-      // It doesn't parse Ember's `::` namespace separator nor probe
-      // nested addon paths like `addon/components/forms/text-input.hbs`.
-      //
-      // Asserted via the structural shape: with proper resolution,
-      // `<Forms::TextInput>` would substitute to `<input>` and the
-      // template would lint clean. Today the wrapper transparent-
-      // blanks, leaving an empty `<form>` — which fires wcag/h32
-      // because there's no submit button visible. We assert wcag/h32
-      // does NOT fire (intended future behavior). Today it fires →
-      // .fails() passes the suite. When namespaced resolution lands,
-      // the test passes for real and vitest signals the win.
-      const v = makeValidator();
-      const fp = path.join(__dirname, 'glint-fixtures', 'namespaced-classic-resolver.hbs');
-      const r = await v.validateFile(fp);
-      const wcagH32 = r.results
-        .flatMap((rr) => rr.messages)
-        .filter((m) => m.ruleId === 'wcag/h32');
-      expect(wcagH32).toHaveLength(0);
-    },
-  );
+  it('form-with-unresolved-component-submit.gts: wcag/h32 suppressed when form contains an unresolved component (may render submit)', async () => {
+    // A `<form>` whose submit button is provided by an unresolved
+    // PascalCase component (no Glint Element annotation, not in
+    // node_modules, not a builtin) FP-fired wcag/h32 because the
+    // static blanker couldn't see a submit candidate. Heuristic
+    // extension in `elementYieldsAndLacksSubmit`: a form that lacks
+    // a static submit BUT contains any unresolved component
+    // invocation is treated as "may render submit" and gets the
+    // rule suppressed. Same per-Source-suppression trade-off as
+    // PR #17's yield-bearing-form case.
+    const r = await validate('form-with-unresolved-component-submit.gts');
+    const wcagH32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      wcagH32,
+      `wcag/h32 must not fire — form contains an unresolved component child that may render submit; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('namespaced-classic-resolver.hbs: wcag/h32 suppressed via the unresolved-component-child heuristic', async () => {
+    // Originally a `.fails()` test asserting future-intent: namespaced
+    // `<Forms::TextInput>` isn't resolved by the classic-by-name
+    // resolver (it only handles single-segment kebab names). The
+    // wrapper transparent-blanks, leaving an empty `<form>` which
+    // fires wcag/h32.
+    //
+    // Now passes naturally: the unresolved-component-child heuristic
+    // in `elementYieldsAndLacksSubmit` recognizes `<Forms::TextInput>`
+    // as a component our static analysis can't pin and treats it as
+    // "may contain submit" — the form's wcag/h32 is suppressed for
+    // the Source. (This is the same FP class that affects ANY form
+    // whose submit comes from an unresolved component invocation —
+    // a button-style component whose source isn't reachable.)
+    //
+    // Namespaced classic-resolver support is still missing as a
+    // feature; this test is now passing for a different reason than
+    // originally intended.
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'namespaced-classic-resolver.hbs');
+    const r = await v.validateFile(fp);
+    const wcagH32 = r.results
+      .flatMap((rr) => rr.messages)
+      .filter((m) => m.ruleId === 'wcag/h32');
+    expect(wcagH32).toHaveLength(0);
+  });
 
   it.fails(
     'heuristic-masks-real-bug.gts: per-Source element-permitted-content suppression DOES mask real bugs elsewhere (documented trade-off)',

@@ -1715,6 +1715,20 @@ function elementYieldsAndLacksSubmit(
 ): boolean {
   let hasYield = false;
   let hasStaticSubmit = false;
+  // Tracks whether the form contains any UNRESOLVED PascalCase /
+  // dotted component invocation. Such a component may render a
+  // submit button at runtime that we can't see statically — common
+  // when a button-style component's template uses a dynamic-element
+  // pattern (`<this.wrapperElement type={{...}}>`) or when its
+  // source isn't reachable from the consumer (cross-package paths
+  // outside `node_modules`, no Glint, etc.). Treat "unresolved
+  // component child" as "may contain submit" so `wcag/h32` gets
+  // suppressed for the whole Source. Same per-Source-suppression
+  // trade-off as the unresolvable-wrapper-with-structural-children
+  // heuristic (PR #21): real bugs at OTHER locations in the same
+  // template get suppressed too. Acceptable given the FP volume in
+  // real Ember code.
+  let hasUnresolvedComponent = false;
   function walk(stmts: ReadonlyArray<AST.Statement>): void {
     for (const stmt of stmts) {
       if (hasStaticSubmit) return;
@@ -1742,13 +1756,31 @@ function elementYieldsAndLacksSubmit(
           hasStaticSubmit = true;
           return;
         }
+        // Track unresolved PascalCase / dotted component invocations.
+        // These are candidates for "may contain submit" suppression
+        // when the form has no other static submit. Native tags and
+        // builtins are excluded. Glint-resolved entries are excluded
+        // ONLY when Glint pinned a concrete native tag — entries
+        // mapped to `'transparent'` mean "Glint couldn't pin a tag"
+        // and the component might still render submit at runtime, so
+        // those count as unresolved for this purpose.
+        if (!isNativeTag(stmt.tag) && !lookupBuiltinComponent(stmt.tag)) {
+          const key = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
+          const resolved = key ? glintComponentTagMap?.get(key) : undefined;
+          if (resolved === undefined || resolved === 'transparent') {
+            hasUnresolvedComponent = true;
+          }
+        }
         walk(stmt.children);
         continue;
       }
     }
   }
   walk(form.children);
-  return hasYield && !hasStaticSubmit;
+  // Suppress wcag/h32 for either an opaque-source form (yield-bearing,
+  // PR #17) OR a form whose only "candidates" for submit are
+  // unresolved component invocations (heuristic above).
+  return (hasYield || hasUnresolvedComponent) && !hasStaticSubmit;
 }
 
 // True when a `<fieldset>` body has opaque legend-source content AND
