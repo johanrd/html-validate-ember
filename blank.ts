@@ -608,6 +608,30 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   ctx.renames.push([tagStart, tagStart + node.tag.length, resolved + padding]);
   const closeTagStart = elementEnd - node.tag.length - 1;
   ctx.renames.push([closeTagStart, closeTagStart + node.tag.length, resolved + padding]);
+  // Erase any `as |…|` block-param clause from the renamed open tag.
+  // Block params are a Glimmer-side binding for yielded content — they
+  // never appear as attributes in the rendered DOM. Without this blank,
+  // the in-place rename leaves `as |item|` in the open tag and html-
+  // validate's parser treats `|item|` as an attribute, firing `attr-case`
+  // (and downstream rules cascade).
+  //
+  // Take the LAST regex match: per Glimmer syntax the block-params clause
+  // is always the rightmost thing before `>`, so the last match is
+  // unambiguously it — defends against the (rare) case where an attribute
+  // value happens to contain a literal `as |x|`.
+  if (node.blockParams.length > 0) {
+    const openTagEnd = findOpenTagEnd(ctx.content, elementStart);
+    if (openTagEnd >= 0) {
+      const openTagText = ctx.content.slice(elementStart, openTagEnd + 1);
+      const re = /\bas\s+\|[^|]*\|/g;
+      let last: RegExpExecArray | null = null;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(openTagText)) !== null) last = m;
+      if (last) {
+        ctx.blankRanges.push([elementStart + last.index, elementStart + last.index + last[0].length]);
+      }
+    }
+  }
   // Inject the resolved component's static attrs into Glimmer-attr blank
   // regions in the open tag (mirrors the self-closing input-type
   // injection). Without this, e.g. <LinkTo>...</LinkTo> resolves to a
