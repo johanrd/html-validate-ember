@@ -1452,14 +1452,6 @@
     },
     {
       "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 234,
-      "column": 28,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
       "line": 268,
       "column": 20,
       "severity": "error",
@@ -1489,22 +1481,6 @@
       "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 309,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 330,
-      "column": 22,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
     },
     {
       "file": "frontend/discourse/app/components/bookmark-list.gjs",
@@ -2367,24 +2343,8 @@
       "line": 820,
       "column": 18,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <div>"
-    },
-    {
-      "file": "frontend/discourse/app/components/reviewable/item.gjs",
-      "line": 820,
-      "column": 18,
-      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/reviewable/item.gjs",
-      "line": 834,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <div>"
     },
     {
       "file": "frontend/discourse/app/components/reviewable/item.gjs",
@@ -2655,24 +2615,8 @@
       "line": 267,
       "column": 14,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <div>"
-    },
-    {
-      "file": "frontend/discourse/app/components/tag-settings.gjs",
-      "line": 267,
-      "column": 14,
-      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/tag-settings.gjs",
-      "line": 279,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <div>"
     },
     {
       "file": "frontend/discourse/app/components/tag-settings.gjs",
@@ -2879,14 +2823,6 @@
       "line": 90,
       "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <section>"
-    },
-    {
-      "file": "frontend/discourse/app/components/user-nav.gjs",
-      "line": 90,
-      "column": 10,
-      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -3063,14 +2999,6 @@
       "line": 9,
       "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <section>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage.gjs",
-      "line": 9,
-      "column": 10,
-      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
@@ -3215,24 +3143,8 @@
       "line": 8,
       "column": 8,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <section>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/messages.gjs",
-      "line": 8,
-      "column": 8,
-      "severity": "error",
       "ruleId": "element-permitted-parent",
       "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/messages.gjs",
-      "line": 13,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<li> element is not permitted as content under <section>"
     },
     {
       "file": "frontend/discourse/app/templates/group/messages.gjs",
@@ -3519,14 +3431,6 @@
       "line": 290,
       "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/user/summary.gjs",
-      "line": 290,
-      "column": 16,
-      "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
@@ -3535,24 +3439,8 @@
       "line": 291,
       "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/user/summary.gjs",
-      "line": 291,
-      "column": 16,
-      "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/templates/user/summary.gjs",
-      "line": 292,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/app/templates/user/summary.gjs",
