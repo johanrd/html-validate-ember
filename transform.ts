@@ -11,6 +11,7 @@ import type {
 import { createRequire } from 'node:module';
 
 import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
 
@@ -146,16 +147,21 @@ function makeHooks(
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
-    // Bare-mustache attribute values (`id={{x}}`) are emitted as
-    // `id="<spaces>"` (see blank.ts). Detect that pattern and replace
-    // the value with a DynamicValue so rules see "attribute present,
-    // value unknowable". The minimum length 3 matches the shortest
-    // possible original mustache `{{x}}` (5 chars → `"<3 spaces>"`).
-    if (
-      typeof attr.value === 'string' &&
-      attr.value.length >= 3 &&
-      /^\s+$/u.test(attr.value)
-    ) {
+    // Bare-mustache attribute values (`id={{x}}`) reach this hook as
+    // whitespace-only strings. Two upstream sources produce them:
+    //   1. `blank.ts` blanks each mustache span in place — the
+    //      resulting whitespace is the same length as the original
+    //      mustache (variable, can be much longer than the sentinel).
+    //   2. Explicit injections by `blank.ts` and `component-attrs.ts`
+    //      use the literal `DYNAMIC_VALUE_PLACEHOLDER` from
+    //      `lib/dynamic-value.ts` (a fixed-length 3-space string at
+    //      the time of writing).
+    // `isDynamicValuePlaceholder` accepts both: any whitespace-only
+    // string of length >= the sentinel's length. This is intentional —
+    // we want the same DynamicValue conversion for either source so
+    // rules see "attribute present, value unknowable" regardless of
+    // how the placeholder was produced.
+    if (isDynamicValuePlaceholder(attr.value)) {
       return [{ ...attr, value: new DynamicValue('') as unknown as DynamicValueESM }];
     }
     return [attr];
