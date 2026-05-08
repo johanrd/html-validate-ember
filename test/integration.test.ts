@@ -793,6 +793,36 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('glint-resolved-no-suppression.gts: heuristic must NOT suppress when Glint resolved the wrapper to a precise native tag', async () => {
+    // Regression for the gating in `containsContentRestrictedStructuralChild`:
+    // when Glint resolves `<C.Options>` to `<select>` (via PR #18), the
+    // heuristic must defer to Glint and let `element-permitted-content`
+    // fire on a real `<th>`-under-`<select>` violation. Earlier
+    // implementations risked over-suppressing because the wrapper's tag
+    // looked unresolvable (PascalCase/dotted) at the AST level.
+    //
+    // Lives under `test/glint-fixtures/` (not `examples/`) so the local
+    // tsconfig.json wires up Glint type extraction for the fixture.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const v = makeValidator();
+      const fp = path.join(__dirname, 'glint-fixtures', 'glint-resolved-no-suppression.gts');
+      const rawReport = await v.validateFile(fp);
+      const messages = rawReport.results.flatMap((r) =>
+        r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+      );
+      const offenders = messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(
+        offenders.length,
+        `element-permitted-content MUST fire (Glint resolved <C.Options> to <select> and <th> is illegal there); got: ${JSON.stringify(messages)}`,
+      ).toBeGreaterThan(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('builtins.hbs: <Input>/<Textarea>/<LinkTo> substitute to native tags', async () => {
     // The built-in Ember component map provides tag substitutions for
     // these three components even without Glint. Validate clean (the
