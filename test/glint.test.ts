@@ -233,41 +233,31 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
-  it.fails(
-    'leaf-element-under-list-wrapper-consumer.gts: deeper wrapper-vs-leaf FP NOT yet handled',
-    () => {
-      // Documents a class of FPs the template-root fallback does NOT
-      // catch: a component declares `Element: HTMLAnchorElement` (or
-      // similar leaf-interactive type) but its template wraps the
-      // anchor inside a list-item wrapper:
-      //
-      //   <template>
-      //     <ListItem>
-      //       <a ...attributes>{{yield}}</a>
-      //     </ListItem>
-      //   </template>
-      //
-      // Glint resolves to the LEAF tag (`<a>`); our substitution
-      // places `<a>` directly under the consumer's `<ul>` and
-      // `element-permitted-content` FP-fires. The runtime DOM is
-      // `<ul><li><a></a></li></ul>` (legal).
-      //
-      // Fixing this needs recursive cross-file template walking to
-      // find the OUTERMOST native ancestor (`<li>`), or a heuristic
-      // that refuses leaf-style substitutions under structural-parent
-      // contexts (ul/ol → li, table → tr).
-      //
-      // Marked `.fails(...)` so when the fix lands, vitest signals
-      // "remove .fails — your fix worked".
-      const { filename, contents } = readFixture('leaf-element-under-list-wrapper-consumer.gts');
-      const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
-      const entries = [...componentTagMap.entries()];
-      // Aspiration: ListLink resolves to 'li' (the outer wrapper) so
-      // children land legally under <ul>. Today: it resolves to 'a'.
-      const liResolution = entries.find(([k, tag]) => tag === 'li' && k.startsWith('20:'));
-      expect(liResolution).toBeDefined();
-    },
-  );
+  it('leaf-element-under-list-wrapper-consumer.gts: outer-wrapper resolver overrides leaf-interactive resolution', () => {
+    // A component declares `Element: HTMLAnchorElement` (Glint reads
+    // the leaf interactive type → 'a'), but its template wraps the
+    // `<a>` inside `<ListItem>` (which renders `<li>`):
+    //
+    //   <template>
+    //     <ListItem>
+    //       <a ...attributes>{{yield}}</a>
+    //     </ListItem>
+    //   </template>
+    //
+    // At runtime the outermost element is `<li>`. The outer-wrapper
+    // resolver walks the template chain (ListLink → ListItem → `<li>`)
+    // and overrides Glint's leaf-resolved `<a>` with `<li>`. Lets a
+    // consumer place this under `<ul>` without `element-permitted-
+    // content` FP-firing on `<a>`-under-`<ul>`.
+    const { filename, contents } = readFixture('leaf-element-under-list-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntries = entries.filter(([, tag]) => tag === 'li');
+    expect(
+      liEntries.length,
+      `expected at least one ListLink invocation to resolve to 'li' (outer wrapper); got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThan(0);
+  });
 
   it('falls back to template-root tag when Glint says transparent and the template literally writes a native wrapper', () => {
     // Mirrors a common pattern: a wrapper component declares

@@ -15,6 +15,7 @@ import type * as TS from 'typescript';
 
 import { isNativeTag } from '../blank.js';
 import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
+import { resolveOuterWrapperTag } from './outer-wrapper-resolver.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -1003,6 +1004,31 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
               if ((tag === null || tag === 'transparent') && isNativeTag(first.tag)) {
                 componentTagMap.set(key, first.tag);
               }
+            }
+            // Outer-wrapper override: when the component's template
+            // wraps the splatted leaf in an OUTER native ancestor
+            // (e.g. `<ListItem><a ...attributes>{{yield}}</a></ListItem>`
+            // where ListItem renders `<li>`), Glint resolves the
+            // consumer-side substitution to the LEAF type (`<a>`).
+            // That fires `element-permitted-content` when the consumer
+            // places the component under a structurally-restrictive
+            // parent (`<ul>`, `<ol>`, etc.) even though the runtime
+            // DOM is `<ul><li><a>…</a></li></ul>` (legal). Walk the
+            // component's template AST to find the OUTERMOST native
+            // ancestor (recursing through PascalCase wrappers via local
+            // imports), and prefer that tag when it differs from the
+            // leaf-resolved tag. Single-substitution trade-off: the
+            // inner-content semantics (e.g. `<button>`-under-`<a>`)
+            // are lost on the consumer-side lint pass; the addon's
+            // own template lint catches them on its side.
+            const outerWrapper = resolveOuterWrapperTag(gtsPath);
+            const currentResolved = componentTagMap.get(key);
+            if (
+              outerWrapper !== null &&
+              outerWrapper !== currentResolved &&
+              isNativeTag(outerWrapper)
+            ) {
+              componentTagMap.set(key, outerWrapper);
             }
           }
         }
