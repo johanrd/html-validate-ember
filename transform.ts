@@ -118,7 +118,11 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
   return { line, column };
 }
 
-function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): SourceHooks {
+function makeHooks(
+  dynamicSet: ReadonlySet<number>,
+  imgSplatSet: ReadonlySet<number>,
+  startOffset: number,
+): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
     // Bare-mustache attribute values (`id={{x}}`) are emitted as
     // `id="<spaces>"` (see blank.ts). Detect that pattern and replace
@@ -149,6 +153,32 @@ function makeHooks(dynamicSet: ReadonlySet<number>, startOffset: number): Source
         new DynamicValue(''),
         location,
       );
+    }
+    // Inject required attrs synthetically for `<img ...attributes>`.
+    // The blanker erases `...attributes` from the source but records
+    // the element's start offset; we honor that here by adding a
+    // DynamicValue-backed `src` and/or `alt` if the consumer didn't
+    // already write them. Sidesteps the source-side slot-width
+    // problem (a 13-char `...attributes` slot can't fit two valid
+    // `attr=value` placeholders that html-validate accepts).
+    if (
+      imgSplatSet.has(templateRelativeOffset) &&
+      (el as unknown as { tagName?: string }).tagName === 'img'
+    ) {
+      const elWithAttrs = el as unknown as {
+        hasAttribute(name: string): boolean;
+        setAttribute(
+          name: string,
+          value: unknown,
+          keyLocation: unknown,
+          valueLocation: unknown,
+        ): void;
+      };
+      for (const name of ['src', 'alt']) {
+        if (!elWithAttrs.hasAttribute(name)) {
+          elWithAttrs.setAttribute(name, new DynamicValue(''), location, location);
+        }
+      }
     }
   };
 
@@ -192,7 +222,11 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       column: 1,
       offset: 0,
       originalData,
-      hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), 0),
+      hooks: makeHooks(
+        new Set(result.dynamicContentOffsets ?? []),
+        new Set(result.imgSplatOffsets ?? []),
+        0,
+      ),
     };
     return;
   }
@@ -311,7 +345,11 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         column: sourceColumn,
         offset: sourceOffset,
         originalData,
-        hooks: makeHooks(new Set(result.dynamicContentOffsets ?? []), startOffset),
+        hooks: makeHooks(
+          new Set(result.dynamicContentOffsets ?? []),
+          new Set(result.imgSplatOffsets ?? []),
+          startOffset,
+        ),
       };
     }
   }
