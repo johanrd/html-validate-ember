@@ -167,6 +167,35 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeUndefined();
   });
 
+  it('does NOT resolve `Element: HTMLElement` (the generic) to a phantom tag like <abbr>', () => {
+    // Surfaced by ecosystem CI on ember-power-select and HDS: a component
+    // declaring `Signature['Element'] = HTMLElement` (the bare generic) was
+    // resolving to <abbr> because lib.dom.d.ts's HTMLElementTagNameMap has
+    // `"abbr": HTMLElement` as its first entry mapping to bare HTMLElement.
+    // The inversion picked abbr; downstream rules then FP-fired
+    // element-permitted-content on legal content.
+    //
+    // Correct behaviour: skip the inversion for generic HTMLElement so the
+    // component falls through to 'transparent' (children float to real
+    // parent), the same outcome as a component with no Element declared.
+    const { filename, contents } = readFixture('generic-html-element-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const abbrEntry = entries.find(([, tag]) => tag === 'abbr');
+    expect(
+      abbrEntry,
+      `Element: HTMLElement (generic) must NOT resolve to 'abbr'; got: ${JSON.stringify(entries)}`,
+    ).toBeUndefined();
+    // And it should resolve as 'transparent' explicitly — null would let
+    // blank.ts's built-in name-based fallback fire (e.g. `<Input>` → input
+    // even when Glint correctly resolved the user's component).
+    const transparentEntry = entries.find(([, tag]) => tag === 'transparent');
+    expect(
+      transparentEntry,
+      `expected componentTagMap to record the component as 'transparent'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'
