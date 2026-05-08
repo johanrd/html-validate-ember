@@ -478,7 +478,17 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
-  imgSplatOffsets: number[];
+  // Per-attr hook-injection offsets. The downstream `processElement`
+  // hook injects `src=DynamicValue` only for offsets in
+  // `imgSplatSrcOffsets` and `alt=DynamicValue` only for offsets in
+  // `imgSplatAltOffsets`. Splitting per-attr (rather than a single
+  // imgSplatOffsets list that triggers both) lets us register only
+  // the attrs the component/template actually guarantees — a
+  // template binding `src={{this.src}}` but not `alt` only registers
+  // `src`, so `wcag/h37` (missing alt) still fires when the consumer
+  // forgets to pass an alt.
+  imgSplatSrcOffsets: number[];
+  imgSplatAltOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -700,11 +710,21 @@ function tryInjectImgRequiredAttrsViaHook(
   const present = new Set((node.attributes ?? []).map((a) => a.name));
   // `src` / `alt` ATTRS on the consumer (not @src / @alt args) take
   // precedence — the consumer chose to write the literal, html-validate
-  // should validate it. Skip the hook in that case.
-  const needsSrc = !present.has('src') && attrCtx.attrs['src'] !== undefined;
-  const needsAlt = !present.has('alt') && attrCtx.attrs['alt'] !== undefined;
-  if (!needsSrc && !needsAlt) return;
-  ctx.imgSplatOffsets.push(startOffset(node));
+  // should validate it. Skip per-attr in that case.
+  //
+  // Per-attr precision matters here: the downstream `processElement`
+  // hook injects `src` only for offsets in `imgSplatSrcOffsets` and
+  // `alt` only for offsets in `imgSplatAltOffsets`. For a component
+  // whose template binds `src={{this.src}}` but not `alt`, only the
+  // src set gets the offset — `wcag/h37` (missing alt) still fires
+  // correctly when the consumer forgets to pass an alt.
+  const offset = startOffset(node);
+  if (!present.has('src') && attrCtx.attrs['src'] !== undefined) {
+    ctx.imgSplatSrcOffsets.push(offset);
+  }
+  if (!present.has('alt') && attrCtx.attrs['alt'] !== undefined) {
+    ctx.imgSplatAltOffsets.push(offset);
+  }
 }
 
 // Find a Glimmer-only attribute (`@arg`, modifier, `...attributes`)
@@ -750,8 +770,16 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
   if (!hasSplat) return;
   const present = new Set((node.attributes ?? []).map((a) => a.name));
-  if (present.has('src') && present.has('alt')) return;
-  ctx.imgSplatOffsets.push(startOffset(node));
+  // Native `<img ...attributes>`: the splat is the contract — whatever
+  // the parent passes flows through. We don't know statically which
+  // attrs come through, so be permissive: register both `src` and `alt`
+  // for hook-injection so downstream rules see "attribute present,
+  // value unknowable" for whichever the consumer didn't write
+  // explicitly. Real-bug detection happens at the consumer of THIS
+  // component (where they may forget to pass src/alt).
+  const offset = startOffset(node);
+  if (!present.has('src')) ctx.imgSplatSrcOffsets.push(offset);
+  if (!present.has('alt')) ctx.imgSplatAltOffsets.push(offset);
 }
 
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
@@ -1285,14 +1313,19 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
-  // Offsets of `<img ...attributes>` elements (start of `<` byte) where
-  // the consumer-side `...attributes` is expected to provide required
-  // attrs (src/alt) at runtime. The transformer's processElement hook
-  // synthesizes these attrs as DynamicValue at parse-time so html-
-  // validate sees them as "present, value unknowable" — sidesteps the
-  // narrow-slot problem where source-side rewrite can't fit two 9-char
-  // `attr='   '` placeholders into a 13-char `...attributes` slot.
-  imgSplatOffsets: number[];
+  // Per-attr offsets for hook-time `setAttribute` injection. The
+  // transformer's `processElement` hook injects `src=DynamicValue`
+  // only at offsets in `imgSplatSrcOffsets` and `alt=DynamicValue`
+  // only at offsets in `imgSplatAltOffsets`. Splitting per-attr
+  // sidesteps the narrow-slot problem (a 13-char `...attributes`
+  // slot can't fit two 9-char `attr='   '` placeholders) AND lets
+  // a component-substituted `<img>` register only the attrs its
+  // template actually guarantees — so a template binding
+  // `src={{this.src}}` but not `alt` only registers `src`, and
+  // `wcag/h37` (missing alt) still fires when the consumer forgets
+  // to pass an alt.
+  imgSplatSrcOffsets: number[];
+  imgSplatAltOffsets: number[];
   // Rule IDs that the consumer should disable for this Source as a whole —
   // populated when the template contains structural patterns the static
   // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
@@ -1308,7 +1341,8 @@ export interface BlankErrorResult {
   error: Error;
   dynamicContentOffsets?: undefined;
   disableForRules?: undefined;
-  imgSplatOffsets?: undefined;
+  imgSplatSrcOffsets?: undefined;
+  imgSplatAltOffsets?: undefined;
 }
 
 function blankTemplateContent(
@@ -1346,7 +1380,8 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
-    imgSplatOffsets: [],
+    imgSplatSrcOffsets: [],
+    imgSplatAltOffsets: [],
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1409,7 +1444,8 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
-    imgSplatOffsets: ctx.imgSplatOffsets,
+    imgSplatSrcOffsets: ctx.imgSplatSrcOffsets,
+    imgSplatAltOffsets: ctx.imgSplatAltOffsets,
     disableForRules: detectStructuralYieldRules(
       ast,
       branchSelections,

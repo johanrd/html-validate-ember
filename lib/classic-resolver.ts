@@ -31,6 +31,7 @@ import path from 'node:path';
 import { traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
+import { isNativeTag } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { extractSplattedRootFromTemplate } from './component-attrs.js';
 
@@ -95,6 +96,11 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
       } catch {
         entries = [];
       }
+      // Sort by name for deterministic resolution: `fs.readdirSync`
+      // returns entries in filesystem order, which varies across OS
+      // and filesystems. When two addons ship the same kebab-cased
+      // template, sort order picks a stable winner.
+      entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       for (const entry of entries) {
         // pnpm uses symlinks for packages — `isDirectory()` returns
         // false on a symlink, so accept symlinks too. The lookup below
@@ -110,10 +116,11 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
           } catch {
             continue;
           }
+          scopedEntries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
           for (const scoped of scopedEntries) {
             if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
             const result = tryProbeAddon(path.join(scopeRoot, scoped.name), kebabName);
-            if (result && isLowercaseHtmlTag(result.tag)) {
+            if (result && isNativeTag(result.tag)) {
               cache.set(cacheKey, result);
               return result;
             }
@@ -121,7 +128,7 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
           continue;
         }
         const result = tryProbeAddon(path.join(nodeModules, entry.name), kebabName);
-        if (result && isLowercaseHtmlTag(result.tag)) {
+        if (result && isNativeTag(result.tag)) {
           cache.set(cacheKey, result);
           return result;
         }
@@ -134,14 +141,6 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
   return null;
 }
 
-// Lightweight native-tag check that doesn't pull `isNativeTag` from
-// blank.ts (avoids circular import — blank.ts → classic-resolver.ts
-// chain). A component template's root being a lowercase ASCII letter
-// followed by name-chars is a sufficient proxy for "native HTML tag";
-// the actual blanker does the strict check via NATIVE_TAGS.
-function isLowercaseHtmlTag(tag: string): boolean {
-  return /^[a-z][a-z0-9-]*$/.test(tag);
-}
 
 // Walk a template AST, find every single-segment PascalCase invocation
 // (`<EsCard>`, not `<This.Foo>` or `<Forms::TextInput>`), and build a

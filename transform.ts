@@ -150,7 +150,8 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
-  imgSplatSet: ReadonlySet<number>,
+  imgSplatSrcSet: ReadonlySet<number>,
+  imgSplatAltSet: ReadonlySet<number>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -189,16 +190,18 @@ function makeHooks(
         location,
       );
     }
-    // Inject required attrs synthetically for `<img ...attributes>`.
-    // The blanker erases `...attributes` from the source but records
-    // the element's start offset; we honor that here by adding a
-    // DynamicValue-backed `src` and/or `alt` if the consumer didn't
-    // already write them. Sidesteps the source-side slot-width
-    // problem (a 13-char `...attributes` slot can't fit two valid
-    // `attr=value` placeholders that html-validate accepts).
+    // Inject required attrs synthetically for `<img ...attributes>` or
+    // for component-substituted `<img>` whose addon template binds
+    // `src={{this.src}}` and/or `alt={{this.alt}}`. The blanker records
+    // each attr's offset independently in `imgSplatSrcSet` /
+    // `imgSplatAltSet` so we only inject what's actually guaranteed
+    // at runtime — silently injecting `alt` for a component that
+    // doesn't bind it would mask `wcag/h37` (missing alt) at the
+    // consumer.
+    const isImg = (el as unknown as { tagName?: string }).tagName === 'img';
     if (
-      imgSplatSet.has(templateRelativeOffset) &&
-      (el as unknown as { tagName?: string }).tagName === 'img'
+      isImg &&
+      (imgSplatSrcSet.has(templateRelativeOffset) || imgSplatAltSet.has(templateRelativeOffset))
     ) {
       const elWithAttrs = el as unknown as {
         hasAttribute(name: string): boolean;
@@ -209,10 +212,11 @@ function makeHooks(
           valueLocation: unknown,
         ): void;
       };
-      for (const name of ['src', 'alt']) {
-        if (!elWithAttrs.hasAttribute(name)) {
-          elWithAttrs.setAttribute(name, new DynamicValue(''), location, location);
-        }
+      if (imgSplatSrcSet.has(templateRelativeOffset) && !elWithAttrs.hasAttribute('src')) {
+        elWithAttrs.setAttribute('src', new DynamicValue(''), location, location);
+      }
+      if (imgSplatAltSet.has(templateRelativeOffset) && !elWithAttrs.hasAttribute('alt')) {
+        elWithAttrs.setAttribute('alt', new DynamicValue(''), location, location);
       }
     }
   };
@@ -285,7 +289,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       originalData,
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
-        new Set(result.imgSplatOffsets ?? []),
+        new Set(result.imgSplatSrcOffsets ?? []),
+        new Set(result.imgSplatAltOffsets ?? []),
         0,
       ),
     };
@@ -412,7 +417,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         originalData,
         hooks: makeHooks(
           new Set(result.dynamicContentOffsets ?? []),
-          new Set(result.imgSplatOffsets ?? []),
+          new Set(result.imgSplatSrcOffsets ?? []),
+          new Set(result.imgSplatAltOffsets ?? []),
           startOffset,
         ),
       };
