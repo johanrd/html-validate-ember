@@ -1238,12 +1238,21 @@ export interface BlankResult {
   // narrow-slot problem where source-side rewrite can't fit two 9-char
   // `attr='   '` placeholders into a 13-char `...attributes` slot.
   imgSplatOffsets: number[];
+  // Rule IDs that the consumer should disable for this Source as a whole —
+  // populated when the template contains structural patterns the static
+  // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
+  // `{{yield}}` in its body (consumer provides the submit button), and
+  // `wcag/h71` when a `<fieldset>` does (consumer provides the legend).
+  // Transform.ts prepends an inline `<!--html-validate-disable …-->`
+  // directive built from this list, with offset adjustment.
+  disableForRules: string[];
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  disableForRules?: undefined;
   imgSplatOffsets?: undefined;
 }
 
@@ -1346,7 +1355,365 @@ function blankTemplateContent(
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
     imgSplatOffsets: ctx.imgSplatOffsets,
+    disableForRules: detectStructuralYieldRules(
+      ast,
+      branchSelections,
+      glintComponentTagMap,
+      glintComponentAttrMap,
+    ),
   };
+}
+
+// Detect cases where a structural rule would FP-fire on the blanked
+// output, and add the rule to `disableForRules` so the transformer can
+// inject a one-shot disable directive into this Source.
+//
+// Two FP classes covered today:
+//
+//   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
+//      detectable submit/legend (the suppression target rule fires
+//      because the yield was blanked away). Wrapper markup like
+//      `<form><div>{{yield}}</div></form>` IS suppressed; a form with
+//      a real `<button type='submit'>` alongside the yield is NOT
+//      (the rule wouldn't fire and the disable would itself trigger
+//      `no-unused-disable`).
+//
+//   2. Input-driven `<form {{on "input" …}}>` — search-as-you-type /
+//      live-filter pattern. The `{{on "input"}}` modifier signals that
+//      the form's action is driven by input events, not submission;
+//      a separate submit button would be ceremonial (helps no real
+//      user). wcag/h32 is suppressed regardless of submit-button or
+//      yield presence.
+//
+// Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
+// would let one arm's static submit hide the other arm's yield-only
+// FP. Instead we honor `branchSelections` (the same per-pass selection
+// `handleBlockStatement` uses) so each emitted Source's
+// `disableForRules` matches its own blanked content. When no
+// selection is present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass
+// mode) we mirror `handleBlockStatement`'s heuristic: prefer program,
+// switch to inverse only when inverse has a static submit and program
+// doesn't.
+//
+// Component-aware. Component invocations that resolve to native
+// `<button>`/`<input>` via Glint or builtin maps count as static
+// submit when their splatted-root attrs make them submit-style — a
+// `<MyButton>` resolving to `<button type='submit' ...attributes>`
+// would otherwise trigger `no-unused-disable` (the rule it's trying
+// to suppress doesn't actually fire on the blanked output, since
+// substitution emits a real submit).
+//
+// Conservative on dynamic types: `<button type={{x}}>` and
+// `<input type={{x}}>` count as MAYBE-submit and disqualify the
+// suppression. Trade-off: a yield-bearing form whose only "submit-like"
+// element has a dynamic type stays unsuppressed (real h32 may fire) —
+// preferred to introducing a synthetic no-unused-disable.
+function detectStructuralYieldRules(
+  ast: AST.Template,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+  glintComponentTagMap?: ReadonlyMap<string, string> | null,
+  glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
+): string[] {
+  const out: string[] = [];
+  // Custom walk — the off-the-shelf `traverse` would visit forms /
+  // fieldsets that live entirely in a blanked-out branch for the
+  // current pass, leaking their suppression rules into
+  // `disableForRules` and silently suppressing real violations on
+  // the actually-emitted output (false negatives). At every
+  // BlockStatement we descend ONLY into the selected arm — the same
+  // selection `handleBlockStatement` makes, so this matches what the
+  // blanker actually emits in this pass.
+  function walk(stmts: ReadonlyArray<AST.TopLevelStatement | AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'form') {
+          if (
+            formHasInputModifier(stmt) ||
+            elementYieldsAndLacksSubmit(
+              stmt,
+              branchSelections,
+              glintComponentTagMap,
+              glintComponentAttrMap,
+            )
+          ) {
+            out.push('wcag/h32');
+          }
+        } else if (
+          stmt.tag === 'fieldset' &&
+          elementYieldsAndLacksLegend(stmt, branchSelections)
+        ) {
+          out.push('wcag/h71');
+        }
+        walk(stmt.children);
+      }
+    }
+  }
+  walk(ast.body);
+  return [...new Set(out)];
+}
+
+// Pick a single arm of `{{#if}}/{{else}}` to walk — mirrors the
+// selection in `handleBlockStatement` so the decision matches what the
+// blanker actually emits in each pass.
+function selectBranch(
+  block: AST.BlockStatement,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+): AST.Block | null {
+  if (!block.inverse) return block.program;
+  const explicit = branchSelections?.get(startOffset(block));
+  if (explicit !== undefined) {
+    return explicit === 'inverse' ? block.inverse : block.program;
+  }
+  const programHasSubmit = blockHasSubmitButton(block.program);
+  const inverseHasSubmit = blockHasSubmitButton(block.inverse);
+  return inverseHasSubmit && !programHasSubmit ? block.inverse : block.program;
+}
+
+// True when a `<form>` body contains `{{yield}}` (or `{{has-block}}`)
+// somewhere AND has no statically-detectable submit-style child. The
+// yield means the consumer might supply a submit button at runtime;
+// the absence of a static submit means wcag/h32 would FP-fire on the
+// blanked output. Together: the suppression is needed.
+//
+// If a static submit DOES exist, wcag/h32 wouldn't fire and our
+// injected `<!--html-validate-disable wcag/h32-->` would itself be
+// flagged "unused" by `no-unused-disable`. So we bail in that case.
+//
+// "Statically-detectable submit" means a `<button>` whose `type` is
+// absent (default `submit` inside a form) or statically equals
+// `submit` (ASCII case-insensitive); a `<button type='button'>` /
+// `type='reset'` is explicitly non-submit and does NOT disqualify.
+// For `<input>`, `type='submit'` / `type='image'` (case-insensitive)
+// counts. Bare-mustache types are conservatively treated as MAYBE
+// submit (we bail) — better an extra real wcag/h32 fire than an
+// unused-disable cascade.
+// True when a `<form>` carries an event modifier that signals
+// input-event-driven UX (rather than submission-driven). Two events
+// trigger the suppression:
+//   - `{{on "input" …}}` — search-as-you-type / live-filter; updates
+//     on every keystroke.
+//   - `{{on "change" …}}` — commit-on-blur / per-field-commit; the
+//     form's action runs as fields are committed individually rather
+//     than on a final submit.
+//
+// Both patterns make a separate submit button ceremonial. Conservative
+// on the event-name argument: we require a static string literal;
+// bare-mustache event names like `{{on @event …}}` could resolve to
+// anything at runtime, so we don't trust them as a suppression signal.
+const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+function formHasInputModifier(form: AST.ElementNode): boolean {
+  for (const modifier of form.modifiers ?? []) {
+    if (modifier.path.type !== 'PathExpression') continue;
+    if (modifier.path.original !== 'on') continue;
+    const firstParam = modifier.params?.[0];
+    if (firstParam?.type === 'StringLiteral' && INPUT_DRIVEN_FORM_EVENTS.has(firstParam.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function elementYieldsAndLacksSubmit(
+  form: AST.ElementNode,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+): boolean {
+  let hasYield = false;
+  let hasStaticSubmit = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (hasStaticSubmit) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          hasYield = true;
+        }
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (
+          isStaticSubmitButton(stmt) ||
+          isSubmitInput(stmt) ||
+          isAmbiguouslyTypedInputOrButton(stmt) ||
+          isComponentResolvingToSubmitOrAmbiguous(stmt, glintComponentTagMap, glintComponentAttrMap)
+        ) {
+          hasStaticSubmit = true;
+          return;
+        }
+        walk(stmt.children);
+        continue;
+      }
+    }
+  }
+  walk(form.children);
+  return hasYield && !hasStaticSubmit;
+}
+
+// True when a `<fieldset>` body has opaque legend-source content AND
+// no statically-detectable `<legend>` child. "Opaque legend-source"
+// means either a literal `{{yield}}` / `{{has-block}}` mustache OR a
+// non-native tag (component invocation) — components may render their
+// own `<legend>` at runtime, and we can't see inside them, so we err
+// toward suppression rather than letting wcag/h71 FP-fire.
+//
+// The component-invocation case handles ember-primitives' OTP-input
+// pattern: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}`.
+// In multipass the inverse arm produces `<C />` only — without this
+// rule the walker would see no yield, no legend, and let h71 fire.
+function elementYieldsAndLacksLegend(
+  fieldset: AST.ElementNode,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+): boolean {
+  let hasOpaqueLegendSource = false;
+  let hasStaticLegend = false;
+  function walk(stmts: ReadonlyArray<AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (hasStaticLegend) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          hasOpaqueLegendSource = true;
+        }
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'legend') {
+          hasStaticLegend = true;
+          return;
+        }
+        // Component invocation (PascalCase / dotted / `:slot`) may
+        // render `<legend>` at runtime — treat as legend-source.
+        if (!isNativeTag(stmt.tag)) {
+          hasOpaqueLegendSource = true;
+        }
+        walk(stmt.children);
+        continue;
+      }
+    }
+  }
+  walk(fieldset.children);
+  return hasOpaqueLegendSource && !hasStaticLegend;
+}
+
+// `<button>` with no `type` attribute (default = submit inside a form)
+// or with a static `type='submit'` (ASCII case-insensitive). Explicit
+// `type='button'` / `type='reset'` returns false.
+function isStaticSubmitButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      return attr.value.chars.toLowerCase() === 'submit';
+    }
+    // Dynamic value — handled by isAmbiguouslyTypedInputOrButton.
+    return false;
+  }
+  return true;
+}
+
+function isSubmitInput(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    if (attr.value.type === 'TextNode') {
+      const v = attr.value.chars.toLowerCase();
+      return v === 'submit' || v === 'image';
+    }
+    return false;
+  }
+  return false;
+}
+
+function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input' && node.tag !== 'button') return false;
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== 'type') continue;
+    // Bare-mustache or concat-mustache value: type unknown statically;
+    // could be 'submit' at runtime. Bail conservatively.
+    if (attr.value.type !== 'TextNode') return true;
+  }
+  return false;
+}
+
+// True when a component invocation (`<MyButton>`, `<This.Foo>`)
+// resolves VIA GLINT to a native `<button>`/`<input>` that's either a
+// static submit OR ambiguous on its type. Treats both "definitely
+// submit" and "could be submit" as disqualifying — the goal is to
+// avoid `no-unused-disable` cascades, so we err on the side of NOT
+// suppressing when in doubt.
+//
+// Glint-only on purpose: the implementation bails early when
+// `glintComponentTagMap` is falsy. The plugin's builtin component map
+// (used by `handleGlintSubstitution` for `<Input>` / `<Textarea>` /
+// `<LinkTo>` in non-Glint runs) doesn't currently feed into submit
+// detection here. In practice the builtins that map to `<input>` are
+// rarely used as submit buttons (`<Input type='submit'>` exists but is
+// uncommon), so the missing fallback hasn't surfaced as a real FP.
+// Add it if a real-world target hits this case.
+//
+// "Static submit" cases:
+//   - Resolves to `<button>` with no static `type` attr (default
+//     submit per HTML), OR with `type='submit'` (case-insensitive).
+//   - Resolves to `<input>` with `type='submit'` / `type='image'`
+//     (case-insensitive).
+//
+// "Ambiguous" case:
+//   - Resolves to `<button>`/`<input>` with a `type` attr whose
+//     recorded value is whitespace-only (DynamicValue placeholder
+//     produced for bare-mustache types in component-attrs.ts).
+//
+// "Not submit" cases (returns false):
+//   - Component does not resolve, OR resolves to a non-submit-style tag.
+//   - Resolves to `<button>` with a non-submit static type
+//     (`type='button'`, `type='reset'`).
+//   - Resolves to `<input>` with a non-submit static type
+//     (`type='text'`, etc.).
+function isComponentResolvingToSubmitOrAmbiguous(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+): boolean {
+  if (isNativeTag(node.tag)) return false;
+  if (!glintComponentTagMap || !node.loc.start) return false;
+  const key = `${node.loc.start.line}:${node.loc.start.column}`;
+  const resolvedTag = glintComponentTagMap.get(key);
+  if (resolvedTag !== 'button' && resolvedTag !== 'input') return false;
+  const recordedType = glintComponentAttrMap?.get(key)?.attrs?.['type'];
+  if (recordedType === undefined) {
+    // No static type recorded by the component-attrs extractor.
+    // For <button>: default IS submit per HTML → static submit.
+    // For <input>: default is 'text' → not submit.
+    return resolvedTag === 'button';
+  }
+  if (/^\s+$/u.test(recordedType)) {
+    // DynamicValue placeholder — type is bare-mustache at the splatted
+    // root; could resolve to 'submit' at runtime. Disqualify.
+    return true;
+  }
+  const v = recordedType.toLowerCase();
+  if (resolvedTag === 'button') return v === 'submit';
+  return v === 'submit' || v === 'image';
 }
 
 // True when the branch's body contains nothing the validator can see —
