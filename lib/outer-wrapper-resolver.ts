@@ -409,15 +409,21 @@ function resolveOuterWrapperTagInner(
 ): OuterWrapperResolution | null {
   if (depth > MAX_DEPTH) return null;
   if (visited.has(filename)) return null; // cycle guard
+  // The result for a given `filename` is deterministic (it walks the
+  // file's first `<template>` block and recurses through its
+  // wrappers), so it's safe to consult/populate the cache at any
+  // depth. The cycle guard via `visited` still prevents us from
+  // recursing into a file that's currently being walked higher up
+  // the call stack — a separate concern from cross-call caching.
   const cached = cache.get(filename);
-  if (cached !== undefined && depth === 0) return cached;
+  if (cached !== undefined) return cached;
   visited.add(filename);
 
   let contents: string;
   try {
     contents = fs.readFileSync(filename, 'utf8');
   } catch {
-    if (depth === 0) cache.set(filename, null);
+    cache.set(filename, null);
     return null;
   }
 
@@ -425,7 +431,7 @@ function resolveOuterWrapperTagInner(
   try {
     blocks = preprocessor.parse(contents, { filename });
   } catch {
-    if (depth === 0) cache.set(filename, null);
+    cache.set(filename, null);
     return null;
   }
 
@@ -459,7 +465,7 @@ function resolveOuterWrapperTagInner(
         attrs: levelAttrs,
         hasSplat: elementHasSplat(outermost),
       };
-      if (depth === 0) cache.set(filename, result);
+      cache.set(filename, result);
       return result;
     }
 
@@ -483,7 +489,7 @@ function resolveOuterWrapperTagInner(
         attrs: merged,
         hasSplat: recursed.hasSplat,
       };
-      if (depth === 0) cache.set(filename, result);
+      cache.set(filename, result);
       return result;
     }
   }

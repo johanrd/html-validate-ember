@@ -73,6 +73,63 @@ function isEmberAddonPackage(pkgRoot: string): boolean {
   return result;
 }
 
+// Cache of pre-computed addon-package roots per `node_modules` path.
+// `findClassicComponent` walks a consumer's `node_modules` for every
+// PascalCase lookup; without this cache the readdir + sort + per-
+// package isEmberAddonPackage check would run anew on each call. With
+// it, scan once per `node_modules` directory and reuse for every
+// kebab-name lookup.
+//
+// Stored as the absolute paths to addon roots (sorted by name for
+// determinism), so callers can iterate without re-doing the scan.
+// pnpm-style symlinks are resolved into actual paths for stable
+// `isEmberAddonPackage` lookups (the same package may appear via
+// multiple symlinks; the cache is keyed on the symlink-target path's
+// `node_modules`).
+const addonRootsCache = new Map<string, string[]>();
+
+function listAddonRootsIn(nodeModules: string): string[] {
+  const cached = addonRootsCache.get(nodeModules);
+  if (cached !== undefined) return cached;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(nodeModules, { withFileTypes: true });
+  } catch {
+    addonRootsCache.set(nodeModules, []);
+    return [];
+  }
+  entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const addonRoots: string[] = [];
+  for (const entry of entries) {
+    // pnpm uses symlinks for packages — `isDirectory()` returns false
+    // on a symlink, so accept symlinks too. `fs.existsSync` /
+    // `readFileSync` below transparently follow links.
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+    if (entry.name.startsWith('.')) continue;
+    if (entry.name.startsWith('@')) {
+      // Scoped package — recurse one level.
+      const scopeRoot = path.join(nodeModules, entry.name);
+      let scopedEntries: fs.Dirent[];
+      try {
+        scopedEntries = fs.readdirSync(scopeRoot, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      scopedEntries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      for (const scoped of scopedEntries) {
+        if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
+        const pkgRoot = path.join(scopeRoot, scoped.name);
+        if (isEmberAddonPackage(pkgRoot)) addonRoots.push(pkgRoot);
+      }
+      continue;
+    }
+    const pkgRoot = path.join(nodeModules, entry.name);
+    if (isEmberAddonPackage(pkgRoot)) addonRoots.push(pkgRoot);
+  }
+  addonRootsCache.set(nodeModules, addonRoots);
+  return addonRoots;
+}
+
 // Components our blank-step handles via the builtin map (not by-name
 // resolution). Skip these — they'd shadow the builtin substitution.
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set([
@@ -118,6 +175,11 @@ function tryProbeAddon(addonRoot: string, kebabName: string): ComponentAttrs | n
 // Look up `kebabName` in every addon under each `node_modules/` walked
 // up from the consumer file. Returns the first match. Native-tag-only
 // guard mirrors PR #19's `resolveAddonHbsTemplate` behavior.
+//
+// Per-name cost is bounded by the cached addon-roots list (see
+// `listAddonRootsIn`) plus 3 `existsSync` per addon for the hbs probe.
+// The readdir + sort + per-package isEmberAddonPackage scan happens
+// once per `node_modules` directory and is reused across kebab names.
 function findClassicComponent(consumerFile: string, kebabName: string): ComponentAttrs | null {
   const cacheKey = `${path.dirname(consumerFile)}\0${kebabName}`;
   const cached = cache.get(cacheKey);
@@ -126,47 +188,8 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
   for (;;) {
     const nodeModules = path.join(dir, 'node_modules');
     if (fs.existsSync(nodeModules)) {
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(nodeModules, { withFileTypes: true });
-      } catch {
-        entries = [];
-      }
-      // Sort by name for deterministic resolution: `fs.readdirSync`
-      // returns entries in filesystem order, which varies across OS
-      // and filesystems. When two addons ship the same kebab-cased
-      // template, sort order picks a stable winner.
-      entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-      for (const entry of entries) {
-        // pnpm uses symlinks for packages — `isDirectory()` returns
-        // false on a symlink, so accept symlinks too. The lookup below
-        // uses `fs.existsSync` which transparently follows links.
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-        if (entry.name.startsWith('.')) continue;
-        if (entry.name.startsWith('@')) {
-          // Scoped package — recurse one level.
-          const scopeRoot = path.join(nodeModules, entry.name);
-          let scopedEntries: fs.Dirent[];
-          try {
-            scopedEntries = fs.readdirSync(scopeRoot, { withFileTypes: true });
-          } catch {
-            continue;
-          }
-          scopedEntries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-          for (const scoped of scopedEntries) {
-            if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
-            const pkgRoot = path.join(scopeRoot, scoped.name);
-            if (!isEmberAddonPackage(pkgRoot)) continue;
-            const result = tryProbeAddon(pkgRoot, kebabName);
-            if (result && isNativeTag(result.tag)) {
-              cache.set(cacheKey, result);
-              return result;
-            }
-          }
-          continue;
-        }
-        const pkgRoot = path.join(nodeModules, entry.name);
-        if (!isEmberAddonPackage(pkgRoot)) continue;
+      const addonRoots = listAddonRootsIn(nodeModules);
+      for (const pkgRoot of addonRoots) {
         const result = tryProbeAddon(pkgRoot, kebabName);
         if (result && isNativeTag(result.tag)) {
           cache.set(cacheKey, result);
@@ -220,10 +243,9 @@ export function buildClassicComponentTagMap(
   return { componentTagMap, componentAttrMap };
 }
 
-// Test-only: clear the in-memory by-name resolver caches (the
-// per-(consumerDir, kebabName) lookup cache and the per-package
-// "is an Ember addon" pre-filter cache).
+// Test-only: clear the in-memory by-name resolver caches.
 export function _clearClassicResolverCache(): void {
   cache.clear();
   isAddonCache.clear();
+  addonRootsCache.clear();
 }
