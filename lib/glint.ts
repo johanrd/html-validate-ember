@@ -607,6 +607,21 @@ function resolveComponentElement(
   // directly. If that yields nothing, fall back to transparent (children
   // float to the actual parent — correct for genuinely yields-only TOCs).
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
+    // Glint's emit surfaces `.element` as `unknown`/`any` for several
+    // shapes the Signature['Element']-on-the-call-type path doesn't
+    // cover. Try the cheaper componentRef-type path first
+    // (block-param-yielded curried sub-components, TOCs declared via
+    // type annotation `const X: TOC<S>`), then fall back to the
+    // declaration-walk (which additionally covers `satisfies TOC<S>`
+    // — that form doesn't surface aliasTypeArguments on the ref
+    // expression).
+    const fromRefType = resolveElementFromComponentRefType(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromRefType !== null) return fromRefType;
     const fromTOC = resolveElementFromTOCDeclaration(
       ts,
       checker,
@@ -706,6 +721,65 @@ function resolveElementFromTOCDeclaration(
     if (tag !== null) return tag;
   }
   return null;
+}
+
+// Recover the rendered tag from the *type* of the component-reference
+// expression itself — for cases where Glint's `emitComponent(...).element`
+// surfaces as `unknown`/`any`. Specifically:
+//   - Block-param-yielded curried sub-components (`<C.Options>` where C
+//     is a yielded block-param providing typed sub-components): the
+//     componentRef expression has type `TOC<Sig>` because Glint's emit
+//     types the yielded sub-component reference correctly even when
+//     `.element` doesn't propagate.
+//   - TOCs declared via type annotation (`const X: TOC<Sig> = <template>…`):
+//     the componentRef has type `TOC<Sig>` directly.
+//
+// For both: read the type-arguments off the componentRef's type — Sig
+// is the first type-arg, an object type with `Element: T` as a
+// property — and map `T` to a tag.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only)
+//   - null          if no aliasTypeArguments / no `Element` property —
+//                   caller falls through to plain transparent.
+function resolveElementFromComponentRefType(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  // emitCall is `emitComponent(resolve(Comp)({...}))`; navigate to the
+  // component reference expression. Same path findComponentDeclSourceFile
+  // uses to walk back to the component identifier.
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const refType = checker.getTypeAtLocation(componentRef);
+  // Try both shapes:
+  //   - Type alias `type TOC<S> = …` — type-args land on
+  //     `aliasTypeArguments`.
+  //   - Generic interface `interface TOC<S>` — type-args land on the
+  //     TypeReference's typeArguments, accessible via the public
+  //     `checker.getTypeArguments`.
+  // We don't know which form the host project's `TOC` (or other
+  // signature-carrying generic) uses; check both.
+  const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
+    .aliasTypeArguments;
+  let sigType: TS.Type | undefined = aliasArgs?.[0];
+  if (!sigType && (refType as TS.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
+    const refArgs = checker.getTypeArguments(refType as TS.TypeReference);
+    sigType = refArgs[0];
+  }
+  if (!sigType) return null;
+  const eltSym = sigType.getProperty('Element');
+  if (!eltSym) return null;
+  const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
+  if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+  return matchElementTypeToTag(eltType, elementTypeToTag);
 }
 
 // Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
