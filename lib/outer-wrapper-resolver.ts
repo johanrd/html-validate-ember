@@ -142,10 +142,14 @@ function findOutermostElement(ast: AST.Template): AST.ElementNode | null {
 //
 // Two import shapes are handled:
 //   1. Relative import (`./foo.gts`) — resolve directly.
-//   2. Package import (`@scope/pkg/components`) — resolve via
-//      `node_modules` walk + package.json `exports`, then if the
-//      resolved file is a barrel `.ts`, parse it for the re-export of
-//      `componentName` and follow that.
+//   2. Package import (`@scope/pkg/components`) — walk `node_modules`
+//      upward and probe a fixed set of source-style paths
+//      (`src/<sub>.{gts,gjs,ts}`, `src/<sub>/index.*`, plus a few
+//      bare paths at the package root). We do NOT read the package's
+//      `package.json` `exports`/`main`; we deliberately prefer source
+//      files over compiled dist so we can read original `<template>`
+//      blocks. If the resolved file is a barrel `.ts`, parse it for
+//      the re-export of `componentName` and follow that.
 //
 // Returns null when:
 //   - The import doesn't exist in the file.
@@ -494,7 +498,7 @@ function resolveOuterWrapperTagInner(
     }
   }
 
-  if (depth === 0) cache.set(filename, null);
+  cache.set(filename, null);
   return null;
 }
 

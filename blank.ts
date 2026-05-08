@@ -1566,6 +1566,7 @@ function detectStructuralYieldRules(
           out.push('wcag/h71');
         } else if (
           !isNativeTag(stmt.tag) &&
+          !lookupBuiltinComponent(stmt.tag) &&
           containsContentRestrictedStructuralChild(stmt, glintComponentTagMap, branchSelections)
         ) {
           // Unresolvable PascalCase / dotted wrapper containing
