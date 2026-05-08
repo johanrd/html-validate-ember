@@ -594,15 +594,37 @@ function resolveComponentElement(
     return null;
   }
   const elementType = checker.getTypeOfSymbolAtLocation(elementProp, emitComponentCall);
-  // Treat `unknown` (no Element declared in Signature) and `any` (TS couldn't
-  // infer — common in big files with cascading type errors, or with
-  // `satisfies TOC<…>` patterns) the same way: transparent. Children float
-  // into parent's content model. Less wrong than forcing an `<x-c>` wrapper
-  // that fights content-model rules in places like <tfoot>, <select>,
-  // <menu>, etc.
+  // `unknown` and `any` are both ambiguous in this position. Glint's TOC
+  // overload tends to surface `.element` as `unknown` for the satisfies form
+  // (`<template>...</template> satisfies TOC<{Element: T}>`) and the type-
+  // annotation form (`const X: TOC<{Element: T}> = <template>...</template>`)
+  // even though `T` is statically known on the value's declaration. `any` can
+  // mean either the same thing, or a real type-checking failure cascading
+  // from elsewhere in the file.
+  //
+  // For both: try to recover the declared Element by walking back to the
+  // component's variable declaration and reading the TOC<…> annotation
+  // directly. If that yields nothing, fall back to transparent (children
+  // float to the actual parent — correct for genuinely yields-only TOCs).
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
+    const fromTOC = resolveElementFromTOCDeclaration(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromTOC !== null) return fromTOC;
     return 'transparent';
   }
+  // Pick a single tag for unions: take the first matching branch
+  // (branches with no DOM mapping are skipped, see matchElementTypeToTag).
+  return matchElementTypeToTag(elementType, elementTypeToTag);
+}
+
+function matchElementTypeToTag(
+  elementType: TS.Type,
+  elementTypeToTag: Map<string, string>,
+): string | null {
   // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
   // resolved as transparent rather than falling through to `null`. A null
   // return signals "no Glint resolution at all" and lets blank.ts apply
@@ -620,7 +642,7 @@ function resolveComponentElement(
     }
   }
   if (allGenericBase) return 'transparent';
-  // Pick a single tag for unions: take the first branch's mapping.
+  // Pick a single tag for unions: take the first matching branch.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
@@ -628,6 +650,78 @@ function resolveComponentElement(
     }
   }
   return null;
+}
+
+// Recover the rendered tag for a TOC declared with a TOC type annotation,
+// in either of the two equivalent forms:
+//   `const X = <template>...</template> satisfies TOC<{ Element: T }>;`
+//   `const X: TOC<{ Element: T }> = <template>...</template>;`
+//
+// Glint's TOC overload reaches the same `.element` property surface as the
+// class form, but for both the `satisfies` and `: TOC<…> =` forms `.element`
+// surfaces as `unknown` (or `any` in cascading-error files) even though
+// `T` is statically known. Walk the component reference back to its
+// declaration, find the TOC<…> annotation, and pull `Element` off the
+// type-arg directly.
+//
+// We gate on the type name being literally `TOC` to avoid mis-resolving
+// unrelated generic annotations that happen to have a property called
+// `Element` — a rare shape, but harmless to guard against.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only TOC)
+//   - null          if no TOC annotation found, no `Element` property,
+//                   or some unexpected shape — caller falls through
+function resolveElementFromTOCDeclaration(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitComponentCall);
+  if (!symbol) return null;
+  const declarations = symbol.declarations ?? [];
+  for (const decl of declarations) {
+    if (!ts.isVariableDeclaration(decl)) continue;
+    // Form A: `const X: TOC<S> = ...;` — type annotation is `TOC<S>`.
+    // Form B: `const X = <template>...</template> satisfies TOC<S>;` — the
+    // initializer is a SatisfiesExpression whose `.type` is `TOC<S>`.
+    // For both: locate the `TOC<…>` TypeReference, pull its first type
+    // argument (S), then read S['Element'].
+    let tocTypeNode: TS.TypeNode | undefined;
+    if (decl.type) tocTypeNode = decl.type;
+    else if (decl.initializer && ts.isSatisfiesExpression(decl.initializer)) {
+      tocTypeNode = decl.initializer.type;
+    }
+    if (!tocTypeNode || !ts.isTypeReferenceNode(tocTypeNode)) continue;
+    if (!isTOCTypeName(ts, tocTypeNode.typeName)) continue;
+    const typeArgNode = tocTypeNode.typeArguments?.[0];
+    if (!typeArgNode) continue;
+    const sigType = checker.getTypeFromTypeNode(typeArgNode);
+    const eltSym = sigType.getProperty('Element');
+    if (!eltSym) continue;
+    const eltType = checker.getTypeOfSymbolAtLocation(eltSym, typeArgNode);
+    if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+    const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+    if (tag !== null) return tag;
+  }
+  return null;
+}
+
+// Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
+// long-form alias both `@ember/component/template-only` and
+// `@glint/template/-private` re-export). Also handles qualified names like
+// `Ember.TOC` — for those we match the rightmost identifier (`name.right`),
+// since that's the actual type name. Doesn't follow imports: a project
+// that aliases TOC to something else won't be resolved, which is fine —
+// the component falls back to transparent.
+function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
+  let id: TS.Identifier;
+  if (ts.isIdentifier(name)) id = name;
+  else if (ts.isQualifiedName(name)) id = name.right;
+  else return false;
+  return id.text === 'TOC' || id.text === 'TemplateOnlyComponent';
 }
 
 function describeType(checker: TS.TypeChecker, type: TS.Type): AttrTypeInfo {
@@ -864,18 +958,23 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   return result;
 }
 
-// Resolve the source file containing a component's declaration. Glint's
-// rewrite emits component invocations as
+// Recover the de-aliased symbol of the component invoked by an
+// emitComponent call. Glint's rewrite emits invocations as
 //   __glintDSL__.emitComponent(__glintDSL__.resolve(Comp)({...}))
 // so we navigate the AST: emitCall.arguments[0] is the resolve()(...)
 // call, whose expression is resolve(Comp), whose first argument is the
 // component reference. Aliased imports (the common case) are de-aliased
 // via `checker.getAliasedSymbol` to land on the original declaration.
-function findComponentDeclSourceFile(
+//
+// Shared by `findComponentDeclSourceFile` and
+// `resolveElementFromTOCDeclaration` — they both need the same symbol;
+// keeping the AST navigation in one place means callers stay in sync if
+// Glint's emitted shape changes.
+function getComponentSymbolFromEmitCall(
   ts: typeof TS,
   checker: TS.TypeChecker,
   emitCall: TS.CallExpression,
-): string | null {
+): TS.Symbol | null {
   const innerCall = emitCall.arguments[0];
   if (!innerCall || !ts.isCallExpression(innerCall)) return null;
   const resolveCall = innerCall.expression;
@@ -887,7 +986,17 @@ function findComponentDeclSourceFile(
   if (symbol.flags & ts.SymbolFlags.Alias) {
     symbol = checker.getAliasedSymbol(symbol);
   }
-  const decl = symbol.declarations?.[0];
+  return symbol;
+}
+
+// Resolve the source file containing a component's declaration.
+function findComponentDeclSourceFile(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitCall: TS.CallExpression,
+): string | null {
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+  const decl = symbol?.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
 }
