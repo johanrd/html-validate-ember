@@ -1582,7 +1582,15 @@ function detectStructuralYieldRules(
           // multi-level cross-file yield-chain analysis (deferred).
           // Suppress the rule for the Source instead — same per-Source
           // suppression trade-off as the form/fieldset cases above.
+          //
+          // Both `element-permitted-content` and `element-permitted-
+          // parent` fire on the same misnesting (e.g. `<li>` under
+          // `<div>` triggers e-p-c "div doesn't allow li" AND e-p-p
+          // "li requires ul/ol/menu"). Suppress both — they're a
+          // matched pair and treating them separately would leave
+          // half-suppressed noise.
           out.push('element-permitted-content');
+          out.push('element-permitted-parent');
         }
         walk(stmt.children);
       }
@@ -1684,24 +1692,71 @@ function containsContentRestrictedStructuralChild(
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): boolean {
-  // If Glint has resolved this wrapper to a native tag, no heuristic
-  // needed — the precise resolution wins and the rule fires (or
-  // doesn't) on the actual parent.
-  if (glintComponentTagMap && node.loc.start) {
-    const key = `${node.loc.start.line}:${node.loc.start.column}`;
-    const resolved = glintComponentTagMap.get(key);
-    if (resolved && resolved !== 'transparent') return false;
-  }
+  // Two cases trigger this suppression:
+  //
+  //  A) Wrapper is unresolved or resolved as 'transparent': we don't
+  //     know what tag wraps the yielded children at runtime. If any
+  //     child is a structural-child element (literal `<li>`/`<th>`/
+  //     ...) OR a curried sub-component that resolves to one, presume
+  //     the wrapper renders the structurally-correct parent (`<ul>`/
+  //     `<thead>`/...) via yield chain.
+  //
+  //  B) Wrapper resolves to a SPECIFIC native tag, AND has CURRIED
+  //     SUB-COMPONENT children that resolve to structural tags. This
+  //     is the `<HdsTabs as |T|><T.Tab>` pattern: `<HdsTabs>`
+  //     resolves to `<div>` (its splatted root), but its template
+  //     wraps `{{yield (hash Tab=...)}}` inside `<ul role="tablist">`.
+  //     The curried `<T.Tab>` resolves to `<li>` (via PR #18), but at
+  //     runtime that `<li>` lands inside the addon's `<ul>`, not the
+  //     outer `<div>`. Suppress.
+  //
+  // We DO NOT suppress when the wrapper resolves to a specific native
+  // tag AND structural children are LITERAL (case A's `literal-li-in-
+  // resolved-div` doesn't apply because case B excludes literals).
+  // Literal `<th>` inside `<C.Options>` resolved to `<select>` is the
+  // glint-resolved-no-suppression test case: a real bug we want to
+  // catch. The runtime DOM puts `<th>` directly inside `<select>`
+  // (which doesn't allow th); rule must fire.
   // Walk only the arm that matches what the blanker emits in this pass.
   // Without `selectBranch`, descending into both arms of a
   // `{{#if}}/{{else}}` would let one branch's structural children
   // trigger Source-wide suppression even when that branch isn't being
   // emitted — silently masking real `element-permitted-content`
   // violations in the active branch.
+  // Determine whether the wrapper itself resolves to a specific
+  // native tag (for case-B gating). We compute it once up front and
+  // pass into `check` as a closure binding.
+  const wrapperResolved =
+    glintComponentTagMap && node.loc.start
+      ? glintComponentTagMap.get(`${node.loc.start.line}:${node.loc.start.column}`)
+      : undefined;
+  const wrapperPinned =
+    typeof wrapperResolved === 'string' && wrapperResolved !== 'transparent';
+
   function check(stmts: ReadonlyArray<AST.Statement>): boolean {
     for (const stmt of stmts) {
       if (stmt.type === 'ElementNode') {
-        if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag)) return true;
+        // (A) Native structural-child literally in source. Trigger
+        // suppression only when the wrapper isn't pinned — a pinned
+        // wrapper IS the runtime parent for literal children, so a
+        // literal `<th>` inside a resolved `<select>` is a real bug.
+        if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag) && !wrapperPinned) {
+          return true;
+        }
+        // (B) Curried sub-component / component invocation that
+        // resolves to a structural tag. Trigger suppression in BOTH
+        // wrapper states — even when the wrapper resolves to a
+        // specific native tag, its template may wrap `{{yield (hash
+        // X=...)}}` in a different native ancestor (the HdsTabs
+        // pattern), so the runtime parent for the curried child
+        // isn't the wrapper's resolved tag.
+        if (glintComponentTagMap && stmt.loc.start) {
+          const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+          const childResolved = glintComponentTagMap.get(childKey);
+          if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {
+            return true;
+          }
+        }
       } else if (stmt.type === 'BlockStatement') {
         const arm = selectBranch(stmt, branchSelections);
         if (arm && check(arm.body)) return true;
