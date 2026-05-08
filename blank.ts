@@ -368,7 +368,7 @@ function findCloseTagStart(content: string, elementEnd: number): number {
 // bracket tracking for `()`, `{}`, `<>`, `[]` so union (`A | B`),
 // object (`{ a: number }`), parenthesized (`(A | B)[]`), and generic
 // (`Map<string, number>`) types are stripped correctly.
-function stripBlockParamTypeAnnotations(content: string): string {
+export function stripBlockParamTypeAnnotations(content: string): string {
   const buf = content.split('');
   let i = 0;
   while (i < content.length - 1) {
@@ -1619,10 +1619,13 @@ const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
 // for native ElementNode children. Doesn't recurse into other
 // component invocations — those have their own rule check.
 //
-// Resolved components are excluded: if Glint already maps the wrapper
-// to a specific native tag, we trust that resolution and let
-// `element-permitted-content` fire normally. Only fully-unresolved
-// wrappers (componentTagMap miss) trigger suppression.
+// Components Glint resolved to a specific native tag are excluded: we
+// trust that resolution and let `element-permitted-content` fire
+// normally. Wrappers that are MISSING from the map AND wrappers Glint
+// resolved as `'transparent'` (children float to parent because the
+// element-type was `unknown`/`any` or generic `HTMLElement`) both fall
+// through to the children check — those are the cases where we can't
+// statically tell what runtime tag the wrapper renders.
 function containsContentRestrictedStructuralChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,

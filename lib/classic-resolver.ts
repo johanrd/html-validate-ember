@@ -12,15 +12,23 @@
 // root tag.
 //
 // Cache:
-//   - In-memory per-(node_modules-root, kebab-name) → ComponentAttrs.
-//     Process-lifetime; cleared via `_clearClassicResolverCache` (tests).
+//   - In-memory per-(consumer-dir, kebab-name) → ComponentAttrs.
+//     Keyed off the consumer file's directory rather than a resolved
+//     node_modules root: cheap to compute, and the lookup is already
+//     local (we don't repeat the upward walk on a hit). Trade-off: two
+//     consumers in different directories under the same node_modules
+//     re-do the addon scan; tolerated because the scan itself is bounded
+//     by `existsSync` probes per addon, and the cost is paid once per
+//     (consumer-dir, kebab-name) pair for the rest of the process.
+//     Process-lifetime; `_clearClassicResolverCache` is exported for
+//     manual reset if a future test ever needs it.
 //   - Negatives are NOT cached: an addon installed mid-session would
 //     otherwise stay invisible until process restart. Negative path is
 //     cheap (regex + a handful of existsSync up to filesystem root).
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { preprocess, traverse } from '@glimmer/syntax';
+import { traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
 import type { ComponentAttrs } from './builtin-components.js';
@@ -132,10 +140,11 @@ function isLowercaseHtmlTag(tag: string): boolean {
   return /^[a-z][a-z0-9-]*$/.test(tag);
 }
 
-// Walk a template AST, find every PascalCase / dotted invocation, and
-// build a `componentTagMap` + `componentAttrMap` keyed by `line:col`
-// (matching what the Glint resolver produces). Both maps are returned;
-// callers pass them to `blankTemplateContent`.
+// Walk a template AST, find every single-segment PascalCase invocation
+// (`<EsCard>`, not `<This.Foo>` or `<Forms::TextInput>`), and build a
+// `componentTagMap` + `componentAttrMap` keyed by `line:col` (matching
+// what the Glint resolver produces). Both maps are returned; callers
+// pass them to `blankTemplateContent`.
 //
 // Skips:
 //   - Builtin components (`<Input>`, `<Textarea>`, `<LinkTo>`) — handled
