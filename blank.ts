@@ -612,6 +612,23 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
 
   // Block-form: rename open and close tags in place. Children stay visible
   // to html-validate.
+  //
+  // Guard against block-form invocations whose resolved tag is VOID
+  // (e.g. `<G.CheckboxField>...</G.CheckboxField>` where the curried
+  // sub-component renders `<input ...attributes>`). Substituting open
+  // and close tags would produce `<input>...</input>` — invalid HTML
+  // (void elements can't have content). Bail to transparent-blanking
+  // instead so the children float to the actual parent's content
+  // model, same as an unresolved component. Inner-content semantics
+  // (e.g. validation against the input's content model) are
+  // unavailable for these substitutions; that's the same trade-off
+  // as the non-substituted path. The void's required attributes
+  // (e.g. `<input type=...>`) get checked via the addon's own
+  // template lint, not the consumer's substitution.
+  if (VOID_ELEMENTS.has(resolved)) {
+    blankComponentTagsTransparent(node, ctx);
+    return 'transparent';
+  }
   const elementStart = startOffset(node);
   const elementEnd = endOffset(node);
   const tagStart = elementStart + 1;
