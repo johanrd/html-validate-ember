@@ -1,28 +1,50 @@
-// Extract literal attributes from a component's "splatted root" — the
-// element in the component's `<template>` that has `...attributes` (i.e.
-// the element that gets the parent invocation's attributes spread onto
-// it; the rendered root from the parent's perspective). When the parent
-// substitutes <MyComp /> to a native tag (via Glint's Signature['Element']
-// resolution), these literal attributes can be propagated to the
-// substituted output so html-validate sees the actual values rather than
-// a placeholder.
+// Extract attribute info from a component's "splatted root" — the element
+// in the component's `<template>` that has `...attributes` (i.e. the
+// element that gets the parent invocation's attributes spread onto it; the
+// rendered root from the parent's perspective). When the parent substitutes
+// <MyComp /> to a native tag (via Glint's Signature['Element'] resolution),
+// this attribute info is propagated to the substituted output so
+// html-validate sees the runtime-provided attributes as present.
+//
+// Where this info lands at the consumer call site is controlled by
+// `blank.ts`:
+//   - Block-form (`<MyComp>...</MyComp>`): `tryInjectComponentAttrs`
+//     injects each attr into a Glimmer-only blank slot in the open tag.
+//   - Self-closing void native (e.g. component → `<input>`):
+//     `substituteSelfClosingVoidComponent` does an in-place tag rename;
+//     `tryInjectInputType` injects `type` for `<input>`. Other attrs are
+//     not currently embedded.
+//   - Self-closing non-void native (e.g. component → `<iframe>`):
+//     `substituteSelfClosingComponent` rewrites the whole element span
+//     to `<RESOLVED ...attrs></RESOLVED>` and embeds every recorded attr.
+//
+// Two value forms are recorded:
+//   - Literal `TextNode` values are recorded verbatim — html-validate then
+//     sees the actual value (e.g. `type='range'` enables enum checks).
+//   - Bare-mustache (`title={{@label}}`) and concat-mustache
+//     (`class='prefix-{{x}}'`) values are recorded as the
+//     `DYNAMIC_VALUE_PLACEHOLDER` constant from `lib/dynamic-value.ts`.
+//     The blanker injects this placeholder at the consumer's call
+//     site, and `processAttribute` (transform.ts) recognizes it via
+//     `isDynamicValuePlaceholder` and converts to a DynamicValue —
+//     html-validate sees "attribute present, value unknowable", which
+//     is enough for `element-required-attributes` and similar
+//     required-attribute rules.
 //
 // Example: component template
 //
 //   <template>
-//     <input ...attributes type='range' min='0' max='100' />
+//     <input ...attributes type='range' min='0' max='100' value={{@v}} />
 //   </template>
 //
-// extractSplattedRoot returns:
+// `extractSplattedRootFromTemplate` (called by `getSplattedRootsForFile`)
+// returns:
 //
-//   { tag: 'input', attrs: { type: 'range', min: '0', max: '100' } }
+//   { tag: 'input', attrs: { type: 'range', min: '0', max: '100',
+//                            value: DYNAMIC_VALUE_PLACEHOLDER } }
 //
 // Limitations:
-//   - Only literal-string attrs (`TextNode` values) are extracted.
-//     `class={{x}}` and `class='prefix-{{x}}'` are skipped — they have
-//     dynamic parts the parent caller can't anticipate.
-//   - Glimmer-only attrs (`@arg`, `...attributes`, modifiers) are
-//     skipped.
+//   - Glimmer-only attrs (`@arg`, `...attributes`, modifiers) are skipped.
 //   - When no element has `...attributes`, falls back to the first
 //     top-level element (which is the rendered root for most TOC and
 //     class-component patterns).
@@ -35,6 +57,7 @@ import type { AST } from '@glimmer/syntax';
 import fs from 'node:fs';
 
 import type { ComponentAttrs } from './builtin-components.js';
+import { DYNAMIC_VALUE_PLACEHOLDER } from './dynamic-value.js';
 
 const preprocessor = new Preprocessor();
 
@@ -66,9 +89,23 @@ function literalAttrs(node: AST.ElementNode): Record<string, string> {
     if (isGlimmerOnlyAttr(attr.name)) continue;
     if (attr.value.type === 'TextNode' && typeof attr.value.chars === 'string') {
       attrs[attr.name] = attr.value.chars;
+    } else if (
+      attr.value.type === 'MustacheStatement' ||
+      attr.value.type === 'ConcatStatement'
+    ) {
+      // Bare-mustache (`title={{@label}}`) and concat-mustache
+      // (`class='prefix-{{x}}'`) values are computed at runtime. We can't
+      // anticipate the literal, but we DO know the attribute is present —
+      // so record it with the shared `DYNAMIC_VALUE_PLACEHOLDER`
+      // sentinel. The blanker injects this placeholder into a
+      // Glimmer-only blank slot at the consumer's call site, and
+      // html-validate's `processAttribute` hook recognizes it via
+      // `isDynamicValuePlaceholder` and converts to DynamicValue.
+      // This rescues required-attribute rules
+      // (e.g. `<iframe title={{@label}}>`-style components surfacing
+      // `element-required-attributes` on the wrapped iframe).
+      attrs[attr.name] = DYNAMIC_VALUE_PLACEHOLDER;
     }
-    // ConcatStatement / MustacheStatement values: skip — caller can't
-    // anticipate what `class='prefix-{{x}}'` resolves to at runtime.
   }
   return attrs;
 }

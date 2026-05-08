@@ -156,6 +156,29 @@ describe('end-to-end fixtures', () => {
     expect(r.valid).toBe(true);
   });
 
+  it('typed-iframe-consumer: self-closing <TypedFrame /> embeds arg-bound title/src so element-required-attributes does not fire', async () => {
+    // End-to-end check for the arg-bound-required-attrs fix. Glint
+    // resolves TypedFrame → <iframe>; lib/component-attrs.ts records
+    // title/src as DynamicValue placeholders (they're arg-bound in
+    // the addon's template); blank.ts's substituteSelfClosingComponent
+    // embeds those placeholders in the rewritten <iframe ...></iframe>.
+    // Without the embed step, html-validate would FP-fire
+    // `element-required-attributes` (`title`) on the substituted iframe.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validateRaw('typed-iframe-consumer.gts');
+      const required = r.messages.filter((m) => m.rule === 'element-required-attributes');
+      expect(
+        required,
+        `element-required-attributes must not fire on substituted <iframe>; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('img-splat-thin-wrapper: `<img ...attributes>` does not FP-fire wcag/h37 or element-required-attributes', async () => {
     // Thin <img> wrapper component — parent provides src + alt via the
     // splat. The `...attributes` slot is 13 chars, too narrow to source-
@@ -185,6 +208,243 @@ describe('end-to-end fixtures', () => {
     const r = await validate('linkto-aria-label.hbs');
     const ariaErrors = r.messages.filter((m) => m.rule === 'aria-label-misuse');
     expect(ariaErrors).toHaveLength(0);
+  });
+
+  it('yield-only-form: wcag/h32 must NOT fire when a thin <form> wrapper yields its body', async () => {
+    // `<form ...>{{yield}}</form>` blanks to an empty form body, so a
+    // length-preserving in-place injection of a synthetic submit-button
+    // child isn't workable (`{{yield}}` is 8 chars, `<button type=submit>`
+    // is 19). Instead, `detectStructuralYieldRules` flags the file and
+    // the transformer prepends a Source-level `<!--html-validate-disable
+    // wcag/h32-->` directive — the same mechanism we use for
+    // `no-unused-disable` on branched ranges.
+    const r = await validate('yield-only-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a yield-only <form> wrapper; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-fieldset: wcag/h71 must NOT fire when a thin <fieldset> wrapper yields its body', async () => {
+    // Same shape as yield-only-form but for `<fieldset>` + `wcag/h71`
+    // (`<fieldset> must have a <legend> as the first child`). Consumer
+    // supplies the legend via the yielded body.
+    const r = await validate('yield-only-fieldset.gts');
+    const h71 = r.messages.filter((m) => m.rule === 'wcag/h71');
+    expect(
+      h71,
+      `wcag/h71 must not fire on a yield-only <fieldset> wrapper; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: wcag/h32 also suppressed when yield is wrapped in non-submit markup', async () => {
+    // `<form><div>{{yield}}</div></form>` — the wrapper isn't a submit-
+    // style element, so the suppression should still kick in. The
+    // earlier opaque-only check missed this; the current detection
+    // looks for yield + absence of statically-detectable submit.
+    const r = await validate('yield-only-form-with-wrapper.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a yield-bearing form with wrapper markup; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: NO suppression when a static submit button is present alongside yield', async () => {
+    // `<form>{{yield}}<button type='submit'></button></form>` — wcag/h32
+    // wouldn't fire (submit is statically present). Suppression must
+    // NOT activate, otherwise the injected
+    // `<!--html-validate-disable wcag/h32-->` would itself trigger
+    // `no-unused-disable`.
+    const r = await validate('yield-form-with-static-submit.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — wcag/h32 suppression shouldn't activate when submit is statically present; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: <button type="button"> alongside yield does NOT disqualify suppression', async () => {
+    // An explicit non-submit `<button>` must not be treated as a
+    // submit. wcag/h32 still FP-fires on the blanked output (no
+    // statically-detectable submit), so suppression must remain active.
+    const r = await validate('yield-form-with-non-submit-button.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire — <button type='button'> isn't a submit and shouldn't disqualify suppression; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: <input type="Submit"> (uppercase) IS a static submit — suppression must NOT activate', async () => {
+    // HTML attribute values are ASCII case-insensitive. html-validate
+    // recognizes `type='Submit'` as a real submit, so wcag/h32 wouldn't
+    // fire — and our injected disable would itself trigger
+    // `no-unused-disable`. Static-submit detection must normalize.
+    const r = await validate('yield-form-with-uppercase-submit-input.gts');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — case-insensitive submit detection should keep suppression off; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('fieldset-with-component-content: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}</fieldset>` does not FP-fire wcag/h71 in either pass', async () => {
+    // Multipass case where the fieldset branches into either yield
+    // (program) or component invocation (inverse). Without the
+    // opaque-content fix, the inverse pass sees `<CurriedFields />`
+    // (no yield, no static legend) and lets wcag/h71 fire, even
+    // though the component may render its own `<legend>` at runtime.
+    // Mirrors ember-primitives' `one-time-password/input.gts:171`.
+    const r = await validate('fieldset-with-component-content.gts');
+    const h71 = r.messages.filter((m) => m.rule === 'wcag/h71');
+    expect(
+      h71,
+      `wcag/h71 must not fire on either arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('input-driven-form: `<form {{on "input" …}}>` does not FP-fire wcag/h32', async () => {
+    // Search-as-you-type / live-filter pattern. `{{on "input"}}` updates
+    // on every keystroke; a separate submit button is ceremonial. Plugin
+    // suppresses wcag/h32 so the user doesn't scatter
+    // `<!--html-validate-disable-next wcag/h32-->` directives.
+    const r = await validate('input-driven-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on input-driven forms; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('change-driven-form: `<form {{on "change" …}}>` does not FP-fire wcag/h32', async () => {
+    // Commit-on-blur / per-field-commit pattern. `{{on "change"}}` fires
+    // when a field is committed (input blurs, select changes); the
+    // form's action runs per-field rather than at a final submit, so a
+    // submit button is ceremonial. Same suppression as `{{on "input"}}`.
+    const r = await validate('change-driven-form.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on change-driven forms; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: asymmetric {{#if}}/{{else}} branches — multipass passes get branch-correct suppression', async () => {
+    // Program arm has `{{yield}}`, inverse arm has `<button type='submit'>`.
+    // Without per-branch detection, the program pass's `disableForRules`
+    // would skip wcag/h32 (because the walker saw the inverse arm's
+    // submit too) and the FP would surface. With per-branch detection,
+    // each pass's disable list matches its own blanked content. The
+    // inverse pass must NOT inject the disable (no-unused-disable
+    // cascade prevention).
+    const r = await validate('yield-form-asymmetric-branches.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      h32,
+      `wcag/h32 must not fire on the yield-only program arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    expect(
+      unused,
+      `no-unused-disable must not fire on the inverse arm (submit visible); got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: branched {{#if}}/{{else}} with yield in BOTH arms — multipass directive must disable BOTH no-unused-disable and wcag/h32', async () => {
+    // `<form>{{yield}}</form>` vs `<div>{{yield}}</div>` toggle —
+    // multipass triggers (different root elements per arm), so the
+    // injected directive must carry BOTH `no-unused-disable` and
+    // `wcag/h32`. html-validate's directive grammar requires
+    // COMMA-separated rule names: a space-separated list silently
+    // disables only the first rule, leaving wcag/h32 to fire on the
+    // blanked program-pass output. This test catches that regression.
+    // (Mirrors HDS `form/index.gts`.)
+    const r = await validate('yield-form-branched-both-yield.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      h32,
+      `wcag/h32 must not fire — directive must comma-separate rules so BOTH get disabled; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    expect(
+      unused,
+      `no-unused-disable must not fire on either arm; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('yield-only-form: form in BLANKED-OUT branch must not leak wcag/h32 suppression into the active pass', async () => {
+    // Two `<form>` nodes, one per arm of `{{#if @showYieldedForm}}`:
+    //   - program arm: `<form>{{yield}}</form>` (legit suppression target)
+    //   - inverse arm: `<form><textarea/></form>` (NO submit, NO yield;
+    //     this is a real wcag/h32 violation that must be reported)
+    //
+    // Without a branch-aware top-level traversal in
+    // `detectStructuralYieldRules`, both forms get visited and the
+    // walker adds wcag/h32 to disableForRules for BOTH passes —
+    // silently suppressing the inverse arm's real bug. The test
+    // asserts the real bug surfaces, i.e. wcag/h32 is not silently
+    // hidden by the program arm's legitimate suppression.
+    const r = await validate('form-in-blanked-out-branch.gts');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must fire on the inverse arm's genuinely-broken form; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(1);
+  });
+
+  it('yield-only-form: <SubmitButton /> resolving to <button type="submit"> IS a static submit — no suppression', async () => {
+    // The component's splatted root is `<button type='submit'
+    // ...attributes>`; Glint resolves <SubmitButton /> to native
+    // `<button>` with static `type='submit'`. After substitution the
+    // blanked output has a real submit, so wcag/h32 wouldn't fire.
+    // Suppression must NOT activate or no-unused-disable cascades on
+    // the injected disable directive.
+    //
+    // Two levers make this assertion meaningful:
+    //   1. HVE_GLINT=1 — component-as-submit detection requires Glint
+    //      to resolve <SubmitButton /> to <button>. Without Glint the
+    //      detection returns false, suppression activates, and a
+    //      naive `no-unused-disable.length === 0` check would pass
+    //      for the wrong reason (the directive would be "used" because
+    //      wcag/h32 actually fires on the unsubstituted output).
+    //   2. `wcag/h32: 'off'` via rulesOverride — with the rule off,
+    //      any injected `<!--html-validate-disable wcag/h32-->`
+    //      becomes immediately unused, surfacing as
+    //      `no-unused-disable`. So absence of `no-unused-disable` is
+    //      a POSITIVE assertion that no directive was injected, i.e.
+    //      that component-as-submit was correctly recognized and
+    //      suppression was skipped.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validateRaw('yield-form-with-component-submit.gts', {
+        'wcag/h32': 'off',
+      });
+      const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+      expect(
+        unused,
+        `no-unused-disable must not fire — with wcag/h32=off, any injected directive becomes unused; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('yield-only-form (.hbs): negative offset/column from prefix directive does not break diagnostics', async () => {
+    // The .hbs path normally uses line/column/offset = 1/1/0; with a
+    // prefix directive it goes negative. Verify html-validate handles
+    // negative offsets cleanly (no crash, no spurious diagnostics on
+    // the directive itself) for the same yield-only pattern in classic
+    // .hbs.
+    const r = await validate('yield-only-form.hbs');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on yield-only <form> in classic .hbs; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
   });
 
   it('form-submit-in-else: wcag/h32 surfaces correctly under multipass', async () => {

@@ -13,7 +13,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
-import { getSplattedRootsForFile } from './component-attrs.js';
+import { isNativeTag } from '../blank.js';
+import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -594,21 +595,18 @@ function resolveComponentElement(
     return null;
   }
   const elementType = checker.getTypeOfSymbolAtLocation(elementProp, emitComponentCall);
-  // Treat `unknown` (no Element declared in Signature) and `any` (TS couldn't
-  // infer — common in big files with cascading type errors, or with
-  // `satisfies TOC<…>` patterns) the same way: transparent. Children float
-  // into parent's content model. Less wrong than forcing an `<x-c>` wrapper
-  // that fights content-model rules in places like <tfoot>, <select>,
-  // <menu>, etc.
+  // `unknown` and `any` are both ambiguous in this position. Glint can surface
+  // `.element` this way for yielded-curried refs (`<C.Options>`), TOC
+  // declarations (`: TOC<…> =` / `satisfies TOC<…>`), and also in files with
+  // cascading TS errors.
   if (elementType.flags & (ts.TypeFlags.Unknown | ts.TypeFlags.Any)) {
-    // Glint's emit surfaces `.element` as `unknown`/`any` for several common
-    // shapes the Signature['Element']-on-the-call-type path doesn't cover:
-    //   - Block-param-yielded curried sub-components like
-    //     `<SelectBase as |C|><C.Options>...</C.Options></SelectBase>`
-    //   - TOCs declared via type annotation: `const X: TOC<S> = …;`
-    // For both, the component-reference *expression* itself has type
-    // `TOC<Signature>` (or similar generic), so we can read the
-    // `Element` property off the type-arg directly.
+    const fromTOC = resolveElementFromTOCDeclaration(
+      ts,
+      checker,
+      emitComponentCall,
+      elementTypeToTag,
+    );
+    if (fromTOC !== null) return fromTOC;
     const fromRefType = resolveElementFromComponentRefType(
       ts,
       checker,
@@ -618,6 +616,15 @@ function resolveComponentElement(
     if (fromRefType !== null) return fromRefType;
     return 'transparent';
   }
+  // Pick a single tag for unions: take the first matching branch
+  // (branches with no DOM mapping are skipped, see matchElementTypeToTag).
+  return matchElementTypeToTag(elementType, elementTypeToTag);
+}
+
+function matchElementTypeToTag(
+  elementType: TS.Type,
+  elementTypeToTag: Map<string, string>,
+): string | null {
   // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
   // resolved as transparent rather than falling through to `null`. A null
   // return signals "no Glint resolution at all" and lets blank.ts apply
@@ -635,7 +642,7 @@ function resolveComponentElement(
     }
   }
   if (allGenericBase) return 'transparent';
-  // Pick a single tag for unions: take the first branch's mapping.
+  // Pick a single tag for unions: take the first matching branch.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
     if (name && elementTypeToTag.has(name)) {
@@ -647,14 +654,9 @@ function resolveComponentElement(
 
 // Recover the rendered tag from the *type* of the component-reference
 // expression itself — for cases where Glint's `emitComponent(...).element`
-// surfaces as `unknown`/`any`. Specifically:
-//   - Block-param-yielded curried sub-components (`<C.Options>` where C
-//     is a yielded block-param providing typed sub-components): the
-//     componentRef expression has type `TOC<Sig>` because Glint's emit
-//     types the yielded sub-component reference correctly even when
-//     `.element` doesn't propagate.
-//   - TOCs declared via type annotation (`const X: TOC<Sig> = <template>…`):
-//     the componentRef has type `TOC<Sig>` directly.
+// surfaces as `unknown`/`any` (for example yielded-curried block params like
+// `<C.Options>`). In these cases the component-ref expression type can still
+// carry Signature `Element` via a generic like `TOC<Sig>`.
 //
 // For both: `aliasTypeArguments[0]` is `Sig` — an object type with
 // `Element: T` as a property — so we read `T` and map to a tag.
@@ -700,17 +702,82 @@ function resolveElementFromComponentRefType(
   if (!eltSym) return null;
   const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
   if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
-  // Pick a tag (unions take the first matching branch).
-  const branches = eltType.isUnion() ? eltType.types : [eltType];
-  for (const branch of branches) {
-    const name = branch.getSymbol()?.name;
-    if (name && elementTypeToTag.has(name)) {
-      return elementTypeToTag.get(name) ?? null;
+  const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+  if (tag !== null) return tag;
+  return null;
+}
+
+// Recover the rendered tag for a TOC declared with a TOC type annotation,
+// in either of the two equivalent forms:
+//   `const X = <template>...</template> satisfies TOC<{ Element: T }>;`
+//   `const X: TOC<{ Element: T }> = <template>...</template>;`
+//
+// Glint's TOC overload reaches the same `.element` property surface as the
+// class form, but for both the `satisfies` and `: TOC<…> =` forms `.element`
+// surfaces as `unknown` (or `any` in cascading-error files) even though
+// `T` is statically known. Walk the component reference back to its
+// declaration, find the TOC<…> annotation, and pull `Element` off the
+// type-arg directly.
+//
+// We gate on the type name being literally `TOC` to avoid mis-resolving
+// unrelated generic annotations that happen to have a property called
+// `Element` — a rare shape, but harmless to guard against.
+//
+// Returns:
+//   - tag name      if Element resolves to a known DOM type
+//   - 'transparent' if Element is `unknown` (yields-only TOC)
+//   - null          if no TOC annotation found, no `Element` property,
+//                   or some unexpected shape — caller falls through
+function resolveElementFromTOCDeclaration(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  elementTypeToTag: Map<string, string>,
+): string | null {
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitComponentCall);
+  if (!symbol) return null;
+  const declarations = symbol.declarations ?? [];
+  for (const decl of declarations) {
+    if (!ts.isVariableDeclaration(decl)) continue;
+    // Form A: `const X: TOC<S> = ...;` — type annotation is `TOC<S>`.
+    // Form B: `const X = <template>...</template> satisfies TOC<S>;` — the
+    // initializer is a SatisfiesExpression whose `.type` is `TOC<S>`.
+    // For both: locate the `TOC<…>` TypeReference, pull its first type
+    // argument (S), then read S['Element'].
+    let tocTypeNode: TS.TypeNode | undefined;
+    if (decl.type) tocTypeNode = decl.type;
+    else if (decl.initializer && ts.isSatisfiesExpression(decl.initializer)) {
+      tocTypeNode = decl.initializer.type;
     }
+    if (!tocTypeNode || !ts.isTypeReferenceNode(tocTypeNode)) continue;
+    if (!isTOCTypeName(ts, tocTypeNode.typeName)) continue;
+    const typeArgNode = tocTypeNode.typeArguments?.[0];
+    if (!typeArgNode) continue;
+    const sigType = checker.getTypeFromTypeNode(typeArgNode);
+    const eltSym = sigType.getProperty('Element');
+    if (!eltSym) continue;
+    const eltType = checker.getTypeOfSymbolAtLocation(eltSym, typeArgNode);
+    if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
+    const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+    if (tag !== null) return tag;
   }
   return null;
 }
 
+// Recognize the bare type name `TOC` (and `TemplateOnlyComponent`, the
+// long-form alias both `@ember/component/template-only` and
+// `@glint/template/-private` re-export). Also handles qualified names like
+// `Ember.TOC` — for those we match the rightmost identifier (`name.right`),
+// since that's the actual type name. Doesn't follow imports: a project
+// that aliases TOC to something else won't be resolved, which is fine —
+// the component falls back to transparent.
+function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
+  let id: TS.Identifier;
+  if (ts.isIdentifier(name)) id = name;
+  else if (ts.isQualifiedName(name)) id = name.right;
+  else return false;
+  return id.text === 'TOC' || id.text === 'TemplateOnlyComponent';
+}
 function describeType(checker: TS.TypeChecker, type: TS.Type): AttrTypeInfo {
   if (type.isStringLiteral()) {
     return { kind: 'string-literal', values: [type.value] };
@@ -926,6 +993,19 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             }
           }
         }
+        // Classic Ember addon fallback: when the JS-driven resolution
+        // didn't yield a concrete tag (null, or 'transparent' meaning
+        // unknown/any element type), try the component's `.hbs` template
+        // via the addon's import path. Modern shapes (class form, TOC
+        // forms, curried block-params) already resolved above take
+        // priority — this only runs as a last resort.
+        if (tag === null || tag === 'transparent') {
+          const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
+          if (addonRoot) {
+            componentTagMap.set(key, addonRoot.tag);
+            componentAttrMap.set(key, addonRoot);
+          }
+        }
       }
     }
 
@@ -945,18 +1025,23 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   return result;
 }
 
-// Resolve the source file containing a component's declaration. Glint's
-// rewrite emits component invocations as
+// Recover the de-aliased symbol of the component invoked by an
+// emitComponent call. Glint's rewrite emits invocations as
 //   __glintDSL__.emitComponent(__glintDSL__.resolve(Comp)({...}))
 // so we navigate the AST: emitCall.arguments[0] is the resolve()(...)
 // call, whose expression is resolve(Comp), whose first argument is the
 // component reference. Aliased imports (the common case) are de-aliased
 // via `checker.getAliasedSymbol` to land on the original declaration.
-function findComponentDeclSourceFile(
+//
+// Shared by `findComponentDeclSourceFile` and
+// `resolveElementFromTOCDeclaration` — they both need the same symbol;
+// keeping the AST navigation in one place means callers stay in sync if
+// Glint's emitted shape changes.
+function getComponentSymbolFromEmitCall(
   ts: typeof TS,
   checker: TS.TypeChecker,
   emitCall: TS.CallExpression,
-): string | null {
+): TS.Symbol | null {
   const innerCall = emitCall.arguments[0];
   if (!innerCall || !ts.isCallExpression(innerCall)) return null;
   const resolveCall = innerCall.expression;
@@ -968,9 +1053,161 @@ function findComponentDeclSourceFile(
   if (symbol.flags & ts.SymbolFlags.Alias) {
     symbol = checker.getAliasedSymbol(symbol);
   }
-  const decl = symbol.declarations?.[0];
+  return symbol;
+}
+
+// Resolve the source file containing a component's declaration.
+function findComponentDeclSourceFile(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitCall: TS.CallExpression,
+): string | null {
+  const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+  const decl = symbol?.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
+}
+
+// Resolve the rendered tag (and splatted-root attrs) for a classic Ember
+// addon component imported as `import X from '<addon>/components/<name>'`
+// — addons whose template lives at `addon/templates/components/<name>.hbs`
+// (legacy v1 addon) or `app/components/<name>.hbs` (Module Unification /
+// authored-as-app shim). These have no JS-side `Signature['Element']`, no
+// `satisfies TOC<…>`, so the JS-driven resolution paths return null.
+//
+// We extract the import's `moduleSpecifier` from the AST, match the
+// addon-component shape, walk up from the consumer file to find
+// `node_modules/<addon>`, and probe the canonical template paths. The
+// `.hbs` file is parsed with the same `extractSplattedRootFromTemplate`
+// helper used for `.gts` splatted-root extraction.
+//
+// Returns null when the import doesn't match an addon-component shape,
+// when the addon isn't found in node_modules, when no template file
+// exists at the expected paths, or when the template parses to no
+// element root (e.g. `{{outlet}}`-only).
+// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs.
+// POSITIVE results only — the map type enforces that. Caching negatives
+// indefinitely would permanently hide a template that's later installed
+// (linked workspace addons, IDE/watch mode where the user installs an
+// addon mid-session). Templates with many invocations of the same addon
+// component would otherwise hit the dir walk + multiple existsSync
+// probes + read+parse on every call; what we actually wanted to skip
+// with caching is the file read + Glimmer parse on positive hits.
+// Negatives stay cheap (regex + a handful of existsSync calls up to
+// the filesystem root) and re-probe each call.
+//
+// Keyed on the consumer file's directory so a monorepo with multiple
+// node_modules trees stays correct (different projects can resolve the
+// same addonName to different physical paths).
+//
+// Note: this in-memory cache is independent of the disk cache in
+// `lib/cache.ts`, which keys by consumer file content + mtime; that
+// disk cache will preserve a prior negative resolution until the
+// consumer file changes. Hot-installing a new addon mid-session may
+// require an editor restart to pick up if the consumer file's mtime
+// hasn't moved.
+const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
+
+function resolveAddonHbsTemplate(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  consumerFile: string,
+): ComponentAttrs | null {
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const symbol = checker.getSymbolAtLocation(componentRef);
+  if (!symbol) return null;
+  let importDecl: TS.Node | undefined;
+  for (const decl of symbol.declarations ?? []) {
+    let n: TS.Node | undefined = decl;
+    while (n && !ts.isImportDeclaration(n)) n = n.parent;
+    if (n && ts.isImportDeclaration(n)) {
+      importDecl = n;
+      break;
+    }
+  }
+  if (!importDecl || !ts.isImportDeclaration(importDecl)) return null;
+  const moduleSpecifier = importDecl.moduleSpecifier;
+  if (!ts.isStringLiteral(moduleSpecifier)) return null;
+  const importPath = moduleSpecifier.text;
+  const consumerDir = path.dirname(consumerFile);
+  const cacheKey = `${consumerDir}\0${importPath}`;
+  const cached = addonHbsResolutionCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
+  // Addon name follows npm package-name rules: lowercase letters, digits,
+  // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
+  // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
+  // Component name is kebab-case, lowercase only, allowing nested-by-slash
+  // like `forms/text-input`.
+  const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
+  const COMPONENT = '[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)*';
+  const importRe = new RegExp(
+    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
+  );
+  const m = importRe.exec(importPath);
+  if (!m || importPath.includes('..')) return null;
+  const addonName = m[1]!;
+  const componentName = m[2]!;
+  // Walk up looking for node_modules/<addon>. Always check the current
+  // dir BEFORE stepping up, so the filesystem root (e.g. POSIX `/`,
+  // Windows `C:\`) is also probed — Node's module resolver does this
+  // and we should match. A `while (dir !== path.dirname(dir))` loop
+  // would skip the root.
+  let dir = consumerDir;
+  for (;;) {
+    const addonRoot = path.join(dir, 'node_modules', addonName);
+    if (fs.existsSync(addonRoot)) {
+      for (const subPath of [
+        `addon/templates/components/${componentName}.hbs`,
+        `app/components/${componentName}.hbs`,
+        `addon/components/${componentName}.hbs`,
+      ]) {
+        const hbsPath = path.join(addonRoot, subPath);
+        if (fs.existsSync(hbsPath)) {
+          // Read can still fail post-existsSync (TOCTOU race, perms,
+          // unreadable file). Return null without caching — the read
+          // may succeed on a subsequent call once the underlying issue
+          // clears.
+          let contents: string;
+          try {
+            contents = fs.readFileSync(hbsPath, 'utf8');
+          } catch {
+            return null;
+          }
+          const result = extractSplattedRootFromTemplate(contents);
+          // Guard: only return when the addon's root element is a
+          // native HTML tag. If the addon template's root is itself a
+          // component (PascalCase tag) we'd otherwise feed that
+          // non-native name into `componentTagMap`, and blank.ts's
+          // substitution path would rename the consumer's invocation
+          // to that PascalCase string — making content-model checks
+          // worse than the transparent-blanking fallback. In that
+          // case treat as unresolved so the caller falls back to
+          // `'transparent'` (children float to the actual parent).
+          if (!result || !isNativeTag(result.tag)) return null;
+          addonHbsResolutionCache.set(cacheKey, result);
+          return result;
+        }
+      }
+      return null;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+// Test-only: clear the addon-hbs resolution cache. Tests that mutate
+// fixtures' .hbs templates between runs need this to avoid stale hits.
+export function _clearAddonHbsCache(): void {
+  addonHbsResolutionCache.clear();
 }
 
 // Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.
