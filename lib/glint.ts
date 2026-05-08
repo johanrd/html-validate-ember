@@ -13,7 +13,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
-import { getSplattedRootsForFile } from './component-attrs.js';
+import { isNativeTag } from '../blank.js';
+import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -939,6 +940,19 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             }
           }
         }
+        // Classic Ember addon fallback: when the JS-driven resolution
+        // didn't yield a concrete tag (null, or 'transparent' meaning
+        // unknown/any element type), try the component's `.hbs` template
+        // via the addon's import path. Modern shapes (class form, TOC
+        // forms, curried block-params) already resolved above take
+        // priority — this only runs as a last resort.
+        if (tag === null || tag === 'transparent') {
+          const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
+          if (addonRoot) {
+            componentTagMap.set(key, addonRoot.tag);
+            componentAttrMap.set(key, addonRoot);
+          }
+        }
       }
     }
 
@@ -999,6 +1013,148 @@ function findComponentDeclSourceFile(
   const decl = symbol?.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
+}
+
+// Resolve the rendered tag (and splatted-root attrs) for a classic Ember
+// addon component imported as `import X from '<addon>/components/<name>'`
+// — addons whose template lives at `addon/templates/components/<name>.hbs`
+// (legacy v1 addon) or `app/components/<name>.hbs` (Module Unification /
+// authored-as-app shim). These have no JS-side `Signature['Element']`, no
+// `satisfies TOC<…>`, so the JS-driven resolution paths return null.
+//
+// We extract the import's `moduleSpecifier` from the AST, match the
+// addon-component shape, walk up from the consumer file to find
+// `node_modules/<addon>`, and probe the canonical template paths. The
+// `.hbs` file is parsed with the same `extractSplattedRootFromTemplate`
+// helper used for `.gts` splatted-root extraction.
+//
+// Returns null when the import doesn't match an addon-component shape,
+// when the addon isn't found in node_modules, when no template file
+// exists at the expected paths, or when the template parses to no
+// element root (e.g. `{{outlet}}`-only).
+// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs.
+// POSITIVE results only — the map type enforces that. Caching negatives
+// indefinitely would permanently hide a template that's later installed
+// (linked workspace addons, IDE/watch mode where the user installs an
+// addon mid-session). Templates with many invocations of the same addon
+// component would otherwise hit the dir walk + multiple existsSync
+// probes + read+parse on every call; what we actually wanted to skip
+// with caching is the file read + Glimmer parse on positive hits.
+// Negatives stay cheap (regex + a handful of existsSync calls up to
+// the filesystem root) and re-probe each call.
+//
+// Keyed on the consumer file's directory so a monorepo with multiple
+// node_modules trees stays correct (different projects can resolve the
+// same addonName to different physical paths).
+//
+// Note: this in-memory cache is independent of the disk cache in
+// `lib/cache.ts`, which keys by consumer file content + mtime; that
+// disk cache will preserve a prior negative resolution until the
+// consumer file changes. Hot-installing a new addon mid-session may
+// require an editor restart to pick up if the consumer file's mtime
+// hasn't moved.
+const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
+
+function resolveAddonHbsTemplate(
+  ts: typeof TS,
+  checker: TS.TypeChecker,
+  emitComponentCall: TS.CallExpression,
+  consumerFile: string,
+): ComponentAttrs | null {
+  const innerCall = emitComponentCall.arguments[0];
+  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
+  const resolveCall = innerCall.expression;
+  if (!ts.isCallExpression(resolveCall)) return null;
+  const componentRef = resolveCall.arguments[0];
+  if (!componentRef) return null;
+  const symbol = checker.getSymbolAtLocation(componentRef);
+  if (!symbol) return null;
+  let importDecl: TS.Node | undefined;
+  for (const decl of symbol.declarations ?? []) {
+    let n: TS.Node | undefined = decl;
+    while (n && !ts.isImportDeclaration(n)) n = n.parent;
+    if (n && ts.isImportDeclaration(n)) {
+      importDecl = n;
+      break;
+    }
+  }
+  if (!importDecl || !ts.isImportDeclaration(importDecl)) return null;
+  const moduleSpecifier = importDecl.moduleSpecifier;
+  if (!ts.isStringLiteral(moduleSpecifier)) return null;
+  const importPath = moduleSpecifier.text;
+  const consumerDir = path.dirname(consumerFile);
+  const cacheKey = `${consumerDir}\0${importPath}`;
+  const cached = addonHbsResolutionCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
+  // Addon name follows npm package-name rules: lowercase letters, digits,
+  // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
+  // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
+  // Component name is kebab-case, lowercase only, allowing nested-by-slash
+  // like `forms/text-input`.
+  const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
+  const COMPONENT = '[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)*';
+  const importRe = new RegExp(
+    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
+  );
+  const m = importRe.exec(importPath);
+  if (!m || importPath.includes('..')) return null;
+  const addonName = m[1]!;
+  const componentName = m[2]!;
+  // Walk up looking for node_modules/<addon>. Always check the current
+  // dir BEFORE stepping up, so the filesystem root (e.g. POSIX `/`,
+  // Windows `C:\`) is also probed — Node's module resolver does this
+  // and we should match. A `while (dir !== path.dirname(dir))` loop
+  // would skip the root.
+  let dir = consumerDir;
+  for (;;) {
+    const addonRoot = path.join(dir, 'node_modules', addonName);
+    if (fs.existsSync(addonRoot)) {
+      for (const subPath of [
+        `addon/templates/components/${componentName}.hbs`,
+        `app/components/${componentName}.hbs`,
+        `addon/components/${componentName}.hbs`,
+      ]) {
+        const hbsPath = path.join(addonRoot, subPath);
+        if (fs.existsSync(hbsPath)) {
+          // Read can still fail post-existsSync (TOCTOU race, perms,
+          // unreadable file). Return null without caching — the read
+          // may succeed on a subsequent call once the underlying issue
+          // clears.
+          let contents: string;
+          try {
+            contents = fs.readFileSync(hbsPath, 'utf8');
+          } catch {
+            return null;
+          }
+          const result = extractSplattedRootFromTemplate(contents);
+          // Guard: only return when the addon's root element is a
+          // native HTML tag. If the addon template's root is itself a
+          // component (PascalCase tag) we'd otherwise feed that
+          // non-native name into `componentTagMap`, and blank.ts's
+          // substitution path would rename the consumer's invocation
+          // to that PascalCase string — making content-model checks
+          // worse than the transparent-blanking fallback. In that
+          // case treat as unresolved so the caller falls back to
+          // `'transparent'` (children float to the actual parent).
+          if (!result || !isNativeTag(result.tag)) return null;
+          addonHbsResolutionCache.set(cacheKey, result);
+          return result;
+        }
+      }
+      return null;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+// Test-only: clear the addon-hbs resolution cache. Tests that mutate
+// fixtures' .hbs templates between runs need this to avoid stale hits.
+export function _clearAddonHbsCache(): void {
+  addonHbsResolutionCache.clear();
 }
 
 // Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.
