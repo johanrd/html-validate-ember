@@ -22,12 +22,14 @@
 //   - Literal `TextNode` values are recorded verbatim — html-validate then
 //     sees the actual value (e.g. `type='range'` enables enum checks).
 //   - Bare-mustache (`title={{@label}}`) and concat-mustache
-//     (`class='prefix-{{x}}'`) values are recorded as a 3-space
-//     placeholder. The blanker injects `name='   '` at the consumer's call
-//     site, and `processAttribute` (transform.ts) converts that to a
-//     DynamicValue — html-validate sees "attribute present, value
-//     unknowable", which is enough for `element-required-attributes`
-//     and similar required-attribute rules.
+//     (`class='prefix-{{x}}'`) values are recorded as the
+//     `DYNAMIC_VALUE_PLACEHOLDER` constant from `lib/dynamic-value.ts`.
+//     The blanker injects this placeholder at the consumer's call
+//     site, and `processAttribute` (transform.ts) recognizes it via
+//     `isDynamicValuePlaceholder` and converts to a DynamicValue —
+//     html-validate sees "attribute present, value unknowable", which
+//     is enough for `element-required-attributes` and similar
+//     required-attribute rules.
 //
 // Example: component template
 //
@@ -39,7 +41,7 @@
 // returns:
 //
 //   { tag: 'input', attrs: { type: 'range', min: '0', max: '100',
-//                            value: '   ' } }
+//                            value: DYNAMIC_VALUE_PLACEHOLDER } }
 //
 // Limitations:
 //   - Glimmer-only attrs (`@arg`, `...attributes`, modifiers) are skipped.
@@ -94,10 +96,12 @@ function literalAttrs(node: AST.ElementNode): Record<string, string> {
       // Bare-mustache (`title={{@label}}`) and concat-mustache
       // (`class='prefix-{{x}}'`) values are computed at runtime. We can't
       // anticipate the literal, but we DO know the attribute is present —
-      // so record it with a DynamicValue placeholder. The blanker injects
-      // `name='   '` into a Glimmer-only blank slot at the consumer's call
-      // site, and html-validate's `processAttribute` hook converts to
-      // DynamicValue. This rescues required-attribute rules
+      // so record it with the shared `DYNAMIC_VALUE_PLACEHOLDER`
+      // sentinel. The blanker injects this placeholder into a
+      // Glimmer-only blank slot at the consumer's call site, and
+      // html-validate's `processAttribute` hook recognizes it via
+      // `isDynamicValuePlaceholder` and converts to DynamicValue.
+      // This rescues required-attribute rules
       // (e.g. `<iframe title={{@label}}>`-style components surfacing
       // `element-required-attributes` on the wrapped iframe).
       attrs[attr.name] = DYNAMIC_VALUE_PLACEHOLDER;

@@ -478,6 +478,7 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
+  imgSplatOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -699,11 +700,17 @@ function substituteSelfClosingVoidComponent(
 // FP-fires `element-required-attributes` (src) and `wcag/h37` (alt) even
 // though both come from the splat at runtime.
 //
-// Injects whitespace-valued placeholders (`src='   '` / `alt='   '`) into
-// Glimmer-only blank regions in the open tag; `processAttribute`'s
-// DynamicValue conversion (>=3-char whitespace threshold) then surfaces them
-// as "present, value unknowable". Skipped when the consumer already wrote
-// `src=` / `alt=` explicitly.
+// We don't rewrite the source — the minimal `...attributes` slot is 13
+// chars and html-validate accepts no two-attr form that fits (bare
+// `src alt` triggers `attribute-allowed-values`-missing-value, empty
+// quoted `src=''` triggers `attribute-allowed-values`-invalid-value,
+// and the wide whitespace form `src='   ' alt='   '` is 19+ chars).
+//
+// Instead, record the element's start offset; the transformer's
+// `processElement` hook reads this list and calls `setAttribute` with
+// a DynamicValue at parse time, sidestepping source-side slot width
+// entirely. Skipped when the consumer already wrote `src=` / `alt=`
+// explicitly (no FP to suppress).
 //
 // Currently scoped to <img>; the same shape applies to
 // <source>/<track>/<area>/<iframe> if real-world FPs surface there.
@@ -711,37 +718,8 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
   if (!hasSplat) return;
   const present = new Set((node.attributes ?? []).map((a) => a.name));
-  const wanted: string[] = [];
-  if (!present.has('src')) wanted.push("src='   '");
-  if (!present.has('alt')) wanted.push("alt='   '");
-  if (wanted.length === 0) return;
-  const candidates: Range[] = [];
-  for (const attr of node.attributes ?? []) {
-    if (isGlimmerOnlyAttr(attr.name)) {
-      candidates.push([startOffset(attr), endOffset(attr)]);
-    }
-  }
-  for (const m of node.modifiers ?? []) {
-    candidates.push([startOffset(m), endOffset(m)]);
-  }
-  // Sort candidates widest first. Both injected attrs (`src='   '` and
-  // `alt='   '`) are 9 chars, so picking the widest candidate first
-  // doesn't starve a later attr. This is a slot-side ordering only;
-  // tryInjectComponentAttrs additionally sorts the *attrs* by descending
-  // text length to prevent starvation when attrs have varying widths —
-  // not needed here because both wanted attrs are the same length.
-  candidates.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
-  for (const text of wanted) {
-    for (let i = 0; i < candidates.length; i++) {
-      const [s, e] = candidates[i]!;
-      if (e - s < text.length) continue;
-      const slice = ctx.content.slice(s, s + text.length);
-      if (/[\n\r]/.test(slice)) continue;
-      ctx.renames.push([s, s + text.length, text]);
-      candidates.splice(i, 1);
-      break;
-    }
-  }
+  if (present.has('src') && present.has('alt')) return;
+  ctx.imgSplatOffsets.push(startOffset(node));
 }
 
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
@@ -828,12 +806,9 @@ function tryInjectComponentAttrs(
   // Build the injection plan first, then place longer texts before
   // shorter ones. Otherwise a short attr visited first can claim the
   // only candidate slot wide enough for a longer attr, silently
-  // dropping it. Empty-string literal on a known boolean attr
-  // (e.g. `<button disabled ...attributes>` records `disabled: ''`)
-  // emits just the attr name. For non-boolean attrs we can't tell
-  // shorthand `disabled` apart from explicit `value=''`, so fall
-  // back to the 3-space placeholder — it's HTML5-equivalent and
-  // gets DynamicValue-treated by `processAttribute`.
+  // dropping it. Per-attr emission rules (boolean → presence-only,
+  // safe literal → embedded, otherwise → DynamicValue placeholder)
+  // are documented in the .map below.
   const plan = Object.keys(attrs)
     .filter((name) => !existingNonGlimmer.has(name))
     .map((attrName) => {
@@ -1278,6 +1253,14 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Offsets of `<img ...attributes>` elements (start of `<` byte) where
+  // the consumer-side `...attributes` is expected to provide required
+  // attrs (src/alt) at runtime. The transformer's processElement hook
+  // synthesizes these attrs as DynamicValue at parse-time so html-
+  // validate sees them as "present, value unknowable" — sidesteps the
+  // narrow-slot problem where source-side rewrite can't fit two 9-char
+  // `attr='   '` placeholders into a 13-char `...attributes` slot.
+  imgSplatOffsets: number[];
   // Rule IDs that the consumer should disable for this Source as a whole —
   // populated when the template contains structural patterns the static
   // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
@@ -1292,6 +1275,7 @@ export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  imgSplatOffsets?: undefined;
   disableForRules?: undefined;
 }
 
@@ -1330,6 +1314,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
+    imgSplatOffsets: [],
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1392,6 +1377,7 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    imgSplatOffsets: ctx.imgSplatOffsets,
     disableForRules: detectStructuralYieldRules(
       ast,
       branchSelections,
@@ -1401,15 +1387,26 @@ function blankTemplateContent(
   };
 }
 
-// Detect structural elements (`<form>`, `<fieldset>`) whose body contains
-// `{{yield}}` (or `{{has-block}}`) AND lacks a statically-detectable
-// submit/legend — those are the cases where wcag/h32 / wcag/h71 would
-// FP-fire on the blanked output. Wrapper markup like
-// `<form><div>{{yield}}</div></form>` IS suppressed (the yield is the
-// structural content, just wrapped); a form with a real
-// `<button type='submit'>` alongside the yield is NOT suppressed (the
-// rule wouldn't fire and the disable would itself trigger
-// `no-unused-disable`).
+// Detect cases where a structural rule would FP-fire on the blanked
+// output, and add the rule to `disableForRules` so the transformer can
+// inject a one-shot disable directive into this Source.
+//
+// Two FP classes covered today:
+//
+//   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
+//      detectable submit/legend (the suppression target rule fires
+//      because the yield was blanked away). Wrapper markup like
+//      `<form><div>{{yield}}</div></form>` IS suppressed; a form with
+//      a real `<button type='submit'>` alongside the yield is NOT
+//      (the rule wouldn't fire and the disable would itself trigger
+//      `no-unused-disable`).
+//
+//   2. Input-driven `<form {{on "input" …}}>` — search-as-you-type /
+//      live-filter pattern. The `{{on "input"}}` modifier signals that
+//      the form's action is driven by input events, not submission;
+//      a separate submit button would be ceremonial (helps no real
+//      user). wcag/h32 is suppressed regardless of submit-button or
+//      yield presence.
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
@@ -1441,18 +1438,45 @@ function detectStructuralYieldRules(
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
 ): string[] {
   const out: string[] = [];
-  traverse(ast, {
-    ElementNode(node) {
-      if (
-        node.tag === 'form' &&
-        elementYieldsAndLacksSubmit(node, branchSelections, glintComponentTagMap, glintComponentAttrMap)
-      ) {
-        out.push('wcag/h32');
-      } else if (node.tag === 'fieldset' && elementYieldsAndLacksLegend(node, branchSelections)) {
-        out.push('wcag/h71');
+  // Custom walk — the off-the-shelf `traverse` would visit forms /
+  // fieldsets that live entirely in a blanked-out branch for the
+  // current pass, leaking their suppression rules into
+  // `disableForRules` and silently suppressing real violations on
+  // the actually-emitted output (false negatives). At every
+  // BlockStatement we descend ONLY into the selected arm — the same
+  // selection `handleBlockStatement` makes, so this matches what the
+  // blanker actually emits in this pass.
+  function walk(stmts: ReadonlyArray<AST.TopLevelStatement | AST.Statement>): void {
+    for (const stmt of stmts) {
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) walk(arm.body);
+        continue;
       }
-    },
-  });
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'form') {
+          if (
+            formHasInputModifier(stmt) ||
+            elementYieldsAndLacksSubmit(
+              stmt,
+              branchSelections,
+              glintComponentTagMap,
+              glintComponentAttrMap,
+            )
+          ) {
+            out.push('wcag/h32');
+          }
+        } else if (
+          stmt.tag === 'fieldset' &&
+          elementYieldsAndLacksLegend(stmt, branchSelections)
+        ) {
+          out.push('wcag/h71');
+        }
+        walk(stmt.children);
+      }
+    }
+  }
+  walk(ast.body);
   return [...new Set(out)];
 }
 
@@ -1491,6 +1515,33 @@ function selectBranch(
 // counts. Bare-mustache types are conservatively treated as MAYBE
 // submit (we bail) — better an extra real wcag/h32 fire than an
 // unused-disable cascade.
+// True when a `<form>` carries an event modifier that signals
+// input-event-driven UX (rather than submission-driven). Two events
+// trigger the suppression:
+//   - `{{on "input" …}}` — search-as-you-type / live-filter; updates
+//     on every keystroke.
+//   - `{{on "change" …}}` — commit-on-blur / per-field-commit; the
+//     form's action runs as fields are committed individually rather
+//     than on a final submit.
+//
+// Both patterns make a separate submit button ceremonial. Conservative
+// on the event-name argument: we require a static string literal;
+// bare-mustache event names like `{{on @event …}}` could resolve to
+// anything at runtime, so we don't trust them as a suppression signal.
+const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+function formHasInputModifier(form: AST.ElementNode): boolean {
+  for (const modifier of form.modifiers ?? []) {
+    if (modifier.path.type !== 'PathExpression') continue;
+    if (modifier.path.original !== 'on') continue;
+    const firstParam = modifier.params?.[0];
+    if (firstParam?.type === 'StringLiteral' && INPUT_DRIVEN_FORM_EVENTS.has(firstParam.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function elementYieldsAndLacksSubmit(
   form: AST.ElementNode,
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
@@ -1535,14 +1586,22 @@ function elementYieldsAndLacksSubmit(
   return hasYield && !hasStaticSubmit;
 }
 
-// True when a `<fieldset>` body contains `{{yield}}` (or `{{has-block}}`)
-// somewhere AND has no statically-detectable `<legend>` child. Same
-// rationale as elementYieldsAndLacksSubmit.
+// True when a `<fieldset>` body has opaque legend-source content AND
+// no statically-detectable `<legend>` child. "Opaque legend-source"
+// means either a literal `{{yield}}` / `{{has-block}}` mustache OR a
+// non-native tag (component invocation) — components may render their
+// own `<legend>` at runtime, and we can't see inside them, so we err
+// toward suppression rather than letting wcag/h71 FP-fire.
+//
+// The component-invocation case handles ember-primitives' OTP-input
+// pattern: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}`.
+// In multipass the inverse arm produces `<C />` only — without this
+// rule the walker would see no yield, no legend, and let h71 fire.
 function elementYieldsAndLacksLegend(
   fieldset: AST.ElementNode,
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
 ): boolean {
-  let hasYield = false;
+  let hasOpaqueLegendSource = false;
   let hasStaticLegend = false;
   function walk(stmts: ReadonlyArray<AST.Statement>): void {
     for (const stmt of stmts) {
@@ -1552,7 +1611,7 @@ function elementYieldsAndLacksLegend(
           stmt.path.type === 'PathExpression' &&
           (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
         ) {
-          hasYield = true;
+          hasOpaqueLegendSource = true;
         }
         continue;
       }
@@ -1566,13 +1625,18 @@ function elementYieldsAndLacksLegend(
           hasStaticLegend = true;
           return;
         }
+        // Component invocation (PascalCase / dotted / `:slot`) may
+        // render `<legend>` at runtime — treat as legend-source.
+        if (!isNativeTag(stmt.tag)) {
+          hasOpaqueLegendSource = true;
+        }
         walk(stmt.children);
         continue;
       }
     }
   }
   walk(fieldset.children);
-  return hasYield && !hasStaticLegend;
+  return hasOpaqueLegendSource && !hasStaticLegend;
 }
 
 // `<button>` with no `type` attribute (default = submit inside a form)
@@ -1616,11 +1680,20 @@ function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
 }
 
 // True when a component invocation (`<MyButton>`, `<This.Foo>`)
-// resolves via Glint or builtin maps to a native `<button>`/`<input>`
-// that's either a static submit OR ambiguous on its type. Treats both
-// "definitely submit" and "could be submit" as disqualifying — the
-// goal is to avoid `no-unused-disable` cascades, so we err on the side
-// of NOT suppressing when in doubt.
+// resolves VIA GLINT to a native `<button>`/`<input>` that's either a
+// static submit OR ambiguous on its type. Treats both "definitely
+// submit" and "could be submit" as disqualifying — the goal is to
+// avoid `no-unused-disable` cascades, so we err on the side of NOT
+// suppressing when in doubt.
+//
+// Glint-only on purpose: the implementation bails early when
+// `glintComponentTagMap` is falsy. The plugin's builtin component map
+// (used by `handleGlintSubstitution` for `<Input>` / `<Textarea>` /
+// `<LinkTo>` in non-Glint runs) doesn't currently feed into submit
+// detection here. In practice the builtins that map to `<input>` are
+// rarely used as submit buttons (`<Input type='submit'>` exists but is
+// uncommon), so the missing fallback hasn't surfaced as a real FP.
+// Add it if a real-world target hits this case.
 //
 // "Static submit" cases:
 //   - Resolves to `<button>` with no static `type` attr (default
