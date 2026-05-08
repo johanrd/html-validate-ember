@@ -646,6 +646,17 @@ function matchElementTypeToTag(
     }
   }
   if (allGenericBase) return 'transparent';
+  // "Essentially all elements" — when the union covers (almost) every
+  // HTMLElement type, the author has expressed "this component can
+  // render any element"; picking the first matching branch arbitrarily
+  // would substitute to whatever happened to be first (often `<a>` or
+  // `<h1>`) and cascade FPs into the consumer's content-model checks.
+  // Resolve to 'transparent' so children float to the actual parent.
+  // Surfaced by HDS's `<HdsLayoutGrid>` declaring
+  // `Element: HTMLElementTagNameMap[keyof HTMLElementTagNameMap]`.
+  if (branches.length >= ESSENTIALLY_ALL_ELEMENTS_THRESHOLD) {
+    return 'transparent';
+  }
   // Pick a single tag for unions: take the first matching branch.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
@@ -655,6 +666,15 @@ function matchElementTypeToTag(
   }
   return null;
 }
+
+// Threshold below which a union of HTML element types is treated as
+// "the author chose specific tags" (we resolve to one of them) and
+// above which it's treated as "the author chose effectively all tags"
+// (we resolve to 'transparent'). HTMLElementTagNameMap has ~110
+// entries; user-declared unions of "any of a handful" are typically
+// 5-10 elements. Pick a threshold well above realistic per-component
+// declarations but well below 110.
+const ESSENTIALLY_ALL_ELEMENTS_THRESHOLD = 30;
 
 // Recover the rendered tag from the *type* of the component-reference
 // expression itself — for cases where Glint's `emitComponent(...).element`
@@ -988,7 +1008,18 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       // root and stash literal attributes for blank.ts to inject.
       if (emitCall) {
         const declFile = findComponentDeclSourceFile(ts, checker, emitCall);
-        if (declFile) {
+        // Skip the same-package outer-wrapper override when the
+        // declaration ISN'T a top-level statement in `declFile` —
+        // typically a let-block-param (`{{let @x as |Group|}}` becomes
+        // `const [Group] = ...` inside the template-to-typescript
+        // output). For these, declFile is the consumer file and
+        // walking its outer `<template>` block returns whatever
+        // happens to be at the file's root (often unrelated to what
+        // `Group` actually renders).
+        const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+        const decl = symbol?.declarations?.[0];
+        const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
+        if (declFile && isTopLevel) {
           const gtsPath = resolveGtsPath(declFile);
           if (gtsPath) {
             const roots = getSplattedRootsForFile(gtsPath);
@@ -1165,6 +1196,43 @@ function findComponentDeclSourceFile(
   const decl = symbol?.declarations?.[0];
   if (!decl) return null;
   return decl.getSourceFile().fileName;
+}
+
+// True when the component reference's declaration is a top-level
+// statement in its source file (e.g. `const X: TOC<S> = <template>`),
+// rather than an inner-scope binding (e.g. a let-block-param emitted
+// as `const [Group] = ...` inside the template-to-typescript output).
+//
+// Why we need this: the outer-wrapper override walks the declaration
+// file's first `<template>` block to find a wrapping native tag.
+// That's correct for top-level component declarations whose template
+// IS the file's first block, but produces wrong results for inner-
+// scope bindings — a `{{let @groupComponent as |Group|}}` would resolve
+// `<Group>`'s declFile back to the consumer file, and walking the
+// consumer's first `<template>` block returns whatever wrapper
+// happens to be there (often `<ul>` for a power-select-options-style
+// recursive template), not what `Group` actually renders.
+function isTopLevelDeclaration(ts: typeof TS, decl: TS.Declaration): boolean {
+  // VariableDeclaration → VariableDeclarationList → VariableStatement
+  // → SourceFile (when top-level).
+  // ClassDeclaration / FunctionDeclaration etc. → directly child of
+  // SourceFile.
+  let node: TS.Node | undefined = decl;
+  while (node) {
+    if (
+      node.kind === ts.SyntaxKind.VariableStatement ||
+      node.kind === ts.SyntaxKind.ClassDeclaration ||
+      node.kind === ts.SyntaxKind.FunctionDeclaration ||
+      node.kind === ts.SyntaxKind.InterfaceDeclaration ||
+      node.kind === ts.SyntaxKind.TypeAliasDeclaration ||
+      node.kind === ts.SyntaxKind.ExportAssignment
+    ) {
+      // Only top-level if the parent IS the SourceFile.
+      return node.parent?.kind === ts.SyntaxKind.SourceFile;
+    }
+    node = node.parent;
+  }
+  return false;
 }
 
 // Resolve the rendered tag (and splatted-root attrs) for a classic Ember
