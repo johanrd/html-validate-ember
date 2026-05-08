@@ -55,12 +55,15 @@ function pascalCaseToKebab(name: string): string {
 
 // Probe an addon directory for a component template by kebab-name.
 // Returns the parsed splatted-root or null. Tries the three canonical
-// classic-Ember component template paths.
+// classic-Ember component template paths in the same order as
+// `lib/glint.ts:resolveAddonHbsTemplate` so `.hbs` and `.gts`
+// consumers resolve identically when an addon ships templates in
+// multiple paths.
 function tryProbeAddon(addonRoot: string, kebabName: string): ComponentAttrs | null {
   for (const sub of [
     `addon/templates/components/${kebabName}.hbs`,
-    `addon/components/${kebabName}.hbs`,
     `app/components/${kebabName}.hbs`,
+    `addon/components/${kebabName}.hbs`,
   ]) {
     const hbsPath = path.join(addonRoot, sub);
     if (!fs.existsSync(hbsPath)) continue;

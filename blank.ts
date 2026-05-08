@@ -1513,7 +1513,7 @@ function detectStructuralYieldRules(
           out.push('wcag/h71');
         } else if (
           !isNativeTag(stmt.tag) &&
-          containsContentRestrictedStructuralChild(stmt, glintComponentTagMap)
+          containsContentRestrictedStructuralChild(stmt, glintComponentTagMap, branchSelections)
         ) {
           // Unresolvable PascalCase / dotted wrapper containing
           // content-restricted structural children (`<option>`, `<th>`,
@@ -1629,6 +1629,7 @@ const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
 function containsContentRestrictedStructuralChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): boolean {
   // If Glint has resolved this wrapper to a native tag, no heuristic
   // needed — the precise resolution wins and the rule fires (or
@@ -1638,13 +1639,19 @@ function containsContentRestrictedStructuralChild(
     const resolved = glintComponentTagMap.get(key);
     if (resolved && resolved !== 'transparent') return false;
   }
+  // Walk only the arm that matches what the blanker emits in this pass.
+  // Without `selectBranch`, descending into both arms of a
+  // `{{#if}}/{{else}}` would let one branch's structural children
+  // trigger Source-wide suppression even when that branch isn't being
+  // emitted — silently masking real `element-permitted-content`
+  // violations in the active branch.
   function check(stmts: ReadonlyArray<AST.Statement>): boolean {
     for (const stmt of stmts) {
       if (stmt.type === 'ElementNode') {
         if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag)) return true;
       } else if (stmt.type === 'BlockStatement') {
-        if (check(stmt.program.body)) return true;
-        if (stmt.inverse && check(stmt.inverse.body)) return true;
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm && check(arm.body)) return true;
       }
     }
     return false;
