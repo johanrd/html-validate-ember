@@ -35,10 +35,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Preprocessor } from 'content-tag';
-import { preprocess, traverse } from '@glimmer/syntax';
+import { preprocess } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
-import { isNativeTag } from '../blank.js';
+import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import { elementHasSplat, literalAttrs } from './component-attrs.js';
 
 const preprocessor = new Preprocessor();
@@ -243,13 +243,23 @@ function resolveAnyImport(
 }
 
 // Resolve a package-style import (`@scope/pkg/sub` or `pkg/sub`) to
-// an absolute file path, walking `node_modules` upward from `fromFile`
-// and consulting package.json `exports` / `main`.
+// an absolute file path. Walks `node_modules` upward from `fromFile`
+// to find the package root, then probes a fixed set of source-style
+// paths for the sub-path:
 //
-// Strategy: prefer SOURCE files (`src/<sub>.ts/.gts`) over compiled
-// dist (`dist/<sub>.js`), so we can read the original `<template>`
-// blocks. If `src/` doesn't exist, fall through to the package's
-// declared exports.
+//   1. `src/<sub>.{gts,gjs,ts}`  — most v2 addon source layouts.
+//   2. `src/<sub>/index.{gts,gjs,ts}` — directory imports.
+//   3. (no `<sub>`) `src/index.{gts,gjs,ts}`.
+//   4. Bare `<sub>.{ts,gts}` / `<sub>/index.ts` at the package root,
+//      for packages that don't have a `src/` layer.
+//
+// Note: this does NOT read `package.json` `exports` / `main`. We
+// prefer SOURCE files (so we can read the original `<template>`
+// blocks) over whatever the package declares for runtime use, and
+// the source layout for v2 addons is conventional enough that the
+// hardcoded probes hit. If a package uses an unconventional source
+// layout this resolver returns null and the caller falls back to
+// other paths (Glint TS resolution, classic-by-name).
 function resolvePackageImport(fromFile: string, importSpec: string): string | null {
   // Split into `<package-name>` and `<sub-path>` (e.g.
   // `@scope/pkg/foo/bar` → `@scope/pkg`, `foo/bar`;
@@ -298,9 +308,8 @@ function resolvePackageImport(fromFile: string, importSpec: string): string | nu
           if (fs.existsSync(candidate)) return candidate;
         }
       }
-      // Fall back to whatever the package's exports/main points to.
-      // We don't fully resolve `exports` patterns — just probe a few
-      // common shapes.
+      // Fall back to a few bare paths at the package root for
+      // packages that don't have a `src/` layer.
       if (subPath) {
         for (const sub of [`${subPath}.ts`, `${subPath}.gts`, `${subPath}/index.ts`]) {
           const candidate = path.join(pkgRoot, sub);
@@ -424,7 +433,13 @@ function resolveOuterWrapperTagInner(
     if (block.tagName !== 'template') continue;
     let ast: AST.Template;
     try {
-      ast = preprocess(block.contents);
+      // Match `blank.ts`'s template-parsing preamble: strip TS-style
+      // block-param type annotations (`as |x: T|`) so Glimmer's
+      // parser accepts them, and use `mode: 'codemod'` for source
+      // fidelity. Without these, a typed-block-param template would
+      // throw and we'd silently miss wrapper/attr resolution —
+      // reintroducing the FPs this resolver is meant to fix.
+      ast = preprocess(stripBlockParamTypeAnnotations(block.contents), { mode: 'codemod' });
     } catch {
       continue;
     }

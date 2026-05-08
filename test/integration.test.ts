@@ -686,8 +686,10 @@ describe('end-to-end fixtures', () => {
     // The fix: when the resolved tag is <img> and the addon records
     // `src` (or `alt`) in `attrCtx.attrs` — including the
     // DYNAMIC_VALUE_PLACEHOLDER for mustache-bound values — push the
-    // consumer's offset to `imgSplatOffsets`, the same hook the
-    // `<img ...attributes>` narrow-slot fix uses (PR #13).
+    // consumer's offset to `imgSplatSrcOffsets` / `imgSplatAltOffsets`
+    // per-attr, the same hook the `<img ...attributes>` narrow-slot
+    // fix uses (PR #13). Per-attr precision sidesteps the FN risk of
+    // injecting an unintended attr.
     //
     // Mirrors ember-website's `<ResponsiveImage @src="…" alt="" />`
     // pattern: addon binds `src={{this.src}}`, runtime <img> always

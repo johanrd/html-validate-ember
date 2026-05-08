@@ -37,6 +37,42 @@ import { extractSplattedRootFromTemplate } from './component-attrs.js';
 
 const cache = new Map<string, ComponentAttrs>();
 
+// Pre-filter cache for `findClassicComponent`: per absolute package
+// path → "is this an Ember addon?" (`true`/`false`). Only addons ship
+// classic component templates at the canonical `addon/`-prefixed
+// paths, so probing 3 file paths × every package on every PascalCase
+// lookup is wasted IO on large `node_modules`. We read each package's
+// `package.json` once (per process) and cache the verdict.
+//
+// "Is an Ember addon" check: package.json has either
+//   - `keywords` containing `'ember-addon'`, OR
+//   - an `ember-addon` field (object).
+//
+// Both patterns are conventional v1-addon markers. v2 addons use
+// different layouts that classic-by-name resolution doesn't target
+// anyway.
+const isAddonCache = new Map<string, boolean>();
+
+function isEmberAddonPackage(pkgRoot: string): boolean {
+  const cached = isAddonCache.get(pkgRoot);
+  if (cached !== undefined) return cached;
+  let result = false;
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
+      keywords?: unknown;
+      'ember-addon'?: unknown;
+    };
+    const kws = pkgJson.keywords;
+    const hasKeyword = Array.isArray(kws) && kws.includes('ember-addon');
+    const hasField = typeof pkgJson['ember-addon'] === 'object' && pkgJson['ember-addon'] !== null;
+    result = hasKeyword || hasField;
+  } catch {
+    // Missing / unparseable package.json → not an addon for our purposes.
+  }
+  isAddonCache.set(pkgRoot, result);
+  return result;
+}
+
 // Components our blank-step handles via the builtin map (not by-name
 // resolution). Skip these — they'd shadow the builtin substitution.
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set([
@@ -119,7 +155,9 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
           scopedEntries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
           for (const scoped of scopedEntries) {
             if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
-            const result = tryProbeAddon(path.join(scopeRoot, scoped.name), kebabName);
+            const pkgRoot = path.join(scopeRoot, scoped.name);
+            if (!isEmberAddonPackage(pkgRoot)) continue;
+            const result = tryProbeAddon(pkgRoot, kebabName);
             if (result && isNativeTag(result.tag)) {
               cache.set(cacheKey, result);
               return result;
@@ -127,7 +165,9 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
           }
           continue;
         }
-        const result = tryProbeAddon(path.join(nodeModules, entry.name), kebabName);
+        const pkgRoot = path.join(nodeModules, entry.name);
+        if (!isEmberAddonPackage(pkgRoot)) continue;
+        const result = tryProbeAddon(pkgRoot, kebabName);
         if (result && isNativeTag(result.tag)) {
           cache.set(cacheKey, result);
           return result;
@@ -180,7 +220,10 @@ export function buildClassicComponentTagMap(
   return { componentTagMap, componentAttrMap };
 }
 
-// Test-only: clear the in-memory by-name resolver cache.
+// Test-only: clear the in-memory by-name resolver caches (the
+// per-(consumerDir, kebabName) lookup cache and the per-package
+// "is an Ember addon" pre-filter cache).
 export function _clearClassicResolverCache(): void {
   cache.clear();
+  isAddonCache.clear();
 }
