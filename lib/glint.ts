@@ -15,6 +15,10 @@ import type * as TS from 'typescript';
 
 import { isNativeTag } from '../blank.js';
 import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
+import {
+  resolveOuterWrapperTag,
+  resolveOuterWrapperFromConsumerImport,
+} from './outer-wrapper-resolver.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -971,6 +975,11 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       const tag = emitCall ? resolveComponentElement(ts, checker, emitCall, elementTypeToTag) : null;
       const elementLoc = node.parent.sourceNode.loc.start;
       const key = locKey(elementLoc.line, elementLoc.column);
+      // Tracks whether the same-package outer-wrapper override path
+      // ran for this invocation. When false, the import-based fallback
+      // (which doesn't depend on Glint's symbol resolution) takes
+      // over below.
+      let sameTransitivePackageOuterRan = false;
       if (tag) {
         componentTagMap.set(key, tag);
       }
@@ -990,21 +999,111 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             const first = roots[0];
             if (first) {
               componentAttrMap.set(key, first);
+              // When Glint's TS-only resolution couldn't pin a specific
+              // tag (`null` or `'transparent'`) — typically because the
+              // component declares `Element: HTMLElement` (bare generic),
+              // or because the type chain didn't propagate cleanly across
+              // a barrel re-export — fall back to the splatted-root's tag
+              // from the component's own template. The runtime render IS
+              // that tag (the template literally writes `<li ...attributes>`,
+              // `<button ...attributes>`, etc.), so this is at least as
+              // accurate as 'transparent' and lets `element-permitted-
+              // content` validate the correct parent context.
+              if ((tag === null || tag === 'transparent') && isNativeTag(first.tag)) {
+                componentTagMap.set(key, first.tag);
+              }
+            }
+            // Outer-wrapper override: when the component's template
+            // wraps the splatted leaf in an OUTER native ancestor
+            // (e.g. `<ListItem><a ...attributes>{{yield}}</a></ListItem>`
+            // where ListItem renders `<li>`), Glint resolves the
+            // consumer-side substitution to the LEAF type (`<a>`).
+            // That fires `element-permitted-content` when the consumer
+            // places the component under a structurally-restrictive
+            // parent (`<ul>`, `<ol>`, etc.) even though the runtime
+            // DOM is `<ul><li><a>…</a></li></ul>` (legal). Walk the
+            // component's template AST to find the OUTERMOST native
+            // ancestor (recursing through PascalCase wrappers via local
+            // imports), and prefer that tag when it differs from the
+            // leaf-resolved tag. Single-substitution trade-off: the
+            // inner-content semantics (e.g. `<button>`-under-`<a>`)
+            // are lost on the consumer-side lint pass; the addon's
+            // own template lint catches them on its side.
+            const outerWrapper = resolveOuterWrapperTag(gtsPath);
+            const currentResolved = componentTagMap.get(key);
+            sameTransitivePackageOuterRan = true;
+            if (outerWrapper !== null && isNativeTag(outerWrapper.tag)) {
+              if (outerWrapper.tag !== currentResolved) {
+                componentTagMap.set(key, outerWrapper.tag);
+              }
+              // Always update componentAttrMap with the chain's
+              // accumulated attrs — even when the leaf tag matches the
+              // current resolution, the chain's deeper attrs (e.g. an
+              // `<a href={{@href}}>` in a wrapper's wrapper) are what
+              // make rules like `aria-label-misuse` pass. Without these,
+              // we'd inject only the SPLATTED-ROOT level's attrs (which
+              // for a non-native splatted root would be the wrapper's
+              // literal/mustache attrs only, missing the ultimately-
+              // rendered native's).
+              componentAttrMap.set(key, {
+                tag: outerWrapper.tag,
+                attrs: outerWrapper.attrs,
+                hasSplat: outerWrapper.hasSplat,
+              });
             }
           }
         }
         // Classic Ember addon fallback: when the JS-driven resolution
-        // didn't yield a concrete tag (null, or 'transparent' meaning
-        // unknown/any element type), try the component's `.hbs` template
-        // via the addon's import path. Modern shapes (class form, TOC
-        // forms, curried block-params) already resolved above take
-        // priority — this only runs as a last resort.
-        if (tag === null || tag === 'transparent') {
+        // didn't yield a concrete tag AND the same-package template
+        // didn't either, try the component's `.hbs` template via the
+        // addon's import path. Modern shapes (class form, TOC forms,
+        // curried block-params) already resolved above take priority —
+        // this only runs as a last resort.
+        const currentTag = componentTagMap.get(key);
+        if (currentTag === undefined || currentTag === 'transparent') {
           const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
           if (addonRoot) {
             componentTagMap.set(key, addonRoot.tag);
             componentAttrMap.set(key, addonRoot);
           }
+        }
+      }
+      // Import-based outer-wrapper fallback: when Glint's TS symbol
+      // resolution failed to give us a `.gts` source (typically
+      // because the component is imported through a cross-package
+      // barrel and TS can't trace the symbol back to its origin
+      // through the package's exports/declarations), try the
+      // consumer-side AST: look up the `import` statement for this
+      // component name, resolve the import path (relative or
+      // package-style), follow barrel re-exports, and walk the
+      // resulting `.gts` template chain. Same single-substitution
+      // trade-off as the same-package outer-wrapper override.
+      // Import-based outer-wrapper fallback. Runs only when the same-
+      // package outer-wrapper override (inside `if (declFile)` /
+      // `if (gtsPath)` above) did NOT get a chance — typically because
+      // Glint's TS symbol resolution couldn't reach the component's
+      // source through a cross-package barrel re-export. In that case
+      // we bypass TS by parsing the consumer file's `import` statement
+      // for `componentName`, resolving the path (relative or
+      // package-style), following barrel re-exports, and walking the
+      // resulting `<template>` chain to find the outermost native
+      // wrapper. Same single-substitution trade-off as the same-
+      // package override.
+      if (!sameTransitivePackageOuterRan) {
+        const componentName = node.parent.sourceNode.tag;
+        const outerFromImport = resolveOuterWrapperFromConsumerImport(filename, componentName);
+        const currentResolved = componentTagMap.get(key);
+        if (outerFromImport !== null && isNativeTag(outerFromImport.tag)) {
+          if (outerFromImport.tag !== currentResolved) {
+            componentTagMap.set(key, outerFromImport.tag);
+          }
+          // Override componentAttrMap with the chain's accumulated
+          // attrs (see same-package branch above for rationale).
+          componentAttrMap.set(key, {
+            tag: outerFromImport.tag,
+            attrs: outerFromImport.attrs,
+            hasSplat: outerFromImport.hasSplat,
+          });
         }
       }
     }

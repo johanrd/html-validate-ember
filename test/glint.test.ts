@@ -199,17 +199,23 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeUndefined();
   });
 
-  it('does NOT resolve `Element: HTMLElement` (the generic) to a phantom tag like <abbr>', () => {
-    // Surfaced by ecosystem CI on ember-power-select and HDS: a component
-    // declaring `Signature['Element'] = HTMLElement` (the bare generic) was
-    // resolving to <abbr> because lib.dom.d.ts's HTMLElementTagNameMap has
-    // `"abbr": HTMLElement` as its first entry mapping to bare HTMLElement.
-    // The inversion picked abbr; downstream rules then FP-fired
-    // element-permitted-content on legal content.
+  it('does NOT resolve `Element: HTMLElement` (the generic) to a phantom tag like <abbr>; falls back to the template root tag', () => {
+    // Surfaced by ecosystem CI: a component declaring `Signature['Element']
+    // = HTMLElement` (the bare generic) was resolving to <abbr> because
+    // lib.dom.d.ts's HTMLElementTagNameMap has `"abbr": HTMLElement` as
+    // its first entry mapping to bare HTMLElement. The inversion picked
+    // abbr; downstream rules then FP-fired element-permitted-content on
+    // legal content.
     //
-    // Correct behaviour: skip the inversion for generic HTMLElement so the
-    // component falls through to 'transparent' (children float to real
-    // parent), the same outcome as a component with no Element declared.
+    // Correct behaviour: skip the inversion for generic HTMLElement.
+    // PR #12 originally chose to fall through to 'transparent' so the
+    // children floated to the consumer-side parent. We now do better:
+    // the component's own `<template>` literally writes `<div>{{yield}}</div>`,
+    // so we read the splatted-root (or first-element) tag from the
+    // template AST and use that. Resolving to <div> is more accurate
+    // than 'transparent' and lets rules that depend on the parent
+    // context (`element-permitted-content`, etc.) validate the child
+    // against the real wrapper.
     const { filename, contents } = readFixture('generic-html-element-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
     const entries = [...componentTagMap.entries()];
@@ -218,13 +224,120 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       abbrEntry,
       `Element: HTMLElement (generic) must NOT resolve to 'abbr'; got: ${JSON.stringify(entries)}`,
     ).toBeUndefined();
-    // And it should resolve as 'transparent' explicitly — null would let
-    // blank.ts's built-in name-based fallback fire (e.g. `<Input>` → input
-    // even when Glint correctly resolved the user's component).
-    const transparentEntry = entries.find(([, tag]) => tag === 'transparent');
+    // Component's template root is `<div>` — that's what the runtime
+    // renders, so the resolution should reflect it.
+    const divEntry = entries.find(([, tag]) => tag === 'div');
     expect(
-      transparentEntry,
-      `expected componentTagMap to record the component as 'transparent'; got: ${JSON.stringify(entries)}`,
+      divEntry,
+      `expected componentTagMap to record the component as 'div' (template root); got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it('conditional-leaf-href-consumer.gts: chain-attr collection picks up href from a deep leaf inside conditional branches', () => {
+    // Mirrors the real-world `<HdsButton>` → `<HdsInteractive>` pattern:
+    // an outer wrapper invokes a component whose template is a top-
+    // level `{{#if @href}}<a href={{@href}}>{{else}}<button>{{/if}}`.
+    // The walker descends through the BlockStatement to find the
+    // first reachable native (`<a href={{@href}}>`), and the chain-
+    // attr collection unions:
+    //   - the outer wrapper level's attrs (`aria-label={{@label}}`)
+    //   - the leaf's attrs (`href={{@href}}`)
+    // — resulting in `componentAttrMap` recording BOTH. Without this,
+    // a consumer-side substitution to `<a aria-label='   '>` (without
+    // href) would FP-fire `aria-label-misuse` (anchor without href is
+    // non-interactive, can't carry aria-label).
+    //
+    // (Note: this asserts the AST-level chain-attr collection. The
+    // consumer-side source-substitution may still fail to fit `href`
+    // into a too-narrow Glimmer-attr slot — that's a separate
+    // concern, addressable via a hook-time fallback similar to PR #13's
+    // `imgSplatSrcOffsets` / `imgSplatAltOffsets`.)
+    const { filename, contents } = readFixture('conditional-leaf-href-consumer.gts');
+    const { componentAttrMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentAttrMap.values()];
+    const wrapperEntry = entries.find((e) => e.tag === 'a');
+    expect(wrapperEntry, `expected <OuterButton> to resolve to 'a' (leaf type)`).toBeDefined();
+    expect(
+      'href' in wrapperEntry!.attrs,
+      `expected chain-attr to include 'href' from the leaf <a> in ConditionalLeaf's template; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
+    ).toBe(true);
+    expect(
+      'aria-label' in wrapperEntry!.attrs,
+      `expected chain-attr to include 'aria-label' from OuterButton's wrapping <ConditionalLeaf>; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
+    ).toBe(true);
+  });
+
+  it('cross-package-barrel-consumer.gts: import-based fallback resolves through barrel re-exports', () => {
+    // Mirrors design-system-style component packages: the consumer
+    // imports `<ListLink>` through `list-link-addon/components`
+    // (a barrel `src/components.ts` re-exporting `default as ListLink`
+    // from `./components/list-link.gts`). Glint's TS symbol resolution
+    // doesn't always reach the source through such barrels; the
+    // import-based fallback in `lib/outer-wrapper-resolver.ts` walks
+    // the consumer's `import` statement, resolves the package path
+    // (Node-style + `src/<sub>.ts` source preference), follows the
+    // re-export, and walks the resulting `<template>` chain.
+    //
+    // ListLink's leaf is `<a>`; outer wrapper is `<li>` (via
+    // `<ListItem>`). The consumer places `<ListLink>` under `<ul>` —
+    // legal at runtime (`<ul><li><a></a></li></ul>`). The override
+    // resolves to `<li>` and `element-permitted-content` doesn't fire.
+    const { filename, contents } = readFixture('cross-package-barrel-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntries = entries.filter(([, tag]) => tag === 'li');
+    expect(
+      liEntries.length,
+      `expected ListLink (imported via barrel) to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThan(0);
+  });
+
+  it('leaf-element-under-list-wrapper-consumer.gts: outer-wrapper resolver overrides leaf-interactive resolution', () => {
+    // A component declares `Element: HTMLAnchorElement` (Glint reads
+    // the leaf interactive type → 'a'), but its template wraps the
+    // `<a>` inside `<ListItem>` (which renders `<li>`):
+    //
+    //   <template>
+    //     <ListItem>
+    //       <a ...attributes>{{yield}}</a>
+    //     </ListItem>
+    //   </template>
+    //
+    // At runtime the outermost element is `<li>`. The outer-wrapper
+    // resolver walks the template chain (ListLink → ListItem → `<li>`)
+    // and overrides Glint's leaf-resolved `<a>` with `<li>`. Lets a
+    // consumer place this under `<ul>` without `element-permitted-
+    // content` FP-firing on `<a>`-under-`<ul>`.
+    const { filename, contents } = readFixture('leaf-element-under-list-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntries = entries.filter(([, tag]) => tag === 'li');
+    expect(
+      liEntries.length,
+      `expected at least one ListLink invocation to resolve to 'li' (outer wrapper); got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThan(0);
+  });
+
+  it('falls back to template-root tag when Glint says transparent and the template literally writes a native wrapper', () => {
+    // Mirrors a common pattern: a wrapper component declares
+    // `Element: HTMLElement` (bare generic — Glint surfaces this as
+    // `'transparent'`) but its `<template>` literally renders
+    // `<li ...attributes>{{yield}}</li>`. Without the template-root
+    // fallback, our blanker transparent-blanks the wrapper and any
+    // `<div>`-rendering child floats to whatever consumer-side
+    // ancestor exists (often `<ul>`), then `element-permitted-content`
+    // FP-fires.
+    //
+    // With the fallback, the wrapper resolves to `<li>` (its template
+    // root tag), the `<div>` child is correctly nested under `<li>`
+    // under `<ul>`, and the rule doesn't fire on legal markup.
+    const { filename, contents } = readFixture('transparent-li-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected the transparent-resolving wrapper to fall back to its template root <li>; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
   });
 

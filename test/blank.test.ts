@@ -112,8 +112,12 @@ describe('mustache blanking', () => {
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
     expect(
-      out.imgSplatOffsets,
-      `expected the <img ...attributes> offset to be recorded for hook-time injection`,
+      out.imgSplatSrcOffsets,
+      `expected the <img ...attributes> offset to be recorded for src injection`,
+    ).toEqual([0]);
+    expect(
+      out.imgSplatAltOffsets,
+      `expected the <img ...attributes> offset to be recorded for alt injection`,
     ).toEqual([0]);
   });
 
@@ -124,28 +128,34 @@ describe('mustache blanking', () => {
     const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    expect(out.imgSplatOffsets).toEqual([0]);
+    expect(out.imgSplatSrcOffsets).toEqual([0]);
+    expect(out.imgSplatAltOffsets).toEqual([0]);
   });
 
   it('does not record offset when the consumer wrote both src and alt explicitly', () => {
     // When src AND alt are both already on the element, no injection is
-    // needed — leave the offset out of the set so the hook skips it.
+    // needed — leave the offset out of the per-attr sets so the hook
+    // skips it.
     const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     // Original literal values survive.
     expect(out.content).toContain('src="/foo.png"');
     expect(out.content).toContain('alt="bar"');
-    expect(out.imgSplatOffsets).toEqual([]);
+    expect(out.imgSplatSrcOffsets).toEqual([]);
+    expect(out.imgSplatAltOffsets).toEqual([]);
   });
 
-  it('records offset when only ONE of src/alt is consumer-written (other still synthesized)', () => {
+  it('records offset only for the missing attr when only one is consumer-written', () => {
     // When the consumer wrote only `src=` but not `alt=`, alt still needs
-    // synthesis — record the offset; the hook checks per-attr presence
-    // and synthesizes only the missing one.
+    // synthesis (record in altOffsets) but src does NOT (already there).
+    // Per-attr precision: this is exactly the FN-avoidance Copilot flagged
+    // — synthesizing both for any registered offset would silence
+    // wcag/h37 (missing alt) when the component only guarantees src.
     const src = '<img src="/foo.png" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
-    expect(out.imgSplatOffsets).toEqual([0]);
+    expect(out.imgSplatSrcOffsets).toEqual([]);
+    expect(out.imgSplatAltOffsets).toEqual([0]);
   });
 });
 

@@ -478,7 +478,17 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
-  imgSplatOffsets: number[];
+  // Per-attr hook-injection offsets. The downstream `processElement`
+  // hook injects `src=DynamicValue` only for offsets in
+  // `imgSplatSrcOffsets` and `alt=DynamicValue` only for offsets in
+  // `imgSplatAltOffsets`. Splitting per-attr (rather than a single
+  // imgSplatOffsets list that triggers both) lets us register only
+  // the attrs the component/template actually guarantees — a
+  // template binding `src={{this.src}}` but not `alt` only registers
+  // `src`, so `wcag/h37` (missing alt) still fires when the consumer
+  // forgets to pass an alt.
+  imgSplatSrcOffsets: number[];
+  imgSplatAltOffsets: number[];
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -700,11 +710,21 @@ function tryInjectImgRequiredAttrsViaHook(
   const present = new Set((node.attributes ?? []).map((a) => a.name));
   // `src` / `alt` ATTRS on the consumer (not @src / @alt args) take
   // precedence — the consumer chose to write the literal, html-validate
-  // should validate it. Skip the hook in that case.
-  const needsSrc = !present.has('src') && attrCtx.attrs['src'] !== undefined;
-  const needsAlt = !present.has('alt') && attrCtx.attrs['alt'] !== undefined;
-  if (!needsSrc && !needsAlt) return;
-  ctx.imgSplatOffsets.push(startOffset(node));
+  // should validate it. Skip per-attr in that case.
+  //
+  // Per-attr precision matters here: the downstream `processElement`
+  // hook injects `src` only for offsets in `imgSplatSrcOffsets` and
+  // `alt` only for offsets in `imgSplatAltOffsets`. For a component
+  // whose template binds `src={{this.src}}` but not `alt`, only the
+  // src set gets the offset — `wcag/h37` (missing alt) still fires
+  // correctly when the consumer forgets to pass an alt.
+  const offset = startOffset(node);
+  if (!present.has('src') && attrCtx.attrs['src'] !== undefined) {
+    ctx.imgSplatSrcOffsets.push(offset);
+  }
+  if (!present.has('alt') && attrCtx.attrs['alt'] !== undefined) {
+    ctx.imgSplatAltOffsets.push(offset);
+  }
 }
 
 // Find a Glimmer-only attribute (`@arg`, modifier, `...attributes`)
@@ -750,8 +770,16 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   const hasSplat = (node.attributes ?? []).some((a) => a.name === '...attributes');
   if (!hasSplat) return;
   const present = new Set((node.attributes ?? []).map((a) => a.name));
-  if (present.has('src') && present.has('alt')) return;
-  ctx.imgSplatOffsets.push(startOffset(node));
+  // Native `<img ...attributes>`: the splat is the contract — whatever
+  // the parent passes flows through. We don't know statically which
+  // attrs come through, so be permissive: register both `src` and `alt`
+  // for hook-injection so downstream rules see "attribute present,
+  // value unknowable" for whichever the consumer didn't write
+  // explicitly. Real-bug detection happens at the consumer of THIS
+  // component (where they may forget to pass src/alt).
+  const offset = startOffset(node);
+  if (!present.has('src')) ctx.imgSplatSrcOffsets.push(offset);
+  if (!present.has('alt')) ctx.imgSplatAltOffsets.push(offset);
 }
 
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
@@ -1285,14 +1313,19 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
-  // Offsets of `<img ...attributes>` elements (start of `<` byte) where
-  // the consumer-side `...attributes` is expected to provide required
-  // attrs (src/alt) at runtime. The transformer's processElement hook
-  // synthesizes these attrs as DynamicValue at parse-time so html-
-  // validate sees them as "present, value unknowable" — sidesteps the
-  // narrow-slot problem where source-side rewrite can't fit two 9-char
-  // `attr='   '` placeholders into a 13-char `...attributes` slot.
-  imgSplatOffsets: number[];
+  // Per-attr offsets for hook-time `setAttribute` injection. The
+  // transformer's `processElement` hook injects `src=DynamicValue`
+  // only at offsets in `imgSplatSrcOffsets` and `alt=DynamicValue`
+  // only at offsets in `imgSplatAltOffsets`. Splitting per-attr
+  // sidesteps the narrow-slot problem (a 13-char `...attributes`
+  // slot can't fit two 9-char `attr='   '` placeholders) AND lets
+  // a component-substituted `<img>` register only the attrs its
+  // template actually guarantees — so a template binding
+  // `src={{this.src}}` but not `alt` only registers `src`, and
+  // `wcag/h37` (missing alt) still fires when the consumer forgets
+  // to pass an alt.
+  imgSplatSrcOffsets: number[];
+  imgSplatAltOffsets: number[];
   // Rule IDs that the consumer should disable for this Source as a whole —
   // populated when the template contains structural patterns the static
   // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
@@ -1307,8 +1340,9 @@ export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
-  imgSplatOffsets?: undefined;
   disableForRules?: undefined;
+  imgSplatSrcOffsets?: undefined;
+  imgSplatAltOffsets?: undefined;
 }
 
 function blankTemplateContent(
@@ -1346,7 +1380,8 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
-    imgSplatOffsets: [],
+    imgSplatSrcOffsets: [],
+    imgSplatAltOffsets: [],
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1409,7 +1444,8 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
-    imgSplatOffsets: ctx.imgSplatOffsets,
+    imgSplatSrcOffsets: ctx.imgSplatSrcOffsets,
+    imgSplatAltOffsets: ctx.imgSplatAltOffsets,
     disableForRules: detectStructuralYieldRules(
       ast,
       branchSelections,
@@ -1679,6 +1715,20 @@ function elementYieldsAndLacksSubmit(
 ): boolean {
   let hasYield = false;
   let hasStaticSubmit = false;
+  // Tracks whether the form contains any UNRESOLVED PascalCase /
+  // dotted component invocation. Such a component may render a
+  // submit button at runtime that we can't see statically — common
+  // when a button-style component's template uses a dynamic-element
+  // pattern (`<this.wrapperElement type={{...}}>`) or when its
+  // source isn't reachable from the consumer (cross-package paths
+  // outside `node_modules`, no Glint, etc.). Treat "unresolved
+  // component child" as "may contain submit" so `wcag/h32` gets
+  // suppressed for the whole Source. Same per-Source-suppression
+  // trade-off as the unresolvable-wrapper-with-structural-children
+  // heuristic (PR #21): real bugs at OTHER locations in the same
+  // template get suppressed too. Acceptable given the FP volume in
+  // real Ember code.
+  let hasUnresolvedComponent = false;
   function walk(stmts: ReadonlyArray<AST.Statement>): void {
     for (const stmt of stmts) {
       if (hasStaticSubmit) return;
@@ -1706,13 +1756,31 @@ function elementYieldsAndLacksSubmit(
           hasStaticSubmit = true;
           return;
         }
+        // Track unresolved PascalCase / dotted component invocations.
+        // These are candidates for "may contain submit" suppression
+        // when the form has no other static submit. Native tags and
+        // builtins are excluded. Glint-resolved entries are excluded
+        // ONLY when Glint pinned a concrete native tag — entries
+        // mapped to `'transparent'` mean "Glint couldn't pin a tag"
+        // and the component might still render submit at runtime, so
+        // those count as unresolved for this purpose.
+        if (!isNativeTag(stmt.tag) && !lookupBuiltinComponent(stmt.tag)) {
+          const key = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
+          const resolved = key ? glintComponentTagMap?.get(key) : undefined;
+          if (resolved === undefined || resolved === 'transparent') {
+            hasUnresolvedComponent = true;
+          }
+        }
         walk(stmt.children);
         continue;
       }
     }
   }
   walk(form.children);
-  return hasYield && !hasStaticSubmit;
+  // Suppress wcag/h32 for either an opaque-source form (yield-bearing,
+  // PR #17) OR a form whose only "candidates" for submit are
+  // unresolved component invocations (heuristic above).
+  return (hasYield || hasUnresolvedComponent) && !hasStaticSubmit;
 }
 
 // True when a `<fieldset>` body has opaque legend-source content AND

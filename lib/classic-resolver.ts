@@ -31,10 +31,47 @@ import path from 'node:path';
 import { traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 
+import { isNativeTag } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { extractSplattedRootFromTemplate } from './component-attrs.js';
 
 const cache = new Map<string, ComponentAttrs>();
+
+// Pre-filter cache for `findClassicComponent`: per absolute package
+// path → "is this an Ember addon?" (`true`/`false`). Only addons ship
+// classic component templates at the canonical `addon/`-prefixed
+// paths, so probing 3 file paths × every package on every PascalCase
+// lookup is wasted IO on large `node_modules`. We read each package's
+// `package.json` once (per process) and cache the verdict.
+//
+// "Is an Ember addon" check: package.json has either
+//   - `keywords` containing `'ember-addon'`, OR
+//   - an `ember-addon` field (object).
+//
+// Both patterns are conventional v1-addon markers. v2 addons use
+// different layouts that classic-by-name resolution doesn't target
+// anyway.
+const isAddonCache = new Map<string, boolean>();
+
+function isEmberAddonPackage(pkgRoot: string): boolean {
+  const cached = isAddonCache.get(pkgRoot);
+  if (cached !== undefined) return cached;
+  let result = false;
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
+      keywords?: unknown;
+      'ember-addon'?: unknown;
+    };
+    const kws = pkgJson.keywords;
+    const hasKeyword = Array.isArray(kws) && kws.includes('ember-addon');
+    const hasField = typeof pkgJson['ember-addon'] === 'object' && pkgJson['ember-addon'] !== null;
+    result = hasKeyword || hasField;
+  } catch {
+    // Missing / unparseable package.json → not an addon for our purposes.
+  }
+  isAddonCache.set(pkgRoot, result);
+  return result;
+}
 
 // Components our blank-step handles via the builtin map (not by-name
 // resolution). Skip these — they'd shadow the builtin substitution.
@@ -95,6 +132,11 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
       } catch {
         entries = [];
       }
+      // Sort by name for deterministic resolution: `fs.readdirSync`
+      // returns entries in filesystem order, which varies across OS
+      // and filesystems. When two addons ship the same kebab-cased
+      // template, sort order picks a stable winner.
+      entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       for (const entry of entries) {
         // pnpm uses symlinks for packages — `isDirectory()` returns
         // false on a symlink, so accept symlinks too. The lookup below
@@ -110,18 +152,23 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
           } catch {
             continue;
           }
+          scopedEntries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
           for (const scoped of scopedEntries) {
             if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
-            const result = tryProbeAddon(path.join(scopeRoot, scoped.name), kebabName);
-            if (result && isLowercaseHtmlTag(result.tag)) {
+            const pkgRoot = path.join(scopeRoot, scoped.name);
+            if (!isEmberAddonPackage(pkgRoot)) continue;
+            const result = tryProbeAddon(pkgRoot, kebabName);
+            if (result && isNativeTag(result.tag)) {
               cache.set(cacheKey, result);
               return result;
             }
           }
           continue;
         }
-        const result = tryProbeAddon(path.join(nodeModules, entry.name), kebabName);
-        if (result && isLowercaseHtmlTag(result.tag)) {
+        const pkgRoot = path.join(nodeModules, entry.name);
+        if (!isEmberAddonPackage(pkgRoot)) continue;
+        const result = tryProbeAddon(pkgRoot, kebabName);
+        if (result && isNativeTag(result.tag)) {
           cache.set(cacheKey, result);
           return result;
         }
@@ -134,14 +181,6 @@ function findClassicComponent(consumerFile: string, kebabName: string): Componen
   return null;
 }
 
-// Lightweight native-tag check that doesn't pull `isNativeTag` from
-// blank.ts (avoids circular import — blank.ts → classic-resolver.ts
-// chain). A component template's root being a lowercase ASCII letter
-// followed by name-chars is a sufficient proxy for "native HTML tag";
-// the actual blanker does the strict check via NATIVE_TAGS.
-function isLowercaseHtmlTag(tag: string): boolean {
-  return /^[a-z][a-z0-9-]*$/.test(tag);
-}
 
 // Walk a template AST, find every single-segment PascalCase invocation
 // (`<EsCard>`, not `<This.Foo>` or `<Forms::TextInput>`), and build a
@@ -181,7 +220,10 @@ export function buildClassicComponentTagMap(
   return { componentTagMap, componentAttrMap };
 }
 
-// Test-only: clear the in-memory by-name resolver cache.
+// Test-only: clear the in-memory by-name resolver caches (the
+// per-(consumerDir, kebabName) lookup cache and the per-package
+// "is an Ember addon" pre-filter cache).
 export function _clearClassicResolverCache(): void {
   cache.clear();
+  isAddonCache.clear();
 }
