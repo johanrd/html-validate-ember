@@ -12,7 +12,11 @@ import { createRequire } from 'node:module';
 
 import { preprocess } from '@glimmer/syntax';
 
-import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import {
+  blankTemplateContent,
+  blankTemplateContentMultipass,
+  stripBlockParamTypeAnnotations,
+} from './blank.js';
 import { buildClassicComponentTagMap } from './lib/classic-resolver.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
@@ -247,7 +251,12 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     let classicTagMap: Map<string, string> | null = null;
     let classicAttrMap: Parameters<typeof blankTemplateContent>[4] | null = null;
     try {
-      const ast = preprocess(data, { mode: 'codemod' });
+      // Match `blankTemplateContent`'s preprocessing: strip TS-style
+      // block-param type annotations (`as |x: T|`) before parsing so a
+      // `.hbs` file using that syntax doesn't silently lose classic
+      // resolution. Rare in practice (typed params are conventionally
+      // `.gts`), but keeps both paths consistent.
+      const ast = preprocess(stripBlockParamTypeAnnotations(data), { mode: 'codemod' });
       const maps = buildClassicComponentTagMap(filename, ast);
       classicTagMap = maps.componentTagMap;
       classicAttrMap = maps.componentAttrMap;
