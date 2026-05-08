@@ -199,17 +199,23 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeUndefined();
   });
 
-  it('does NOT resolve `Element: HTMLElement` (the generic) to a phantom tag like <abbr>', () => {
-    // Surfaced by ecosystem CI on ember-power-select and HDS: a component
-    // declaring `Signature['Element'] = HTMLElement` (the bare generic) was
-    // resolving to <abbr> because lib.dom.d.ts's HTMLElementTagNameMap has
-    // `"abbr": HTMLElement` as its first entry mapping to bare HTMLElement.
-    // The inversion picked abbr; downstream rules then FP-fired
-    // element-permitted-content on legal content.
+  it('does NOT resolve `Element: HTMLElement` (the generic) to a phantom tag like <abbr>; falls back to the template root tag', () => {
+    // Surfaced by ecosystem CI: a component declaring `Signature['Element']
+    // = HTMLElement` (the bare generic) was resolving to <abbr> because
+    // lib.dom.d.ts's HTMLElementTagNameMap has `"abbr": HTMLElement` as
+    // its first entry mapping to bare HTMLElement. The inversion picked
+    // abbr; downstream rules then FP-fired element-permitted-content on
+    // legal content.
     //
-    // Correct behaviour: skip the inversion for generic HTMLElement so the
-    // component falls through to 'transparent' (children float to real
-    // parent), the same outcome as a component with no Element declared.
+    // Correct behaviour: skip the inversion for generic HTMLElement.
+    // PR #12 originally chose to fall through to 'transparent' so the
+    // children floated to the consumer-side parent. We now do better:
+    // the component's own `<template>` literally writes `<div>{{yield}}</div>`,
+    // so we read the splatted-root (or first-element) tag from the
+    // template AST and use that. Resolving to <div> is more accurate
+    // than 'transparent' and lets rules that depend on the parent
+    // context (`element-permitted-content`, etc.) validate the child
+    // against the real wrapper.
     const { filename, contents } = readFixture('generic-html-element-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
     const entries = [...componentTagMap.entries()];
@@ -218,13 +224,71 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       abbrEntry,
       `Element: HTMLElement (generic) must NOT resolve to 'abbr'; got: ${JSON.stringify(entries)}`,
     ).toBeUndefined();
-    // And it should resolve as 'transparent' explicitly — null would let
-    // blank.ts's built-in name-based fallback fire (e.g. `<Input>` → input
-    // even when Glint correctly resolved the user's component).
-    const transparentEntry = entries.find(([, tag]) => tag === 'transparent');
+    // Component's template root is `<div>` — that's what the runtime
+    // renders, so the resolution should reflect it.
+    const divEntry = entries.find(([, tag]) => tag === 'div');
     expect(
-      transparentEntry,
-      `expected componentTagMap to record the component as 'transparent'; got: ${JSON.stringify(entries)}`,
+      divEntry,
+      `expected componentTagMap to record the component as 'div' (template root); got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it.fails(
+    'leaf-element-under-list-wrapper-consumer.gts: deeper wrapper-vs-leaf FP NOT yet handled',
+    () => {
+      // Documents a class of FPs the template-root fallback does NOT
+      // catch: a component declares `Element: HTMLAnchorElement` (or
+      // similar leaf-interactive type) but its template wraps the
+      // anchor inside a list-item wrapper:
+      //
+      //   <template>
+      //     <ListItem>
+      //       <a ...attributes>{{yield}}</a>
+      //     </ListItem>
+      //   </template>
+      //
+      // Glint resolves to the LEAF tag (`<a>`); our substitution
+      // places `<a>` directly under the consumer's `<ul>` and
+      // `element-permitted-content` FP-fires. The runtime DOM is
+      // `<ul><li><a></a></li></ul>` (legal).
+      //
+      // Fixing this needs recursive cross-file template walking to
+      // find the OUTERMOST native ancestor (`<li>`), or a heuristic
+      // that refuses leaf-style substitutions under structural-parent
+      // contexts (ul/ol → li, table → tr).
+      //
+      // Marked `.fails(...)` so when the fix lands, vitest signals
+      // "remove .fails — your fix worked".
+      const { filename, contents } = readFixture('leaf-element-under-list-wrapper-consumer.gts');
+      const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+      const entries = [...componentTagMap.entries()];
+      // Aspiration: ListLink resolves to 'li' (the outer wrapper) so
+      // children land legally under <ul>. Today: it resolves to 'a'.
+      const liResolution = entries.find(([k, tag]) => tag === 'li' && k.startsWith('20:'));
+      expect(liResolution).toBeDefined();
+    },
+  );
+
+  it('falls back to template-root tag when Glint says transparent and the template literally writes a native wrapper', () => {
+    // Mirrors a common pattern: a wrapper component declares
+    // `Element: HTMLElement` (bare generic — Glint surfaces this as
+    // `'transparent'`) but its `<template>` literally renders
+    // `<li ...attributes>{{yield}}</li>`. Without the template-root
+    // fallback, our blanker transparent-blanks the wrapper and any
+    // `<div>`-rendering child floats to whatever consumer-side
+    // ancestor exists (often `<ul>`), then `element-permitted-content`
+    // FP-fires.
+    //
+    // With the fallback, the wrapper resolves to `<li>` (its template
+    // root tag), the `<div>` child is correctly nested under `<li>`
+    // under `<ul>`, and the rule doesn't fire on legal markup.
+    const { filename, contents } = readFixture('transparent-li-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected the transparent-resolving wrapper to fall back to its template root <li>; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
   });
 

@@ -990,16 +990,30 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             const first = roots[0];
             if (first) {
               componentAttrMap.set(key, first);
+              // When Glint's TS-only resolution couldn't pin a specific
+              // tag (`null` or `'transparent'`) — typically because the
+              // component declares `Element: HTMLElement` (bare generic),
+              // or because the type chain didn't propagate cleanly across
+              // a barrel re-export — fall back to the splatted-root's tag
+              // from the component's own template. The runtime render IS
+              // that tag (the template literally writes `<li ...attributes>`,
+              // `<button ...attributes>`, etc.), so this is at least as
+              // accurate as 'transparent' and lets `element-permitted-
+              // content` validate the correct parent context.
+              if ((tag === null || tag === 'transparent') && isNativeTag(first.tag)) {
+                componentTagMap.set(key, first.tag);
+              }
             }
           }
         }
         // Classic Ember addon fallback: when the JS-driven resolution
-        // didn't yield a concrete tag (null, or 'transparent' meaning
-        // unknown/any element type), try the component's `.hbs` template
-        // via the addon's import path. Modern shapes (class form, TOC
-        // forms, curried block-params) already resolved above take
-        // priority — this only runs as a last resort.
-        if (tag === null || tag === 'transparent') {
+        // didn't yield a concrete tag AND the same-package template
+        // didn't either, try the component's `.hbs` template via the
+        // addon's import path. Modern shapes (class form, TOC forms,
+        // curried block-params) already resolved above take priority —
+        // this only runs as a last resort.
+        const currentTag = componentTagMap.get(key);
+        if (currentTag === undefined || currentTag === 'transparent') {
           const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
           if (addonRoot) {
             componentTagMap.set(key, addonRoot.tag);
