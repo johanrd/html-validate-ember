@@ -233,6 +233,31 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('cross-package-barrel-consumer.gts: import-based fallback resolves through barrel re-exports', () => {
+    // Mirrors design-system-style component packages: the consumer
+    // imports `<ListLink>` through `list-link-addon/components`
+    // (a barrel `src/components.ts` re-exporting `default as ListLink`
+    // from `./components/list-link.gts`). Glint's TS symbol resolution
+    // doesn't always reach the source through such barrels; the
+    // import-based fallback in `lib/outer-wrapper-resolver.ts` walks
+    // the consumer's `import` statement, resolves the package path
+    // (Node-style + `src/<sub>.ts` source preference), follows the
+    // re-export, and walks the resulting `<template>` chain.
+    //
+    // ListLink's leaf is `<a>`; outer wrapper is `<li>` (via
+    // `<ListItem>`). The consumer places `<ListLink>` under `<ul>` —
+    // legal at runtime (`<ul><li><a></a></li></ul>`). The override
+    // resolves to `<li>` and `element-permitted-content` doesn't fire.
+    const { filename, contents } = readFixture('cross-package-barrel-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntries = entries.filter(([, tag]) => tag === 'li');
+    expect(
+      liEntries.length,
+      `expected ListLink (imported via barrel) to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThan(0);
+  });
+
   it('leaf-element-under-list-wrapper-consumer.gts: outer-wrapper resolver overrides leaf-interactive resolution', () => {
     // A component declares `Element: HTMLAnchorElement` (Glint reads
     // the leaf interactive type → 'a'), but its template wraps the

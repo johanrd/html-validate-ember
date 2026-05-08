@@ -15,7 +15,10 @@ import type * as TS from 'typescript';
 
 import { isNativeTag } from '../blank.js';
 import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
-import { resolveOuterWrapperTag } from './outer-wrapper-resolver.js';
+import {
+  resolveOuterWrapperTag,
+  resolveOuterWrapperFromConsumerImport,
+} from './outer-wrapper-resolver.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -972,6 +975,11 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       const tag = emitCall ? resolveComponentElement(ts, checker, emitCall, elementTypeToTag) : null;
       const elementLoc = node.parent.sourceNode.loc.start;
       const key = locKey(elementLoc.line, elementLoc.column);
+      // Tracks whether the same-package outer-wrapper override path
+      // ran for this invocation. When false, the import-based fallback
+      // (which doesn't depend on Glint's symbol resolution) takes
+      // over below.
+      let sameTransitivePackageOuterRan = false;
       if (tag) {
         componentTagMap.set(key, tag);
       }
@@ -1023,6 +1031,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             // own template lint catches them on its side.
             const outerWrapper = resolveOuterWrapperTag(gtsPath);
             const currentResolved = componentTagMap.get(key);
+            sameTransitivePackageOuterRan = true;
             if (
               outerWrapper !== null &&
               outerWrapper !== currentResolved &&
@@ -1045,6 +1054,39 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             componentTagMap.set(key, addonRoot.tag);
             componentAttrMap.set(key, addonRoot);
           }
+        }
+      }
+      // Import-based outer-wrapper fallback: when Glint's TS symbol
+      // resolution failed to give us a `.gts` source (typically
+      // because the component is imported through a cross-package
+      // barrel and TS can't trace the symbol back to its origin
+      // through the package's exports/declarations), try the
+      // consumer-side AST: look up the `import` statement for this
+      // component name, resolve the import path (relative or
+      // package-style), follow barrel re-exports, and walk the
+      // resulting `.gts` template chain. Same single-substitution
+      // trade-off as the same-package outer-wrapper override.
+      // Import-based outer-wrapper fallback. Runs only when the same-
+      // package outer-wrapper override (inside `if (declFile)` /
+      // `if (gtsPath)` above) did NOT get a chance — typically because
+      // Glint's TS symbol resolution couldn't reach the component's
+      // source through a cross-package barrel re-export. In that case
+      // we bypass TS by parsing the consumer file's `import` statement
+      // for `componentName`, resolving the path (relative or
+      // package-style), following barrel re-exports, and walking the
+      // resulting `<template>` chain to find the outermost native
+      // wrapper. Same single-substitution trade-off as the same-
+      // package override.
+      if (!sameTransitivePackageOuterRan) {
+        const componentName = node.parent.sourceNode.tag;
+        const outerFromImport = resolveOuterWrapperFromConsumerImport(filename, componentName);
+        const currentResolved = componentTagMap.get(key);
+        if (
+          outerFromImport !== null &&
+          outerFromImport !== currentResolved &&
+          isNativeTag(outerFromImport)
+        ) {
+          componentTagMap.set(key, outerFromImport);
         }
       }
     }

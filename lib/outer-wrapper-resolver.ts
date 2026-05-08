@@ -76,11 +76,17 @@ function findOutermostElement(ast: AST.Template): AST.ElementNode | null {
 // the absolute path of its `.gts/.gjs` source. Walks the imports in
 // the file's text (regex-based — we don't pull in a full TS parser).
 //
+// Two import shapes are handled:
+//   1. Relative import (`./foo.gts`) — resolve directly.
+//   2. Package import (`@scope/pkg/components`) — resolve via
+//      `node_modules` walk + package.json `exports`, then if the
+//      resolved file is a barrel `.ts`, parse it for the re-export of
+//      `componentName` and follow that.
+//
 // Returns null when:
 //   - The import doesn't exist in the file.
 //   - The import's path doesn't resolve to a readable file.
-//   - The resolved file isn't a `.gts/.gjs` (we don't recurse into
-//     `.ts` re-exports here — that's harder, not done in this pass).
+//   - The resolved file isn't a `.gts/.gjs` (after barrel-following).
 function resolveComponentImport(consumerFile: string, componentName: string): string | null {
   let contents: string;
   try {
@@ -94,7 +100,6 @@ function resolveComponentImport(consumerFile: string, componentName: string): st
   //   import { X } from '...';
   //   import { X as Y } from '...';
   //   import { Y as X } from '...';
-  // We escape the component name for the regex.
   const escName = componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // Default-import pattern.
   const defaultRe = new RegExp(
@@ -103,7 +108,7 @@ function resolveComponentImport(consumerFile: string, componentName: string): st
   );
   const defaultMatch = defaultRe.exec(contents);
   if (defaultMatch) {
-    return resolveImportPath(consumerFile, defaultMatch[1]!);
+    return resolveAnyImport(consumerFile, defaultMatch[1]!, componentName, /* defaultExport */ true);
   }
   // Named-import pattern, possibly aliased: { X } / { X as Y } / { Y as X }.
   const namedRe = new RegExp(
@@ -113,23 +118,173 @@ function resolveComponentImport(consumerFile: string, componentName: string): st
   let namedMatch: RegExpExecArray | null;
   while ((namedMatch = namedRe.exec(contents)) !== null) {
     const fullStmt = namedMatch[0];
-    // Extract the destructured names; check if `componentName` is in there
-    // (either directly, as `... as componentName`, or as `componentName as ...`
-    // where we want the LOCAL name to match — that's `componentName as ...`).
     const bracesMatch = /\{([^}]*)\}/.exec(fullStmt);
     if (!bracesMatch) continue;
     const names = bracesMatch[1]!.split(',').map((s) => s.trim());
-    const matches = names.some((entry) => {
-      // `Foo as Bar` — local name is Bar.
+    // For named imports, find the EXPORT name corresponding to the
+    // local name `componentName`. `Foo as Bar` means: external export
+    // `Foo`, local name `Bar`. If the consumer wrote `<Bar>`, we
+    // follow the export `Foo` from the imported module.
+    let exportName: string | null = null;
+    for (const entry of names) {
       const aliasMatch = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(entry);
-      if (aliasMatch) return aliasMatch[2] === componentName;
-      return entry === componentName;
-    });
-    if (matches) {
-      return resolveImportPath(consumerFile, namedMatch[1]!);
+      if (aliasMatch) {
+        if (aliasMatch[2] === componentName) {
+          exportName = aliasMatch[1]!;
+          break;
+        }
+      } else if (entry === componentName) {
+        exportName = componentName;
+        break;
+      }
+    }
+    if (exportName !== null) {
+      return resolveAnyImport(consumerFile, namedMatch[1]!, exportName, false);
     }
   }
   return null;
+}
+
+// Resolve an import (relative or package-style) to an absolute
+// `.gts/.gjs` file, following barrel re-exports if the import lands
+// on a `.ts` barrel.
+//
+// `exportName` is the name we're looking for IN THE IMPORTED MODULE
+// (the export name, not the consumer's local alias).
+// `defaultExport`: when true, we look for `default` re-export in
+// barrels (typical for `import X from 'pkg/barrel'`).
+function resolveAnyImport(
+  fromFile: string,
+  importSpec: string,
+  exportName: string,
+  defaultExport: boolean,
+): string | null {
+  let resolved: string | null;
+  if (importSpec.startsWith('.')) {
+    resolved = resolveImportPath(fromFile, importSpec);
+  } else {
+    resolved = resolvePackageImport(fromFile, importSpec);
+  }
+  if (resolved === null) return null;
+  // If we landed on a `.gts/.gjs`, we're done — that's the source.
+  if (resolved.endsWith('.gts') || resolved.endsWith('.gjs')) {
+    return resolved;
+  }
+  // If we landed on a `.ts` (typically a barrel), parse for the
+  // re-export of `exportName` and follow it.
+  if (resolved.endsWith('.ts') && !resolved.endsWith('.d.ts')) {
+    return followBarrelReExport(resolved, exportName, defaultExport);
+  }
+  return null;
+}
+
+// Resolve a package-style import (`@scope/pkg/sub` or `pkg/sub`) to
+// an absolute file path, walking `node_modules` upward from `fromFile`
+// and consulting package.json `exports` / `main`.
+//
+// Strategy: prefer SOURCE files (`src/<sub>.ts/.gts`) over compiled
+// dist (`dist/<sub>.js`), so we can read the original `<template>`
+// blocks. If `src/` doesn't exist, fall through to the package's
+// declared exports.
+function resolvePackageImport(fromFile: string, importSpec: string): string | null {
+  // Split into `<package-name>` and `<sub-path>` (e.g.
+  // `@scope/pkg/foo/bar` → `@scope/pkg`, `foo/bar`;
+  // `pkg/foo` → `pkg`, `foo`; bare `pkg` → `pkg`, '').
+  let pkgName: string;
+  let subPath: string;
+  if (importSpec.startsWith('@')) {
+    const slashIdx = importSpec.indexOf('/');
+    if (slashIdx < 0) return null;
+    const secondSlash = importSpec.indexOf('/', slashIdx + 1);
+    if (secondSlash < 0) {
+      pkgName = importSpec;
+      subPath = '';
+    } else {
+      pkgName = importSpec.slice(0, secondSlash);
+      subPath = importSpec.slice(secondSlash + 1);
+    }
+  } else {
+    const slashIdx = importSpec.indexOf('/');
+    if (slashIdx < 0) {
+      pkgName = importSpec;
+      subPath = '';
+    } else {
+      pkgName = importSpec.slice(0, slashIdx);
+      subPath = importSpec.slice(slashIdx + 1);
+    }
+  }
+  // Walk up looking for node_modules/<pkgName>.
+  let dir = path.dirname(fromFile);
+  while (true) {
+    const pkgRoot = path.join(dir, 'node_modules', pkgName);
+    if (fs.existsSync(pkgRoot)) {
+      // Try SOURCE first: src/<sub>.{ts,gts,gjs} or src/<sub>/index.*
+      if (subPath) {
+        for (const ext of ['.gts', '.gjs', '.ts']) {
+          const candidate = path.join(pkgRoot, 'src', subPath + ext);
+          if (fs.existsSync(candidate)) return candidate;
+        }
+        for (const ext of ['.gts', '.gjs', '.ts']) {
+          const candidate = path.join(pkgRoot, 'src', subPath, 'index' + ext);
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      } else {
+        for (const ext of ['.gts', '.gjs', '.ts']) {
+          const candidate = path.join(pkgRoot, 'src', 'index' + ext);
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+      // Fall back to whatever the package's exports/main points to.
+      // We don't fully resolve `exports` patterns — just probe a few
+      // common shapes.
+      if (subPath) {
+        for (const sub of [`${subPath}.ts`, `${subPath}.gts`, `${subPath}/index.ts`]) {
+          const candidate = path.join(pkgRoot, sub);
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+      return null;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+// Parse a `.ts` barrel for `export { default as <exportName> } from '...'`
+// or `export { <exportName> } from '...'` and follow the path.
+//
+// We use simple regex extraction; the barrel files we care about are
+// generated re-export files, so the syntax is regular.
+function followBarrelReExport(
+  barrelFile: string,
+  exportName: string,
+  defaultExport: boolean,
+): string | null {
+  let contents: string;
+  try {
+    contents = fs.readFileSync(barrelFile, 'utf8');
+  } catch {
+    return null;
+  }
+  const escName = exportName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // `export { default as <exportName> } from '<path>';` (when defaultExport=true,
+  // also matches `export { default as <exportName>, ... } from '<path>';`).
+  // For named exports (defaultExport=false), match `export { <exportName>` or
+  // `export { ..., <exportName>` — the export name appears verbatim.
+  const exportRe = defaultExport
+    ? new RegExp(
+        `export\\s+\\{[^}]*\\bdefault\\s+as\\s+${escName}\\b[^}]*\\}\\s+from\\s+['"]([^'"]+)['"]`,
+        'm',
+      )
+    : new RegExp(
+        `export\\s+\\{[^}]*\\b${escName}\\b[^}]*\\}\\s+from\\s+['"]([^'"]+)['"]`,
+        'm',
+      );
+  const m = exportRe.exec(contents);
+  if (!m) return null;
+  // Resolve the re-exported path relative to the barrel's location.
+  return resolveAnyImport(barrelFile, m[1]!, exportName, defaultExport);
 }
 
 // Resolve a relative import path to an absolute `.gts/.gjs` file.
@@ -237,6 +392,26 @@ function resolveOuterWrapperTagInner(
 
   if (depth === 0) cache.set(filename, null);
   return null;
+}
+
+// Resolve outer-wrapper for a component invoked from `consumerFile`
+// when Glint's TS-based `findComponentDeclSourceFile` returned null
+// (typically: the component is imported through a package-level
+// barrel and TS can't trace the symbol back to its source file).
+//
+// We bypass TS by looking up the `import` statement in the consumer's
+// source, resolving the path (relative or package-style), following
+// barrel re-exports, and then walking the component's template chain.
+//
+// Returns the outermost native wrapper tag, or null if we can't
+// locate the source.
+export function resolveOuterWrapperFromConsumerImport(
+  consumerFile: string,
+  componentName: string,
+): string | null {
+  const sourceFile = resolveComponentImport(consumerFile, componentName);
+  if (sourceFile === null) return null;
+  return resolveOuterWrapperTagInner(sourceFile, new Set(), 0);
 }
 
 // Test-only.
