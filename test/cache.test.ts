@@ -77,6 +77,36 @@ describe('cache: staleness detection', () => {
     expect(readCache(file, 'v1', tsconfigPath)).not.toBeNull();
   });
 
+  it('treats a plugin-source-SHA mismatch as a miss (catches in-development plugin changes)', () => {
+    // The cache key includes a hash of the plugin's core source files
+    // so that a developer modifying lib/glint.ts (or blank.ts, etc.)
+    // doesn't get stale cached results. Simulate that by writing an
+    // entry directly to disk with a fabricated `pluginSourceSha`, then
+    // asserting `readCache` rejects it. (We can't easily mutate the
+    // module-level constant from a test, but we can write a payload
+    // bypassing `writeCache`.)
+    const file = path.join(templatesDir, 'src-sha-test.gts');
+    const contents = '<template><div /></template>';
+    fs.writeFileSync(file, contents);
+    // First, write a real entry via the public API so we get a valid
+    // payload structure. Then read it back to confirm it's a hit.
+    writeCache(file, contents, tsconfigPath, makeResult());
+    expect(readCache(file, contents, tsconfigPath)).not.toBeNull();
+    // Now corrupt the entry's pluginSourceSha on disk and confirm the
+    // reader rejects it.
+    const dir = cacheDir();
+    const entry = path.join(dir, fs.readdirSync(dir)[0]!);
+    const payload = JSON.parse(fs.readFileSync(entry, 'utf8')) as {
+      pluginSourceSha: string;
+    };
+    payload.pluginSourceSha = 'bogus-different-hash';
+    fs.writeFileSync(entry, JSON.stringify(payload));
+    expect(
+      readCache(file, contents, tsconfigPath),
+      'cache must miss when the recorded pluginSourceSha disagrees with current',
+    ).toBeNull();
+  });
+
   it('treats a tsconfig-SHA mismatch as a miss', () => {
     const file = path.join(templatesDir, 'b.gts');
     fs.writeFileSync(file, 'x');
