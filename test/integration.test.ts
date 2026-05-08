@@ -709,6 +709,54 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it.fails(
+    'namespaced-classic-resolver.hbs: <Forms::TextInput> is NOT yet resolved by the by-name resolver (single-segment only)',
+    async () => {
+      // The classic-by-name resolver in `lib/classic-resolver.ts` only
+      // handles single-segment kebab names — `<EsCard>` → `es-card.hbs`.
+      // It doesn't parse Ember's `::` namespace separator nor probe
+      // nested addon paths like `addon/components/forms/text-input.hbs`.
+      //
+      // Asserted via the structural shape: with proper resolution,
+      // `<Forms::TextInput>` would substitute to `<input>` and the
+      // template would lint clean. Today the wrapper transparent-
+      // blanks, leaving an empty `<form>` — which fires wcag/h32
+      // because there's no submit button visible. We assert wcag/h32
+      // does NOT fire (intended future behavior). Today it fires →
+      // .fails() passes the suite. When namespaced resolution lands,
+      // the test passes for real and vitest signals the win.
+      const v = makeValidator();
+      const fp = path.join(__dirname, 'glint-fixtures', 'namespaced-classic-resolver.hbs');
+      const r = await v.validateFile(fp);
+      const wcagH32 = r.results
+        .flatMap((rr) => rr.messages)
+        .filter((m) => m.ruleId === 'wcag/h32');
+      expect(wcagH32).toHaveLength(0);
+    },
+  );
+
+  it.fails(
+    'heuristic-masks-real-bug.gts: per-Source element-permitted-content suppression DOES mask real bugs elsewhere (documented trade-off)',
+    async () => {
+      // Documents PR #21's per-Source suppression trade-off. The
+      // template has an unresolvable wrapper with structural children
+      // (triggers suppression, correct) AND a real `<p><div></div></p>`
+      // spec violation (which html-validate would normally catch).
+      // With the whole-Source suppression, the real bug is masked.
+      //
+      // Marked `.fails(...)` so this asserts our intended-but-not-yet-
+      // achieved future behavior: when we eventually implement multi-
+      // level yield-chain analysis, heuristic suppression narrows or
+      // disappears, the real bug surfaces, this assertion starts to
+      // pass, and vitest signals "remove .fails — your fix worked".
+      const r = await validate('heuristic-masks-real-bug.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+      // Today: 0 (whole-Source suppression masks the real bug).
+      // Aspiration: 1 (the real <p><div></div></p> violation).
+      expect(offenders.length).toBeGreaterThan(0);
+    },
+  );
+
   it('multi-level-yield-chain-options.gts: heuristic suppression silences element-permitted-content for unresolvable wrappers with structural children', async () => {
     // Unresolvable curried sub-component case: `<F.Options>` is
     // `PassThrough` (no specific Element type), wrapped in a
