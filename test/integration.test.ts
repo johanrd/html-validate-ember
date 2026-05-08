@@ -179,6 +179,24 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('img-splat-thin-wrapper: `<img ...attributes>` does not FP-fire wcag/h37 or element-required-attributes', async () => {
+    // Thin <img> wrapper component — parent provides src + alt via the
+    // splat. The `...attributes` slot is 13 chars, too narrow to source-
+    // rewrite both 9-char `attr='   '` placeholders. Hook-time setAttribute
+    // synthesizes src + alt as DynamicValue at parse time so wcag/h37
+    // (missing alt) and element-required-attributes (missing src) don't
+    // fire on what the consumer actually fills in. Mirrors super-rentals'
+    // `rental/image.gjs`.
+    const r = await validate('img-splat-thin-wrapper.gjs', { 'void-style': 'off' });
+    const offenders = r.messages.filter(
+      (m) => m.rule === 'wcag/h37' || m.rule === 'element-required-attributes',
+    );
+    expect(
+      offenders,
+      `wcag/h37 / element-required-attributes must not fire on <img ...attributes>; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the

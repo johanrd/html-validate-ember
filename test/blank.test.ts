@@ -92,6 +92,61 @@ describe('mustache blanking', () => {
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
   });
+
+  it('records `<img ...attributes>` start offset for hook-time src/alt injection', () => {
+    // `<img ...attributes>` in a thin wrapper component (parent supplies
+    // src AND alt via splat). The blanker erases `...attributes` to
+    // whitespace; the transformer's `processElement` hook is responsible
+    // for synthesizing src and alt as DynamicValue at parse time. Here
+    // we just assert that the offset is recorded so the hook knows
+    // which `<img>` to augment.
+    //
+    // Why hook-time (not source-rewrite): the minimal `...attributes`
+    // slot is 13 chars, but no two-attr form html-validate accepts fits
+    // (bare `src alt` triggers attribute-allowed-values-missing-value;
+    // empty quoted `src=''` triggers attribute-allowed-values-invalid;
+    // wide `src='   ' alt='   '` is 19+ chars). Hook-time setAttribute
+    // bypasses the slot-width problem.
+    const src = '<img ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('...attributes');
+    expect(
+      out.imgSplatOffsets,
+      `expected the <img ...attributes> offset to be recorded for hook-time injection`,
+    ).toEqual([0]);
+  });
+
+  it('records the offset even when there are multiple Glimmer-only slots', () => {
+    // Real-world `<img>` invocations often have @args / {{on …}} alongside
+    // `...attributes`. The hook still needs to know about this img so it
+    // can synthesize src/alt — same mechanism regardless of slot count.
+    const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.imgSplatOffsets).toEqual([0]);
+  });
+
+  it('does not record offset when the consumer wrote both src and alt explicitly', () => {
+    // When src AND alt are both already on the element, no injection is
+    // needed — leave the offset out of the set so the hook skips it.
+    const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    // Original literal values survive.
+    expect(out.content).toContain('src="/foo.png"');
+    expect(out.content).toContain('alt="bar"');
+    expect(out.imgSplatOffsets).toEqual([]);
+  });
+
+  it('records offset when only ONE of src/alt is consumer-written (other still synthesized)', () => {
+    // When the consumer wrote only `src=` but not `alt=`, alt still needs
+    // synthesis — record the offset; the hook checks per-attr presence
+    // and synthesizes only the missing one.
+    const src = '<img src="/foo.png" {{on "load" this.h}} ...attributes>';
+    const out = blank(src);
+    expect(out.imgSplatOffsets).toEqual([0]);
+  });
 });
 
 describe('component substitution (transparent fallback)', () => {
@@ -551,6 +606,42 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toContain('click');
     expect(r.content).toMatch(/<\/button\s*>/);
     expect(r.content).not.toContain('x-c');
+  });
+
+  it('block-form substitution blanks `as |…|` from the open tag', () => {
+    // When Glint resolves a yielding component to a native tag (e.g.
+    // `<MyList as |item|>` → div), the in-place open-tag rename leaves
+    // `as |item|` in the output, and html-validate's parser then sees
+    // `|item|` as an attribute. `attr-case` fires
+    // (`Attribute "|item|" should be lowercase`) and downstream rules
+    // cascade. The actual rendered DOM has no such attribute — block
+    // params are a Glimmer binding for yielded content, not HTML — so
+    // the blanker must erase the `as |…|` clause.
+    const src = '<MyList @items={{this.xs}} as |item|>x</MyList>';
+    const map = new Map([[locKey(src, 'MyList'), 'div']]);
+    const r = blankWithMap(src, map);
+    expect(
+      r.content,
+      `block-param syntax must not leak into the blanked open tag; got: ${JSON.stringify(r.content)}`,
+    ).not.toMatch(/\|item\|/);
+    // Sanity: the substitution itself still happened.
+    expect(r.content).toMatch(/<div\s+/);
+    expect(r.content).toMatch(/<\/div\s*>/);
+  });
+
+  it('block-form substitution blanks multi-param `as |a b|` clauses', () => {
+    // After Glimmer normalization block params look like `as |item index|`
+    // (space-separated). The blanker's regex `\|[^|]*\|` covers any
+    // non-pipe contents, so multi-param forms get blanked uniformly.
+    // Typed forms (`as |item: T|`) are stripped earlier by
+    // `stripBlockParamTypeAnnotations` before Glimmer's parser sees them,
+    // so by the time the AST reaches the blanker the type annotations are
+    // gone — no extra coverage needed at this layer.
+    const src = '<Each @items={{this.xs}} as |item index|>x</Each>';
+    const map = new Map([[locKey(src, 'Each'), 'ul']]);
+    const r = blankWithMap(src, map);
+    expect(r.content).not.toMatch(/\|item index\|/);
+    expect(r.content).toMatch(/<ul\s+/);
   });
 
   it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
