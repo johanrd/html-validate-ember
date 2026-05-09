@@ -27,7 +27,7 @@ import type { MetaDataTable } from 'html-validate';
 import { lookupBuiltinComponent } from './lib/builtin-components.js';
 import type { ComponentAttrs } from './lib/builtin-components.js';
 import type { AttrTypeInfo } from './lib/cache.js';
-import { DYNAMIC_VALUE_PLACEHOLDER } from './lib/dynamic-value.js';
+import { DYNAMIC_VALUE_PLACEHOLDER, isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 
 // ---------------------------------------------------------------------------
 // Schema-derived metadata (computed once at module load).
@@ -1079,9 +1079,20 @@ function lookupComponentAttr(
 // True when the value is safe to embed verbatim into a single-quoted
 // HTML attribute: must be a string with no characters that would alter
 // HTML structure or shift columns.
+//
+// Rejects the DynamicValue placeholder (whitespace-only of length >=
+// 3): that's the chain-attr extractor's marker for "value is dynamic
+// at runtime", not a real literal. Embedding it verbatim would mean
+// the consumer-side attribute value LOOKS like a 3-space literal to
+// html-validate, which is invalid for enum-checked attrs (`type=` on
+// `<input>`/`<button>`, `dir=`, etc.) and trips
+// `attribute-allowed-values` with a confusing "invalid value '   '"
+// message. Callers must fall through to the DynamicValue path
+// instead so the `processAttribute` hook converts at parse time.
 function isLiteralSafeForAttr(value: string | null): value is string {
   if (typeof value !== 'string') return false;
   if (value.length === 0) return false;
+  if (isDynamicValuePlaceholder(value)) return false;
   return !/[<>&"'\\\n\r]/u.test(value);
 }
 

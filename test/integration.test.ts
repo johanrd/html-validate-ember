@@ -316,6 +316,37 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('input-type-dynamic-consumer: substituted <input> with DYNAMIC `type` (mustache-bound) does NOT trip `attribute-allowed-values`', async () => {
+    // The chain-attr extractor records `type={{this.computedType}}`
+    // as the 3-space DynamicValue placeholder. Consumer has only
+    // non-Glimmer attrs, so source-side `tryInjectInputType` finds
+    // no slot and falls through to the hook-time setAttribute
+    // path. Pre-fix, the placeholder slipped through
+    // `isLiteralSafeForAttr` (whitespace passed the no-HTML-
+    // altering-chars regex), got stored as a "safe literal", and
+    // the hook injected the literal whitespace value
+    // (`type="   "`) — html-validate's `attribute-allowed-values`
+    // then FP-fired with "invalid value '   '" because `   ` isn't
+    // in `<input type>`'s enum.
+    //
+    // Post-fix, `isLiteralSafeForAttr` rejects the DynamicValue
+    // placeholder; the hook injects a real DynamicValue and
+    // `attribute-allowed-values` correctly skips the enum check.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('input-type-dynamic-consumer.gts', { 'void-style': 'off' });
+      const offenders = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
+      expect(
+        offenders,
+        `attribute-allowed-values must not fire when chain has dynamic type; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the
