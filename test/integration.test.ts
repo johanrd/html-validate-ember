@@ -197,6 +197,54 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('anchor-target-href-consumer: substituted <a> with target/rel from chain does not FP-fire attribute-misuse when href could not fit a narrow Glimmer-attr slot', async () => {
+    // Mirrors `<HdsLinkInline @href='#' @color='primary'>` external-link
+    // branch: addon template `<a target='_blank' rel='noopener noreferrer'
+    // ...attributes href={{@href}}>{{yield}}</a>`. Chain-attr collection
+    // records target+rel+href; consumer-side narrow slots fit target
+    // (16 chars in `@color='primary'`) but not href (10 chars in
+    // `@href='#'` = 9 chars). Hook-time setAttribute('href',
+    // DynamicValue) compensates so `attribute-misuse` ("target requires
+    // href") doesn't fire.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('anchor-target-href-consumer.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'attribute-misuse');
+      expect(
+        offenders,
+        `attribute-misuse must not fire on substituted <a> after hook-time href injection; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('input-type-no-glimmer-slot-consumer: void <input> substitution with NO Glimmer-attr slots still gets `type` from the chain', async () => {
+    // Mirrors HDS `<HdsFormCheckboxBase aria-label="…" />`: addon
+    // template has `<input type="checkbox" ...attributes />` (literal
+    // type), but the consumer writes only non-Glimmer attrs. Source-
+    // side `tryInjectInputType` has no `@arg=`/modifier candidate
+    // range, so the substituted `<input>` reaches html-validate
+    // type-less and FP-fires `no-implicit-input-type`. The fix:
+    // hook-time setAttribute('type', literal) when source-side
+    // injection bails and the chain has a literal type.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('input-type-no-glimmer-slot-consumer.gts', { 'void-style': 'off' });
+      const offenders = r.messages.filter((m) => m.rule === 'no-implicit-input-type');
+      expect(
+        offenders,
+        `no-implicit-input-type must not fire on substituted <input> when chain has literal type; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the

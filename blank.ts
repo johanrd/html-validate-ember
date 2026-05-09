@@ -489,6 +489,24 @@ interface Context {
   // forgets to pass an alt.
   imgSplatSrcOffsets: number[];
   imgSplatAltOffsets: number[];
+  // Offsets of substituted `<a>` elements where the addon's chain
+  // records `href` (literal or mustache-bound) but the consumer-side
+  // source-rewrite couldn't fit a `href='   '` placeholder into a
+  // narrow Glimmer-attr slot. The processElement hook calls
+  // `setAttribute('href', DynamicValue)` at parse time so rules
+  // requiring `href` (`attribute-misuse` for `target`/`rel`,
+  // `aria-label-misuse` requiring an interactive `<a>`, ...) see
+  // the attribute as present without needing source-side fitting.
+  // Mirrors the same hook-time mechanism used for `<img>` src/alt.
+  aSplatHrefOffsets: number[];
+  // Per-offset hook-time `type` for void `<input>` substitutions
+  // when source-side `tryInjectInputType` couldn't find a Glimmer-
+  // attr slot to rewrite. Map value: a literal string when the chain
+  // recorded a safe literal (`'checkbox'`, `'submit'`, …), or null
+  // to mean "inject DynamicValue at parse time". Carries a value
+  // because `<input type="…">` is enum-checked by html-validate's
+  // `attribute-allowed-values`.
+  inputSplatTypeOffsets: Map<number, string | null>;
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -822,6 +840,16 @@ function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
     ctx.renames.push([s, s + TYPE_TEXT.length, TYPE_TEXT]);
     return;
   }
+  // No suitable Glimmer-attr slot — register the consumer's element
+  // offset so the `processElement` hook synthesizes `type` at parse
+  // time. Mirrors the imgSplat / aSplatHref hook-time fallback.
+  // Registering the offset is unconditional once source-side fitting
+  // failed: even when `lookupComponentAttr` returned null, injecting
+  // a DynamicValue clears `no-implicit-input-type` and leaves
+  // `attribute-allowed-values` to the parent invocation that owns
+  // the value (the consumer can still pass an explicit `type=` to
+  // override the projection).
+  ctx.inputSplatTypeOffsets.set(startOffset(node), valueLiteral);
 }
 
 // Generalized attr injection for block-form component substitution.
@@ -894,14 +922,17 @@ function tryInjectComponentAttrs(
       // value (including `''`, `'disabled'`, the DynamicValue
       // placeholder, etc.) is equivalent to "true"; emitting
       // `name='value'` would unnecessarily fire `attribute-boolean-style`.
-      if (isBooleanAttr(resolvedTag, attrName)) return { text: attrName };
+      if (isBooleanAttr(resolvedTag, attrName)) return { name: attrName, text: attrName };
       const literal = lookupComponentAttr(node, ctx, attrName);
-      if (isLiteralSafeForAttr(literal)) return { text: `${attrName}='${literal}'` };
-      return { text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
+      if (isLiteralSafeForAttr(literal))
+        return { name: attrName, text: `${attrName}='${literal}'` };
+      return { name: attrName, text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
     });
   plan.sort((a, b) => b.text.length - a.text.length);
   const used = new Set<number>();
-  for (const { text } of plan) {
+  const unfitted = new Set<string>();
+  for (const { text, name } of plan) {
+    let placed = false;
     for (let i = 0; i < candidates.length; i++) {
       if (used.has(i)) continue;
       const [s, e] = candidates[i]!;
@@ -910,8 +941,21 @@ function tryInjectComponentAttrs(
       if (/[\n\r]/.test(slice)) continue;
       ctx.renames.push([s, s + text.length, text]);
       used.add(i);
+      placed = true;
       break;
     }
+    if (!placed) unfitted.add(name);
+  }
+  // Hook-time fallback for `<a>`: when the chain records `href` but the
+  // consumer's narrow Glimmer-attr slots couldn't fit it, the substituted
+  // `<a target='_blank' >` lacks `href` — html-validate then fires
+  // `attribute-misuse` ("target requires href"). Mirrors the
+  // imgSplatSrc/imgSplatAlt path: register the element offset so the
+  // `processElement` hook calls setAttribute('href', DynamicValue) at
+  // parse time. Scoped to `<a>` because that's where the observed FP
+  // class lives; extend if other element/attr pairs surface.
+  if (resolvedTag === 'a' && unfitted.has('href') && !existingNonGlimmer.has('href')) {
+    ctx.aSplatHrefOffsets.push(startOffset(node));
   }
 }
 
@@ -1343,6 +1387,13 @@ export interface BlankResult {
   // to pass an alt.
   imgSplatSrcOffsets: number[];
   imgSplatAltOffsets: number[];
+  // Offsets of substituted `<a>` elements where href should be
+  // hook-injected (see Context.aSplatHrefOffsets for rationale).
+  aSplatHrefOffsets: number[];
+  // Map of offsets → `type` value for substituted `<input>` elements
+  // where source-side rewriting found no Glimmer-attr slot
+  // (see Context.inputSplatTypeOffsets for rationale).
+  inputSplatTypeOffsets: Map<number, string | null>;
   // Rule IDs that the consumer should disable for this Source as a whole —
   // populated when the template contains structural patterns the static
   // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
@@ -1360,6 +1411,8 @@ export interface BlankErrorResult {
   disableForRules?: undefined;
   imgSplatSrcOffsets?: undefined;
   imgSplatAltOffsets?: undefined;
+  aSplatHrefOffsets?: undefined;
+  inputSplatTypeOffsets?: undefined;
 }
 
 function blankTemplateContent(
@@ -1399,6 +1452,8 @@ function blankTemplateContent(
     dynamicContentOffsets: [],
     imgSplatSrcOffsets: [],
     imgSplatAltOffsets: [],
+    aSplatHrefOffsets: [],
+    inputSplatTypeOffsets: new Map(),
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1463,6 +1518,8 @@ function blankTemplateContent(
     dynamicContentOffsets: ctx.dynamicContentOffsets,
     imgSplatSrcOffsets: ctx.imgSplatSrcOffsets,
     imgSplatAltOffsets: ctx.imgSplatAltOffsets,
+    aSplatHrefOffsets: ctx.aSplatHrefOffsets,
+    inputSplatTypeOffsets: ctx.inputSplatTypeOffsets,
     disableForRules: detectStructuralYieldRules(
       ast,
       branchSelections,
@@ -1756,14 +1813,24 @@ function containsContentRestrictedStructuralChild(
         if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag) && !wrapperPinned) {
           return true;
         }
-        // (B) Curried sub-component / component invocation that
-        // resolves to a structural tag. Trigger suppression in BOTH
-        // wrapper states — even when the wrapper resolves to a
-        // specific native tag, its template may wrap `{{yield (hash
-        // X=...)}}` in a different native ancestor (the HdsTabs
-        // pattern), so the runtime parent for the curried child
-        // isn't the wrapper's resolved tag.
-        if (glintComponentTagMap && stmt.loc.start) {
+        // (B) Curried sub-component invocation that resolves to a
+        // structural tag. Trigger suppression in BOTH wrapper states
+        // — even when the wrapper resolves to a specific native tag,
+        // its template may wrap `{{yield (hash X=...)}}` in a
+        // different native ancestor (the HdsTabs pattern), so the
+        // runtime parent for the curried child isn't the wrapper's
+        // resolved tag.
+        //
+        // Gate to DOTTED tag names (`<T.Tab>`, `<This.Foo>`): hash-
+        // yielded curried components are always dotted on the
+        // consumer side. A non-dotted single-segment PascalCase
+        // child (`<HdsListItem>`) under a pinned wrapper has the
+        // wrapper itself as the runtime parent — suppressing here
+        // would hide real `<div><li>` violations. The narrower
+        // gate (suggested by Copilot review) preserves case (B)'s
+        // value on the curried/yield-hash pattern while not masking
+        // direct nesting bugs.
+        if (glintComponentTagMap && stmt.loc.start && stmt.tag.includes('.')) {
           const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
           const childResolved = glintComponentTagMap.get(childKey);
           if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {
