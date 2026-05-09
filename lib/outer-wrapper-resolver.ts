@@ -153,14 +153,21 @@ type YieldAncestorRaw =
   | null;
 
 function findYieldNearestElement(ast: AST.Template): YieldAncestorRaw {
-  let result: YieldAncestorRaw = null;
+  // Track every yield's nearest ancestor; if the template has
+  // yields in MULTIPLE distinct native ancestors (e.g. HdsTable's
+  // `to="head"` inside `<thead>` AND `to="body"` inside `<tbody>`),
+  // the single-yield-ancestor signal is unreliable — a consumer
+  // invoking only one named block has its content land in just
+  // that block's ancestor, not the first yield's. Surfacing the
+  // first one would have dual-tag substitute to the wrong tag.
+  // Bail to null so dual-tag falls back to the outer wrapper.
+  const found: YieldAncestorRaw[] = [];
   const elementStack: AST.ElementNode[] = [];
   function isUnresolvable(tag: string): boolean {
     return tag.includes('.') || tag.startsWith(':');
   }
   function visit(stmts: ReadonlyArray<AST.Statement | AST.TopLevelStatement>): void {
     for (const stmt of stmts) {
-      if (result !== null) return;
       if (stmt.type === 'MustacheStatement') {
         if (
           stmt.path.type === 'PathExpression' &&
@@ -169,20 +176,20 @@ function findYieldNearestElement(ast: AST.Template): YieldAncestorRaw {
           // Find nearest native ancestor on the stack. If none is
           // native, take the nearest non-unresolvable PascalCase
           // wrapper (caller will recurse into it).
+          let ancestor: YieldAncestorRaw = null;
           for (let i = elementStack.length - 1; i >= 0; i--) {
             const node = elementStack[i]!;
             if (isNativeTag(node.tag)) {
-              result = { kind: 'native', node };
-              return;
+              ancestor = { kind: 'native', node };
+              break;
             }
             if (!isUnresolvable(node.tag)) {
-              result = { kind: 'wrapper', tag: node.tag };
-              return;
+              ancestor = { kind: 'wrapper', tag: node.tag };
+              break;
             }
           }
-          // Yield with no element ancestor (top-level yield) — leave
-          // result null.
-          return;
+          if (ancestor) found.push(ancestor);
+          continue;
         }
         continue;
       }
@@ -194,14 +201,23 @@ function findYieldNearestElement(ast: AST.Template): YieldAncestorRaw {
       }
       if (stmt.type === 'BlockStatement') {
         visit(stmt.program.body);
-        if (result !== null) return;
         if (stmt.inverse) visit(stmt.inverse.body);
         continue;
       }
     }
   }
   visit(ast.body);
-  return result;
+  if (found.length === 0) return null;
+  // Multiple yields with distinct ancestors → bail (caller falls
+  // back to outer wrapper). Compare by tag name: different
+  // ancestor tags (`<thead>` vs `<tbody>`) are distinct;
+  // {{#if}}-branched yields landing in the same tag (e.g. both
+  // inside `<ul>`) collapse to one.
+  const tags = new Set(
+    found.map((a) => (a !== null && a.kind === 'native' ? a.node.tag : a !== null ? a.tag : '')),
+  );
+  if (tags.size > 1) return null;
+  return found[0]!;
 }
 
 function findOutermostElement(ast: AST.Template): AST.ElementNode | null {

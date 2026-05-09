@@ -245,6 +245,40 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('multi-yield-table-consumer: wrapper with multi-yield template (different ancestors per named block) substitutes to outer wrapper, not first yield-ancestor', async () => {
+    // Mirrors HDS `<HdsTable>` shape — its template yields to BOTH
+    // `to="head"` (inside `<thead>`) and `to="body"` (inside
+    // `<tbody>`). The outer-wrapper-resolver's yield-nearest-
+    // ancestor walk picks the first yield it sees, surfacing
+    // `<thead>` as the yield-ancestor. Dual-tag substitution then
+    // prefers `<thead>` over the actual outer wrapper `<table>`,
+    // and a consumer like `<div><MultiYieldTable /></div>` becomes
+    // `<div><thead></div>` after blanking — FP-firing
+    // `element-permitted-content` ("<thead> not permitted under
+    // <div>"). Real DOM is `<div><table>...</table></div>`, valid.
+    //
+    // Fix: when a template has yields in multiple distinct native
+    // ancestors, return null (no single yield-ancestor) so dual-tag
+    // falls back to the outer wrapper. Loses the named-block-
+    // specific child-validation power, but eliminates the wrong-
+    // ancestor FP class.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-yield-table-consumer.gts');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire when wrapper has multi-yield template; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the
