@@ -1547,7 +1547,19 @@ function detectStructuralYieldRules(
         continue;
       }
       if (stmt.type === 'ElementNode') {
-        if (stmt.tag === 'form') {
+        // Resolved tag — for PascalCase / dotted invocations, this
+        // is what the element will substitute to in the blanked
+        // output. The form/fieldset heuristics need to fire whether
+        // the consumer wrote `<form>`/`<fieldset>` literally or a
+        // component invocation that resolves to one (e.g.
+        // `<HdsFormFieldset>` → `<fieldset>`); without this, the
+        // suppression directives don't get emitted and html-validate
+        // FP-fires `wcag/h32`/`wcag/h71` on the substituted output.
+        const stmtKey = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
+        const stmtResolved =
+          (isNativeTag(stmt.tag) ? stmt.tag : null) ||
+          (stmtKey ? glintComponentTagMap?.get(stmtKey) : undefined);
+        if (stmtResolved === 'form') {
           if (
             formHasInputModifier(stmt) ||
             elementYieldsAndLacksSubmit(
@@ -1560,7 +1572,7 @@ function detectStructuralYieldRules(
             out.push('wcag/h32');
           }
         } else if (
-          stmt.tag === 'fieldset' &&
+          stmtResolved === 'fieldset' &&
           elementYieldsAndLacksLegend(stmt, branchSelections)
         ) {
           out.push('wcag/h71');
@@ -1832,15 +1844,23 @@ function elementYieldsAndLacksSubmit(
         // Track unresolved PascalCase / dotted component invocations.
         // These are candidates for "may contain submit" suppression
         // when the form has no other static submit. Native tags and
-        // builtins are excluded. Glint-resolved entries are excluded
-        // ONLY when Glint pinned a concrete native tag — entries
-        // mapped to `'transparent'` mean "Glint couldn't pin a tag"
-        // and the component might still render submit at runtime, so
-        // those count as unresolved for this purpose.
+        // builtins are excluded. Two cases qualify:
+        //   - Glint-resolved entries are excluded ONLY when Glint
+        //     pinned a concrete native tag — entries mapped to
+        //     `'transparent'` mean "Glint couldn't pin a tag" and
+        //     the component might still render submit at runtime.
+        //   - Dotted invocations (`<F.Body>`, `<G.Item>`, ...) are
+        //     curried sub-components yielded from the wrapper — their
+        //     content is supplied at the consumer of the WRAPPER, not
+        //     here, so we can't see what's inside. Treat as
+        //     potentially containing a submit; otherwise a form whose
+        //     submit lives in a slotted-from-outside block would FP-
+        //     fire (HDS's flyout-with-form pattern).
         if (!isNativeTag(stmt.tag) && !lookupBuiltinComponent(stmt.tag)) {
+          const isDotted = stmt.tag.includes('.');
           const key = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
           const resolved = key ? glintComponentTagMap?.get(key) : undefined;
-          if (resolved === undefined || resolved === 'transparent') {
+          if (isDotted || resolved === undefined || resolved === 'transparent') {
             hasUnresolvedComponent = true;
           }
         }
