@@ -1096,11 +1096,20 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
           const gtsPath = resolveGtsPath(declFile);
           if (gtsPath) {
             const roots = getSplattedRootsForFile(gtsPath);
-            // MVP heuristic: pick the first template's splatted root.
             // Most component files have a single `<template>`. Multi-
-            // template files (helpers + default export) would need
-            // declaration-to-template matching, deferred.
-            const first = roots[0];
+            // template files (helpers + default export, multi-export
+            // with several TOCs) would need declaration→template
+            // matching to pick the right one — deferred. Picking
+            // `roots[0]` blindly cross-pollinates: in a file
+            // containing `Live` (TOC, `<span>`) followed by `Wrapper`
+            // (class, `<div>`), every consumer of `Wrapper` gets
+            // tagged with Live's `<span>`, FP-firing downstream
+            // (e.g. `<ul><Wrapper></ul>` looks like `<ul><span></ul>`,
+            // tripping `element-permitted-content`). Skip the
+            // template-root fallback for multi-template files so
+            // the resolution stays at the underlying Glint Element
+            // type.
+            const first = roots.length === 1 ? roots[0] : null;
             if (first) {
               componentAttrMap.set(key, first);
               // When Glint's TS-only resolution couldn't pin a specific
