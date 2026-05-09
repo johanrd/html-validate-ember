@@ -73,6 +73,34 @@ export interface OuterWrapperResolution {
   // logic that depends on splat-presence (e.g. `lookupComponentAttr`'s
   // builtin-fallback in blank.ts) sees the right value.
   hasSplat: boolean;
+  // Optional: the native tag that is the NEAREST ancestor of `{{yield}}`
+  // in the addon's template chain. When this differs from `tag`
+  // (the outer wrapper), the consumer's children are validated
+  // against `yieldAncestorTag` at runtime — substituting to `tag`
+  // alone would put children directly inside it instead of the
+  // intermediate structure.
+  //
+  // Example:
+  //   HdsTabs's template:
+  //     <div ...attributes>
+  //       <div class="...">
+  //         <ul role="tablist">{{yield (hash Tab=...)}}</ul>
+  //       </div>
+  //     </div>
+  //
+  //   tag = 'div' (outermost native).
+  //   yieldAncestorTag = 'ul' ({{yield}}'s nearest native ancestor).
+  //
+  // For `<HdsAppFooterLink>` whose template is
+  //   <HdsAppFooterItem><HdsLinkInline ...>{{yield}}</HdsLinkInline></HdsAppFooterItem>
+  // tag = 'li' (via recursing into HdsAppFooterItem) and
+  // yieldAncestorTag = 'a' (via recursing into HdsLinkInline).
+  //
+  // null when {{yield}} isn't found or its ancestor chain is
+  // unresolvable. In that case the caller falls back to using `tag`
+  // for both contexts.
+  yieldAncestorTag?: string | null;
+  yieldAncestorAttrs?: Record<string, string>;
 }
 
 // Cache resolved outer-wrappers per absolute filename. Process-
@@ -104,6 +132,78 @@ const MAX_DEPTH = 8;
 //   2. Else the first resolvable PascalCase wrapper.
 //
 // Returns null if no usable element exists.
+// Find the NEAREST native-element ancestor of any `{{yield}}` (or
+// `{{has-block}}`) mustache in the template. Walks the AST tracking
+// the element-node stack; when a yield mustache is encountered,
+// looks at the most-recently-pushed native element.
+//
+// If the yield's nearest element ancestor is a PascalCase wrapper
+// (not native), returns that wrapper — the caller recurses into it
+// (the wrapper passes consumer-yielded content through ITS own
+// yield, so the actual native ancestor is reached transitively).
+//
+// Returns:
+//   - { tag: nativeTag, attrs: literal/mustache attrs } when found.
+//   - { wrapperTag: 'PascalCase' } when nearest is a wrapper —
+//     caller recurses.
+//   - null when no yield in template, or yield has no element ancestor.
+type YieldAncestorRaw =
+  | { kind: 'native'; node: AST.ElementNode }
+  | { kind: 'wrapper'; tag: string }
+  | null;
+
+function findYieldNearestElement(ast: AST.Template): YieldAncestorRaw {
+  let result: YieldAncestorRaw = null;
+  const elementStack: AST.ElementNode[] = [];
+  function isUnresolvable(tag: string): boolean {
+    return tag.includes('.') || tag.startsWith(':');
+  }
+  function visit(stmts: ReadonlyArray<AST.Statement | AST.TopLevelStatement>): void {
+    for (const stmt of stmts) {
+      if (result !== null) return;
+      if (stmt.type === 'MustacheStatement') {
+        if (
+          stmt.path.type === 'PathExpression' &&
+          (stmt.path.original === 'yield' || stmt.path.original === 'has-block')
+        ) {
+          // Find nearest native ancestor on the stack. If none is
+          // native, take the nearest non-unresolvable PascalCase
+          // wrapper (caller will recurse into it).
+          for (let i = elementStack.length - 1; i >= 0; i--) {
+            const node = elementStack[i]!;
+            if (isNativeTag(node.tag)) {
+              result = { kind: 'native', node };
+              return;
+            }
+            if (!isUnresolvable(node.tag)) {
+              result = { kind: 'wrapper', tag: node.tag };
+              return;
+            }
+          }
+          // Yield with no element ancestor (top-level yield) — leave
+          // result null.
+          return;
+        }
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        elementStack.push(stmt);
+        visit(stmt.children);
+        elementStack.pop();
+        continue;
+      }
+      if (stmt.type === 'BlockStatement') {
+        visit(stmt.program.body);
+        if (result !== null) return;
+        if (stmt.inverse) visit(stmt.inverse.body);
+        continue;
+      }
+    }
+  }
+  visit(ast.body);
+  return result;
+}
+
 function findOutermostElement(ast: AST.Template): AST.ElementNode | null {
   let firstNative: AST.ElementNode | null = null;
   let firstResolvableWrapper: AST.ElementNode | null = null;
@@ -439,6 +539,20 @@ function resolveOuterWrapperTagInner(
     return null;
   }
 
+  // Multi-template-file guard: when a file contains MULTIPLE
+  // `<template>` blocks (e.g. several TOC declarations + a default
+  // export), we'd have to match each block to the component the
+  // caller is asking about — which we can't do without a component-
+  // name → block index mapping. Picking the first block silently
+  // returns the WRONG component's resolution. Bail to null instead;
+  // the cross-file path (one-template-per-file is the dominant
+  // shape) still works.
+  const templateBlocks = blocks.filter((b) => b.tagName === 'template');
+  if (templateBlocks.length !== 1) {
+    cache.set(filename, null);
+    return null;
+  }
+
   for (const block of blocks) {
     if (block.tagName !== 'template') continue;
     let ast: AST.Template;
@@ -463,12 +577,52 @@ function resolveOuterWrapperTagInner(
     // chain wrapper.
     const levelAttrs = literalAttrs(outermost);
 
+    // Find {{yield}}'s nearest native ancestor IN THIS LEVEL'S
+    // template (separate from the outer-wrapper resolution). May be:
+    //   - A native: that's our yield-ancestor, period.
+    //   - A PascalCase wrapper: we need to recurse into it (the
+    //     wrapper passes consumer-yielded content through its own
+    //     yield, so the actual native ancestor is reached
+    //     transitively).
+    //   - null: no yield in this template.
+    const yieldRaw = findYieldNearestElement(ast);
+    let yieldAncestorTag: string | null = null;
+    let yieldAncestorAttrs: Record<string, string> = {};
+    if (yieldRaw?.kind === 'native') {
+      yieldAncestorTag = yieldRaw.node.tag;
+      yieldAncestorAttrs = literalAttrs(yieldRaw.node);
+    } else if (yieldRaw?.kind === 'wrapper') {
+      const wrapperImport = resolveComponentImport(filename, yieldRaw.tag);
+      if (wrapperImport) {
+        // Clone the `visited` set so the wrapper's recursion doesn't
+        // pollute the outer-wrapper recursion that runs below in the
+        // same call. The two recursions are distinct cycle-tracking
+        // concerns; sharing `visited` would mark already-walked files
+        // as cyclic when re-entered for the outer-wrapper search.
+        const wrapperRes = resolveOuterWrapperTagInner(wrapperImport, new Set(visited), depth + 1);
+        if (wrapperRes) {
+          // The recursed wrapper's `yieldAncestorTag` (if known) is
+          // the actual native ancestor of consumer-yielded content.
+          // Fall back to the wrapper's `tag` if it didn't compute
+          // a yield ancestor.
+          yieldAncestorTag = wrapperRes.yieldAncestorTag ?? wrapperRes.tag;
+          yieldAncestorAttrs = wrapperRes.yieldAncestorTag
+            ? wrapperRes.yieldAncestorAttrs ?? {}
+            : wrapperRes.attrs;
+        }
+      }
+    }
+
     if (isNativeTag(outermost.tag)) {
-      const result = {
+      const result: OuterWrapperResolution = {
         tag: outermost.tag,
         attrs: levelAttrs,
         hasSplat: elementHasSplat(outermost),
       };
+      if (yieldAncestorTag !== null) {
+        result.yieldAncestorTag = yieldAncestorTag;
+        result.yieldAncestorAttrs = yieldAncestorAttrs;
+      }
       cache.set(filename, result);
       return result;
     }
@@ -488,11 +642,22 @@ function resolveOuterWrapperTagInner(
       // Merge attrs: outer wrapper level's attrs UNDER the recursed
       // attrs (inner wins on conflicts — closer to the rendered DOM).
       const merged = { ...levelAttrs, ...recursed.attrs };
-      const result = {
+      const result: OuterWrapperResolution = {
         tag: recursed.tag,
         attrs: merged,
         hasSplat: recursed.hasSplat,
       };
+      // Prefer THIS level's yield-ancestor when present (our yield
+      // is wrapped by THIS template's elements). Fall back to the
+      // recursed wrapper's yieldAncestor if our level didn't have
+      // its own yield.
+      if (yieldAncestorTag !== null) {
+        result.yieldAncestorTag = yieldAncestorTag;
+        result.yieldAncestorAttrs = yieldAncestorAttrs;
+      } else if (recursed.yieldAncestorTag) {
+        result.yieldAncestorTag = recursed.yieldAncestorTag;
+        result.yieldAncestorAttrs = recursed.yieldAncestorAttrs;
+      }
       cache.set(filename, result);
       return result;
     }
