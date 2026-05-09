@@ -279,6 +279,43 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('multi-template-file-consumer: a component in a multi-template file does NOT get tagged with the first template block\'s root element', async () => {
+    // Mirrors limber's `apps/repl/app/templates/docs/support/api.gts`
+    // pattern: a file with multiple top-level `<template>` blocks
+    // (TOC `<Live>` first → `<span>`, class `<Wrapper>` second →
+    // `<div>...<p>{{yield}}</p>`). The leaf-fallback resolution
+    // path picks `roots[0]` (Live's `<span>`) for ANY component
+    // declared in the file — wrong tag for Wrapper. Downstream:
+    // `<ul><Wrapper>...</Wrapper></ul>` becomes `<ul><span>...
+    // </span></ul>`, FP-firing `element-permitted-content`
+    // ("<span> not permitted under <ul>" — `<ul>` requires
+    // `<li>`).
+    //
+    // Fix: when the declaring file has >1 `<template>` block,
+    // skip the leaf-fallback (declaration→template matching is
+    // deferred). The component stays at its underlying Glint
+    // Element type (typically 'transparent' for declarations
+    // without a Signature).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-template-file-consumer.gts');
+      const offenders = r.messages.filter(
+        (m) =>
+          m.rule === 'element-permitted-content' &&
+          /span/.test(m.message ?? '') &&
+          /ul/.test(m.message ?? ''),
+      );
+      expect(
+        offenders,
+        `<span> not permitted under <ul> (FP from leaf-fallback picking the wrong template's root) must not fire; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the
