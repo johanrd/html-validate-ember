@@ -689,6 +689,21 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   if (attrCtx && Object.keys(attrCtx.attrs).length > 0) {
     tryInjectComponentAttrs(node, ctx, resolved, attrCtx.attrs);
   }
+  // Block-form `<button>` substitutions (typically curried hash-yielded
+  // components like `<RT.Toggle>...</RT.Toggle>` resolved to
+  // `<button>`) reach here without a chain `attrCtx` populated. The
+  // in-place tag rename produces `<button   ...>` with no `type`,
+  // FP-firing `no-implicit-button-type` even though the addon's
+  // template literally writes `<button type="button" ...attributes>`.
+  // Register the offset so the `processElement` hook calls
+  // setAttribute('type', DynamicValue) at parse time. Skipped when
+  // the consumer wrote `type=` themselves.
+  if (resolved === 'button') {
+    const present = new Set((node.attributes ?? []).map((a) => a.name));
+    if (!present.has('type') && !ctx.inputSplatTypeOffsets.has(startOffset(node))) {
+      ctx.inputSplatTypeOffsets.set(startOffset(node), null);
+    }
+  }
   return resolved;
 }
 
@@ -957,6 +972,20 @@ function tryInjectComponentAttrs(
   if (resolvedTag === 'a' && unfitted.has('href') && !existingNonGlimmer.has('href')) {
     ctx.aSplatHrefOffsets.push(startOffset(node));
   }
+  // Same fallback for `<button>`: when the chain records `type`
+  // (typical canonical addon shape: `<button type="button"
+  // ...attributes>`) but the consumer's narrow open-tag Glimmer
+  // slots can't fit `type='button'`, the substituted `<button>`
+  // reaches html-validate without a `type` and `no-implicit-
+  // button-type` FP-fires. Reuse the `inputSplatTypeOffsets`
+  // hook channel — the processElement hook keys on tagName so it
+  // injects the right attr regardless of whether the element is
+  // `<input>` or `<button>`.
+  if (resolvedTag === 'button' && unfitted.has('type') && !existingNonGlimmer.has('type')) {
+    const literal = lookupComponentAttr(node, ctx, 'type');
+    const value = isLiteralSafeForAttr(literal) ? literal : null;
+    ctx.inputSplatTypeOffsets.set(startOffset(node), value);
+  }
 }
 
 // Look up a literal attribute value from the component's splatted-root.
@@ -1085,6 +1114,11 @@ function substituteSelfClosingComponent(
   ctx.renames.push([elementStart, elementEnd, openTag + inner + closeTag]);
   ctx.fullyBlankedRanges.push([elementStart, elementEnd]);
   ctx.dynamicContentOffsets.push(elementStart);
+  if (process.env['HVE_DEBUG_SUB']) {
+    process.stderr.write(
+      `[sub-sc-non-void:done] resolved=${resolved} range=[${elementStart},${elementEnd}] replacement.length=${(openTag + inner + closeTag).length}\n`,
+    );
+  }
   return true;
 }
 
