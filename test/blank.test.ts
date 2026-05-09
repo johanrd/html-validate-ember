@@ -1051,6 +1051,40 @@ describe('Form-submit-in-else (FP fix): single-branch emission prefers branch wi
   });
 });
 
+describe('block-form `<button>` substitution registers inputSplatTypeOffsets', () => {
+  // Regression for 76901ba: when a curried/hash-yielded component
+  // resolves to `<button>` and is invoked block-form, the in-place
+  // tag rename produces `<button   ...>` without a `type=` attr.
+  // `tryInjectComponentAttrs` doesn't run for such cases because
+  // the chain `attrCtx` is undefined for hash-yielded curries —
+  // so we register the offset in `inputSplatTypeOffsets` and
+  // `processElement` sets `type` at parse time. Without this,
+  // `no-implicit-button-type` FP-fires.
+  it('records the offset for block-form <button> substitution when consumer has no `type=`', () => {
+    // Use line:col coords directly (locKey isn't in scope outside
+    // its describe block; for `<RT.Toggle>...` at the top of the
+    // string the AST reports it at line 1 col 0).
+    const src = '<RT.Toggle>click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.inputSplatTypeOffsets.size).toBe(1);
+    // Value is null (DynamicValue) since no chain attrs were
+    // provided — the hook will inject DV at parse time.
+    expect([...result.inputSplatTypeOffsets.values()]).toEqual([null]);
+  });
+
+  it('does NOT register the offset when the consumer wrote type= already', () => {
+    const src = '<RT.Toggle type="submit">click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.inputSplatTypeOffsets.size).toBe(0);
+  });
+});
+
 describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // Mirrors HDS's `<HdsStepperList as |S|><S.Step>...</S.Step>`
   // pattern: wrapper resolves to a structural-content-restrictive
@@ -1117,6 +1151,33 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const tagMap = new Map<string, string>([
       ['1:0', 'ol'],
       ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  // Regression for 9ef0b73 (Copilot round 6): case (B) was over-
+  // broad — it suppressed for ANY child resolving to a structural
+  // tag, even non-dotted ones. The Copilot reviewer flagged that a
+  // non-dotted child like `<HdsListItem>` resolved to `<li>` is the
+  // runtime DOM directly under its wrapper, so the wrapper IS the
+  // runtime parent and suppressing would mask real
+  // `<div><HdsListItem>` violations. The fix narrows case (B) to
+  // dotted invocations only (hash-yielded curried components are
+  // always dotted on the consumer side).
+  it('case (B) does NOT suppress when a non-dotted child resolves to a structural tag (wrapper IS runtime parent)', () => {
+    const content =
+      '<NonNativeWrapper>\n  <ListItem>\n    <span>x</span>\n  </ListItem>\n</NonNativeWrapper>\n';
+    const tagMap = new Map<string, string>([
+      // Wrapper is unresolved (no entry); falls into the
+      // !isNativeTag && !lookupBuiltinComponent branch where case
+      // (B) runs. Pre-fix: child `<ListItem>` resolved to `<li>`
+      // would have triggered case (B). Post-fix: only DOTTED
+      // children trigger.
+      ['2:2', 'li'], // <ListItem> → <li> (concrete, non-dotted)
     ]);
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;

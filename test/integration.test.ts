@@ -347,6 +347,33 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('glint-resolved-form-consumer: wcag/h32 suppression fires when wrapper is Glint-resolved to <form>', async () => {
+    // Regression for fd7fb2a: the `wcag/h32` heuristic in
+    // `detectStructuralYieldRules` was checking `stmt.tag === 'form'`
+    // (only LITERAL `<form>`). Components like HDS's `<HdsForm>` that
+    // resolve to `<form>` via Glint were missed — substituted
+    // output had `<form>` but `disableForRules` didn't include
+    // wcag/h32, FP-firing on what's a yield-bearing form.
+    //
+    // Post-fix: the heuristic uses `stmtResolved` (Glint-resolved
+    // tag OR literal native tag). Both consumer-side `<form>` and
+    // `<MyForm>` substituted to `<form>` get wcag/h32 added to
+    // `disableForRules`.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('glint-resolved-form-consumer.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+      expect(
+        offenders,
+        `wcag/h32 must not fire on Glint-resolved-to-<form> wrapper that yields without inline submit; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the
