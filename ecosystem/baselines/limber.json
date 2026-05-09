@@ -179,14 +179,6 @@
       "message": "<input> is missing recommended \"type\" attribute"
     },
     {
-      "file": "apps/repl/app/templates/edit/format-buttons.gts",
-      "line": 39,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
       "file": "apps/repl/app/templates/edit/layout/status.gts",
       "line": 44,
       "column": 8,

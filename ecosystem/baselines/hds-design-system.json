@@ -587,38 +587,6 @@
       "message": "Prefer to use the native <select> element"
     },
     {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 242,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 243,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 244,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 245,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
       "line": 27,
       "column": 12,
@@ -1419,38 +1387,6 @@
       "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
-      "line": 362,
-      "column": 22,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
-      "line": 71,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
-      "line": 86,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
-      "line": 94,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
       "line": 123,
       "column": 12,
@@ -1492,51 +1428,11 @@
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 113,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
       "line": 124,
       "column": 18,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 150,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 164,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 178,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
-      "line": 122,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
@@ -1545,14 +1441,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
-      "line": 140,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
       "file": "showcase/app/components/page-components/stepper/list/code-fragments/with-default-implementation.gts",
@@ -2089,30 +1977,6 @@
       "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"checked\" should omit value"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 793,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 803,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 813,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",

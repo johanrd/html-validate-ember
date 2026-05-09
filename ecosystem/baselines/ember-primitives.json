@@ -41,14 +41,6 @@
       "severity": "error",
       "ruleId": "input-attributes",
       "message": "Attribute \"readonly\" is not allowed on <input type=\"radio\">"
-    },
-    {
-      "file": "ember-primitives/src/components/tabs.gts",
-      "line": 247,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
     }
   ]
 }
