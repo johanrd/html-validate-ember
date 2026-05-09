@@ -719,13 +719,19 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain("disabled=");
   });
 
-  it('block-form: empty-string literal on a non-boolean attr falls back to placeholder', () => {
-    // Bare emission would be wrong for non-boolean attrs: the AST
-    // can't distinguish `<div aria-label ...attributes>` from
-    // `<div aria-label='' ...attributes>` (both produce empty TextNode
-    // chars). Treat empty-string literal as bare only when the attr
-    // is a known HTML boolean; otherwise emit the 3-space placeholder
-    // so processAttribute converts to DynamicValue.
+  it('block-form: aria-* attrs are NOT injected when role is absent (avoids aria-label-misuse FPs)', () => {
+    // The chain-attr injection used to land `aria-label='   '` on
+    // any substituted element regardless of role context. On plain
+    // `<div>` (no role), html-validate's `aria-label-misuse` then
+    // FP-fires ("aria-label cannot be used on this element").
+    //
+    // With anchor-aware injection: aria-* is only emitted when the
+    // anchoring `role` is also recorded AND fits in the consumer's
+    // Glimmer-attr slots. When role isn't present in the chain, all
+    // aria-* attrs are dropped from the substitution. Drift-proof:
+    // gates on the `aria-*` PREFIX, not an enumerated list, so new
+    // role-dependent aria-* attrs added to html-validate won't slip
+    // through.
     const src = "<MyDiv @veryLongFirstAttr={{val}}>x</MyDiv>";
     const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
     const attrMap = new Map<string, ComponentAttrs>([
@@ -737,6 +743,29 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
+    expect(r.content).not.toContain('aria-label');
+  });
+
+  it('block-form: aria-* attrs ARE injected when role anchors them', () => {
+    // When the chain has `role` alongside aria-*, both fit, so the
+    // anchored injection is emitted. The substituted output reads
+    // `<div role='   ' aria-label='   '>`, which html-validate
+    // accepts because the dynamic role authorizes aria-label.
+    const src = "<MyDiv @veryLongFirstArg={{val}} @veryLongSecondArg={{val}}>x</MyDiv>";
+    const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyDiv'),
+        {
+          tag: 'div',
+          attrs: { role: 'dialog', 'aria-label': '' },
+          hasSplat: true,
+        },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toContain("role='dialog'");
     expect(r.content).toContain(`aria-label='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 

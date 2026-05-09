@@ -943,10 +943,79 @@ function tryInjectComponentAttrs(
         return { name: attrName, text: `${attrName}='${literal}'` };
       return { name: attrName, text: `${attrName}='${DYNAMIC_VALUE_PLACEHOLDER}'` };
     });
-  plan.sort((a, b) => b.text.length - a.text.length);
+  // Two-phase placement:
+  //   Phase 1: any attr in `ANCHOR_ATTRS` (currently just `role`).
+  //     These authorize aria-* attrs on otherwise-incompatible
+  //     elements (e.g. `<div role="dialog" aria-labelledby="…">`
+  //     is valid; `<div aria-labelledby="…">` alone trips
+  //     `aria-label-misuse`). Place anchors first so dependents
+  //     have authorization context; if an anchor doesn't fit,
+  //     drop its dependents from phase 2 to avoid landing the
+  //     dependent without its anchor.
+  //   Phase 2: everything else, longest-first (the original
+  //     behavior — longer attrs need wider slots and would
+  //     otherwise be starved by shorter ones grabbing slots).
+  //
+  // Rationale: aria-labelledby on `<HdsAppSideNav>`-style
+  // wrappers (whose splatted root is `<div role={{…}}
+  // aria-labelledby={{…}}>`) was getting injected without role
+  // because role was shorter and lost the slot-fitting race —
+  // FP-firing `aria-label-misuse` ("aria-labelledby cannot be
+  // used on this element").
+  // Anchor → dependents: when an aria-* injection lands on a
+  // substituted element WITHOUT its anchoring `role`, html-validate
+  // rules (`aria-label-misuse`, the metadata-driven role-property
+  // permission checks, etc.) fire because the element-without-role
+  // doesn't accept the aria-* attr.
+  //
+  // Drift-proof: rather than enumerate which aria-* are role-
+  // dependent (the list lives inside individual html-validate rules
+  // and may grow over versions), gate the entire `aria-*` prefix on
+  // the presence of `role` in the same injection. When the addon's
+  // splatted-root literally writes `<div role="dialog"
+  // aria-labelledby="…">`, both attrs are recorded; we inject them
+  // together or not at all.
+  const ANCHOR_ATTRS = new Set(['role']);
+  function isAriaDependent(name: string): boolean {
+    return name.startsWith('aria-');
+  }
   const used = new Set<number>();
   const unfitted = new Set<string>();
-  for (const { text, name } of plan) {
+  function placeOne(text: string, name: string): boolean {
+    for (let i = 0; i < candidates.length; i++) {
+      if (used.has(i)) continue;
+      const [s, e] = candidates[i]!;
+      if (e - s < text.length) continue;
+      const slice = ctx.content.slice(s, s + text.length);
+      if (/[\n\r]/.test(slice)) continue;
+      ctx.renames.push([s, s + text.length, text]);
+      used.add(i);
+      return true;
+    }
+    unfitted.add(name);
+    return false;
+  }
+  // Phase 1: anchors.
+  const anchorPlan = plan.filter((p) => ANCHOR_ATTRS.has(p.name));
+  anchorPlan.sort((a, b) => b.text.length - a.text.length);
+  for (const { text, name } of anchorPlan) placeOne(text, name);
+  // If `role` didn't fit, drop all aria-dependents from the rest of
+  // the plan: injecting them on a plain element would fire
+  // `aria-label-misuse`. Mark them unfitted so downstream channels
+  // see they were skipped.
+  const roleFitted = ANCHOR_ATTRS.has('role') && !unfitted.has('role') &&
+    plan.some((p) => p.name === 'role');
+  const restPlan = plan.filter((p) => {
+    if (ANCHOR_ATTRS.has(p.name)) return false;
+    if (!roleFitted && isAriaDependent(p.name)) {
+      unfitted.add(p.name);
+      return false;
+    }
+    return true;
+  });
+  restPlan.sort((a, b) => b.text.length - a.text.length);
+  // (legacy single-pass placement for the rest)
+  for (const { text, name } of restPlan) {
     let placed = false;
     for (let i = 0; i < candidates.length; i++) {
       if (used.has(i)) continue;
