@@ -152,6 +152,8 @@ function makeHooks(
   dynamicSet: ReadonlySet<number>,
   imgSplatSrcSet: ReadonlySet<number>,
   imgSplatAltSet: ReadonlySet<number>,
+  aSplatHrefSet: ReadonlySet<number>,
+  inputSplatTypeMap: ReadonlyMap<number, string | null>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -217,6 +219,49 @@ function makeHooks(
       }
       if (imgSplatAltSet.has(templateRelativeOffset) && !elWithAttrs.hasAttribute('alt')) {
         elWithAttrs.setAttribute('alt', new DynamicValue(''), location, location);
+      }
+    }
+    // Same shape as the img path, for `<a>` whose `href` came from the
+    // chain but couldn't fit into the consumer's narrow Glimmer-attr
+    // slots. Without this, the substituted `<a target='_blank' >`
+    // lacks `href` and `attribute-misuse` ("target requires href")
+    // FP-fires.
+    const isA = (el as unknown as { tagName?: string }).tagName === 'a';
+    if (isA && aSplatHrefSet.has(templateRelativeOffset)) {
+      const elWithAttrs = el as unknown as {
+        hasAttribute(name: string): boolean;
+        setAttribute(
+          name: string,
+          value: unknown,
+          keyLocation: unknown,
+          valueLocation: unknown,
+        ): void;
+      };
+      if (!elWithAttrs.hasAttribute('href')) {
+        elWithAttrs.setAttribute('href', new DynamicValue(''), location, location);
+      }
+    }
+    // Same shape for `<input>` substitutions where the chain has a
+    // literal `type` (e.g. `<HdsFormCheckboxBase>` whose addon
+    // template writes `<input type="checkbox" ...>`) but the
+    // consumer wrote no Glimmer-attr slot for source-side rewriting
+    // to use. Inject the literal so `attribute-allowed-values` enum-
+    // checks; fall back to DynamicValue when no literal was recorded.
+    const isInput = (el as unknown as { tagName?: string }).tagName === 'input';
+    if (isInput && inputSplatTypeMap.has(templateRelativeOffset)) {
+      const elWithAttrs = el as unknown as {
+        hasAttribute(name: string): boolean;
+        setAttribute(
+          name: string,
+          value: unknown,
+          keyLocation: unknown,
+          valueLocation: unknown,
+        ): void;
+      };
+      if (!elWithAttrs.hasAttribute('type')) {
+        const literal = inputSplatTypeMap.get(templateRelativeOffset);
+        const value = literal !== null && literal !== undefined ? literal : new DynamicValue('');
+        elWithAttrs.setAttribute('type', value, location, location);
       }
     }
   };
@@ -291,6 +336,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         new Set(result.dynamicContentOffsets ?? []),
         new Set(result.imgSplatSrcOffsets ?? []),
         new Set(result.imgSplatAltOffsets ?? []),
+        new Set(result.aSplatHrefOffsets ?? []),
+        result.inputSplatTypeOffsets ?? new Map(),
         0,
       ),
     };
@@ -419,6 +466,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
           new Set(result.dynamicContentOffsets ?? []),
           new Set(result.imgSplatSrcOffsets ?? []),
           new Set(result.imgSplatAltOffsets ?? []),
+          new Set(result.aSplatHrefOffsets ?? []),
+          result.inputSplatTypeOffsets ?? new Map(),
           startOffset,
         ),
       };
