@@ -179,6 +179,70 @@
       "message": "<br> element is not permitted as content under <ol>"
     },
     {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 8,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 16,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 33,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 52,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 82,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 98,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 102,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 116,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
       "file": "src/components/power-select/no-matches-message.gts",
       "line": 26,
       "column": 46,
@@ -204,7 +268,7 @@
     },
     {
       "file": "src/components/power-select/trigger.gts",
-      "line": 304,
+      "line": 284,
       "column": 13,
       "severity": "warning",
       "ruleId": "prefer-native-element",

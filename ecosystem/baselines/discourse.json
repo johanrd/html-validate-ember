@@ -3,14 +3,6 @@
   "fileCount": 1309,
   "findings": [
     {
-      "file": "frontend/discourse/admin/components/admin-badges-award.gjs",
-      "line": 111,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/admin/components/admin-config-area-card-section.gjs",
       "line": 31,
       "column": 9,
@@ -459,14 +451,6 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/admin/components/watched-word-form.gjs",
-      "line": 148,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/admin/components/webhook-events.gjs",
       "line": 268,
       "column": 17,
@@ -553,14 +537,6 @@
       "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"href\" is missing value"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-email/server-settings.gjs",
-      "line": 22,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
@@ -1164,14 +1140,6 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 42,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
       "line": 78,
       "column": 16,
       "severity": "error",
@@ -1427,14 +1395,6 @@
       "message": "\"aria-label\" cannot be used on this element"
     },
     {
-      "file": "frontend/discourse/app/components/badge-title.gjs",
-      "line": 66,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/components/bookmark-list.gjs",
       "line": 220,
       "column": 22,
@@ -1497,14 +1457,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
-    },
-    {
-      "file": "frontend/discourse/app/components/calendar-date-time-input.gjs",
-      "line": 121,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "no-implicit-input-type",
-      "message": "<input> is missing recommended \"type\" attribute"
     },
     {
       "file": "frontend/discourse/app/components/categories-only.gjs",
@@ -1587,14 +1539,6 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/app/components/composer-editor.gjs",
-      "line": 1112,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/components/composer-messages/similar-topics.gjs",
       "line": 14,
       "column": 10,
@@ -1633,14 +1577,6 @@
       "severity": "error",
       "ruleId": "text-content",
       "message": "<button> must have accessible text"
-    },
-    {
-      "file": "frontend/discourse/app/components/dialog-messages/confirm-session.gjs",
-      "line": 135,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/dialog-messages/confirm-session.gjs",
@@ -1689,14 +1625,6 @@
       "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"multiple\" should omit value"
-    },
-    {
-      "file": "frontend/discourse/app/components/edit-topic-timer-form.gjs",
-      "line": 236,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/emoji-autocomplete-results.gjs",
@@ -1948,14 +1876,6 @@
     },
     {
       "file": "frontend/discourse/app/components/local-login-form.gjs",
-      "line": 173,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/local-login-form.gjs",
       "line": 186,
       "column": 13,
       "severity": "error",
@@ -2027,14 +1947,6 @@
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "frontend/discourse/app/components/modal/change-timestamp.gjs",
-      "line": 65,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/components/modal/create-invite.gjs",
       "line": 339,
       "column": 15,
@@ -2049,22 +1961,6 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <hN> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/flag.gjs",
-      "line": 246,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/group-add-members.gjs",
-      "line": 90,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/modal/history/revision.gjs",
@@ -2108,22 +2004,6 @@
     },
     {
       "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
-      "line": 256,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
-      "line": 283,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
       "line": 299,
       "column": 24,
       "severity": "error",
@@ -2132,35 +2012,11 @@
     },
     {
       "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
-      "line": 359,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
       "line": 368,
       "column": 24,
       "severity": "error",
       "ruleId": "no-redundant-for",
       "message": "Redundant \"for\" attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
-      "line": 390,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
-      "line": 454,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/modal/post-translations.gjs",
@@ -2177,14 +2033,6 @@
       "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/publish-page.gjs",
-      "line": 188,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
@@ -2249,22 +2097,6 @@
       "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/share-topic.gjs",
-      "line": 152,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/sidebar-section-form.gjs",
-      "line": 535,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/components/modal/sidebar-section-form.gjs",
@@ -2337,22 +2169,6 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <table> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/reviewable/item.gjs",
-      "line": 820,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/reviewable/item.gjs",
-      "line": 834,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
     },
     {
       "file": "frontend/discourse/app/components/reviewable/queued-post.gjs",
@@ -2611,22 +2427,6 @@
       "message": "Prefer to use the native <button> element"
     },
     {
-      "file": "frontend/discourse/app/components/tag-settings.gjs",
-      "line": 267,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/tag-settings.gjs",
-      "line": 279,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
       "file": "frontend/discourse/app/components/topic-footer-buttons.gjs",
       "line": 138,
       "column": 7,
@@ -2819,36 +2619,12 @@
       "message": "<hr> element is not permitted as content under <ul>"
     },
     {
-      "file": "frontend/discourse/app/components/user-nav.gjs",
-      "line": 90,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/components/user-preferences/rename-passkey.gjs",
-      "line": 54,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/components/user-preferences/user-api-keys.gjs",
       "line": 55,
       "column": 14,
       "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"href\" is missing value"
-    },
-    {
-      "file": "frontend/discourse/app/components/username-preference.gjs",
-      "line": 126,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/helpers/element.gjs",
@@ -2931,14 +2707,6 @@
       "message": "Prefer to use the native <button> element"
     },
     {
-      "file": "frontend/discourse/app/templates/email-login.gjs",
-      "line": 16,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/templates/full-page-search.gjs",
       "line": 41,
       "column": 12,
@@ -2995,30 +2763,6 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/app/templates/group/manage.gjs",
-      "line": 9,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage/categories.gjs",
-      "line": 8,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage/interaction.gjs",
-      "line": 5,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
       "line": 40,
       "column": 12,
@@ -3113,62 +2857,6 @@
       "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage/membership.gjs",
-      "line": 5,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage/profile.gjs",
-      "line": 5,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/manage/tags.gjs",
-      "line": 10,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/messages.gjs",
-      "line": 8,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/templates/group/messages.gjs",
-      "line": 13,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-parent",
-      "message": "<li> element requires a <ul>, <ol>, <menu> or <template> element as parent"
-    },
-    {
-      "file": "frontend/discourse/app/templates/groups/new.gjs",
-      "line": 20,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/invites/show.gjs",
-      "line": 98,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/templates/invites/show.gjs",
@@ -3225,14 +2913,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<legend> element is not permitted as content under <div>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/preferences/second-factor.gjs",
-      "line": 21,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/templates/preferences/security.gjs",
@@ -3332,14 +3012,6 @@
     },
     {
       "file": "frontend/discourse/app/templates/second-factor-auth.gjs",
-      "line": 32,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/second-factor-auth.gjs",
       "line": 58,
       "column": 15,
       "severity": "error",
@@ -3348,27 +3020,11 @@
     },
     {
       "file": "frontend/discourse/app/templates/signup.gjs",
-      "line": 65,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "frontend/discourse/app/templates/signup.gjs",
       "line": 78,
       "column": 17,
       "severity": "error",
       "ruleId": "attribute-boolean-style",
       "message": "Attribute \"autofocus\" should omit value"
-    },
-    {
-      "file": "frontend/discourse/app/templates/tags/index.gjs",
-      "line": 71,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/templates/tags/index.gjs",
@@ -3393,14 +3049,6 @@
       "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"href\" is missing value"
-    },
-    {
-      "file": "frontend/discourse/app/templates/user-invited/show.gjs",
-      "line": 37,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     },
     {
       "file": "frontend/discourse/app/templates/user-private-messages/tags/index.gjs",

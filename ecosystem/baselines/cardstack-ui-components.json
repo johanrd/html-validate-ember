@@ -73,14 +73,6 @@
       "severity": "error",
       "ruleId": "no-implicit-input-type",
       "message": "<input> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "tests/dummy/app/templates/examples/contact-info.hbs",
-      "line": 12,
-      "column": 4,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
     }
   ]
 }

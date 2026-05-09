@@ -11,6 +11,14 @@
       "message": "Prefer to use the native <button> element"
     },
     {
+      "file": "packages/components/src/components/hds/advanced-table/th-selectable.gts",
+      "line": 131,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
       "file": "packages/components/src/components/hds/advanced-table/th.gts",
       "line": 498,
       "column": 20,
@@ -35,134 +43,6 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 71,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<button> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 71,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 77,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<button> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 77,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 80,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<button> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 80,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 86,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<button> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 86,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 92,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<button> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
-      "line": 92,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/link.gts",
-      "line": 32,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/link.gts",
-      "line": 47,
-      "column": 9,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-footer/status-link.gts",
-      "line": 111,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-header/home-link.gts",
-      "line": 54,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-header/home-link.gts",
-      "line": 70,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-side-nav/list/back-link.gts",
-      "line": 24,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
       "file": "packages/components/src/components/hds/app-side-nav/list/index.gts",
       "line": 58,
       "column": 15,
@@ -171,68 +51,12 @@
       "message": "Redundant role \"list\" on <ul>"
     },
     {
-      "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
-      "line": 35,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
-      "line": 65,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/app-side-nav/list/link.gts",
-      "line": 69,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/breadcrumb/item.gts",
-      "line": 77,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
-      "file": "packages/components/src/components/hds/breadcrumb/item.gts",
-      "line": 89,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/button/index.gts",
-      "line": 158,
-      "column": 6,
-      "severity": "error",
-      "ruleId": "no-implicit-button-type",
-      "message": "<button> is missing recommended \"type\" attribute"
-    },
-    {
       "file": "packages/components/src/components/hds/card/container.gts",
       "line": 185,
       "column": 11,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <li> element"
-    },
-    {
-      "file": "packages/components/src/components/hds/copy/button/index.gts",
-      "line": 130,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/dropdown/list-item/radio.gts",
@@ -283,84 +107,12 @@
       "message": "<div> element is not permitted as content under <button>"
     },
     {
-      "file": "packages/components/src/components/hds/filter-bar/filter-group/clear-button.gts",
-      "line": 24,
-      "column": 20,
+      "file": "packages/components/src/components/hds/flyout/index.gts",
+      "line": 201,
+      "column": 7,
       "severity": "error",
       "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filters-dropdown.gts",
-      "line": 169,
-      "column": 28,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/filters-dropdown.gts",
-      "line": 171,
-      "column": 26,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/index.gts",
-      "line": 352,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as a descendant of <a>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/index.gts",
-      "line": 352,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/index.gts",
-      "line": 364,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<input> element is not permitted as a descendant of <a>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/index.gts",
-      "line": 377,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as a descendant of <a>"
-    },
-    {
-      "file": "packages/components/src/components/hds/filter-bar/index.gts",
-      "line": 395,
-      "column": 30,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/form/key-value-inputs/add-row-button.gts",
-      "line": 59,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/form/key-value-inputs/delete-row-button.gts",
-      "line": 76,
-      "column": 22,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
       "file": "packages/components/src/components/hds/form/label/index.gts",
@@ -379,92 +131,20 @@
       "message": "<div> element is not permitted as content under <legend>"
     },
     {
-      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
-      "line": 49,
-      "column": 28,
+      "file": "packages/components/src/components/hds/modal/index.gts",
+      "line": 257,
+      "column": 7,
       "severity": "error",
       "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
-      "line": 59,
-      "column": 28,
+      "file": "packages/components/src/components/hds/pagination/size-selector/index.gts",
+      "line": 82,
+      "column": 10,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/form/super-select/after-options.gts",
-      "line": 62,
-      "column": 28,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/compact/index.gts",
-      "line": 247,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/compact/index.gts",
-      "line": 248,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/nav/arrow.gts",
-      "line": 119,
-      "column": 9,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/nav/arrow.gts",
-      "line": 145,
-      "column": 9,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
-      "line": 469,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
-      "line": 483,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/numbered/index.gts",
-      "line": 492,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/reveal/toggle/button.gts",
-      "line": 33,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<select> element is not permitted as content under <select>"
     },
     {
       "file": "packages/components/src/components/hds/stepper/list/index.gts",
@@ -489,30 +169,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/table/index.gts",
-      "line": 401,
-      "column": 19,
-      "severity": "error",
-      "ruleId": "no-deprecated-attr",
-      "message": "Attribute \"scope\" is deprecated on <td> element"
-    },
-    {
-      "file": "packages/components/src/components/hds/table/index.gts",
-      "line": 410,
-      "column": 19,
-      "severity": "error",
-      "ruleId": "no-deprecated-attr",
-      "message": "Attribute \"scope\" is deprecated on <td> element"
-    },
-    {
-      "file": "packages/components/src/components/hds/table/th-selectable.gts",
-      "line": 124,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "no-deprecated-attr",
-      "message": "Attribute \"scope\" is deprecated on <td> element"
     },
     {
       "file": "packages/components/src/components/hds/tabs/tab.gts",
@@ -555,14 +211,6 @@
       "message": "<div> element is not permitted as content under <span>"
     },
     {
-      "file": "showcase/app/components/mock/app/main/form-complex.gts",
-      "line": 149,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
       "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
       "line": 87,
       "column": 23,
@@ -579,12 +227,52 @@
       "message": "Attribute \"selected\" has invalid value \"true\""
     },
     {
+      "file": "showcase/app/components/mock/app/sidebar/app-side-nav.gts",
+      "line": 52,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
       "line": 520,
       "column": 46,
       "severity": "error",
       "ruleId": "no-dup-class",
       "message": "Class \"hds-advanced-table__thead\" duplicated"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 832,
+      "column": 49,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 885,
+      "column": 36,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 938,
+      "column": 36,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 1120,
+      "column": 16,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
     },
     {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/basic.gts",
@@ -595,156 +283,188 @@
       "message": "\"target\" attribute cannot be used on <a> in this context: requires \"href\" attribute to be present"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 59,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/content.gts",
+      "line": 26,
+      "column": 24,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 67,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/content.gts",
+      "line": 34,
+      "column": 24,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 76,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/content.gts",
+      "line": 46,
+      "column": 24,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 256,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/examples.gts",
+      "line": 34,
+      "column": 28,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 264,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/examples.gts",
+      "line": 73,
+      "column": 28,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 271,
-      "column": 12,
+      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/examples.gts",
+      "line": 87,
+      "column": 28,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 282,
-      "column": 12,
+      "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
+      "line": 29,
+      "column": 8,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
     },
     {
-      "file": "showcase/app/components/page-components/app-side-nav/sub-sections/base-elements.gts",
-      "line": 296,
+      "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
+      "line": 29,
+      "column": 59,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge/sub-sections/content.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge/sub-sections/content.gts",
+      "line": 34,
+      "column": 59,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
+      "line": 24,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
+      "line": 32,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
+      "line": 37,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-long-strings.gts",
+      "line": 25,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
+      "line": 28,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
+      "line": 31,
       "column": 12,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<span> element is not permitted as content under <ul>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
+      "line": 39,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 41,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 55,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 58,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 63,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
     },
     {
       "file": "showcase/app/components/page-components/card/sub-sections/tag.gts",
-      "line": 29,
-      "column": 14,
+      "line": 28,
+      "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <ul>"
     },
     {
       "file": "showcase/app/components/page-components/copy/button/code-fragments/with-modal.gts",
-      "line": 47,
+      "line": 43,
       "column": 12,
       "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 46,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 103,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 166,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 185,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 188,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 191,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/header-and-footer.gts",
-      "line": 194,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkbox.gts",
-      "line": 132,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkbox.gts",
-      "line": 147,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
     },
     {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
@@ -804,27 +524,11 @@
     },
     {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 154,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 164,
       "column": 11,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 173,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
     },
     {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
@@ -844,155 +548,307 @@
     },
     {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
-      "line": 223,
+      "line": 218,
       "column": 11,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
     {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/generic.gts",
-      "line": 23,
-      "column": 14,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 242,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/radio.gts",
-      "line": 132,
-      "column": 16,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 243,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/radio.gts",
-      "line": 147,
-      "column": 16,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 244,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
     },
     {
-      "file": "showcase/app/components/page-components/flyout/sub-sections/demo.gts",
-      "line": 291,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 245,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
+      "line": 27,
       "column": 12,
       "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 25,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
       "line": 28,
-      "column": 24,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 36,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
       "line": 39,
-      "column": 24,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 42,
-      "column": 24,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
+      "line": 40,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 45,
-      "column": 24,
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
+      "line": 52,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
       "line": 53,
-      "column": 24,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 56,
-      "column": 24,
+      "file": "showcase/app/components/page-components/filter-bar/sub-sections/base-elements.gts",
+      "line": 213,
+      "column": 25,
       "severity": "error",
       "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 59,
-      "column": 24,
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 37,
+      "column": 10,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 49,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 61,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 100,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 24,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 28,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 37,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 41,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 44,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 52,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 53,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 66,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
       "line": 68,
-      "column": 24,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 71,
-      "column": 24,
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 79,
+      "column": 10,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 81,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 90,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 101,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 112,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 126,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 128,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 29,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 55,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 68,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
       "line": 74,
-      "column": 24,
+      "column": 17,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 77,
-      "column": 24,
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 75,
+      "column": 17,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
     },
     {
-      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/character-count.gts",
-      "line": 87,
-      "column": 24,
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 82,
+      "column": 17,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
     },
     {
       "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-demo-instructions.gts",
@@ -1011,6 +867,142 @@
       "message": "Stray end tag '</p>'"
     },
     {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 46,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 49,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 61,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 64,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
+      "line": 61,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
+      "line": 67,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
+      "line": 93,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
+      "line": 116,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
+      "line": 32,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
+      "line": 33,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
+      "line": 49,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
+      "line": 50,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<h1> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 29,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 48,
+      "column": 31,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 53,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 59,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 60,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
       "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
       "line": 78,
       "column": 12,
@@ -1019,12 +1011,36 @@
       "message": "<div> element is not permitted as content under <label>"
     },
     {
+      "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
+      "line": 164,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
-      "line": 158,
+      "line": 106,
       "column": 15,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 110,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 124,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
@@ -1084,75 +1100,947 @@
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
-      "line": 80,
+      "line": 45,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 61,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 76,
       "column": 17,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
     },
     {
-      "file": "showcase/app/components/page-components/modal/sub-sections/demo.gts",
-      "line": 161,
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 80,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 91,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 105,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 119,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 120,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 131,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/text-input/sub-sections/base-element.gts",
+      "line": 29,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"type\" has invalid value \"   \""
+    },
+    {
+      "file": "showcase/app/components/page-components/form/text-input/sub-sections/base-element.gts",
+      "line": 32,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"type\" has invalid value \"   \""
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 26,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 43,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 51,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 54,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 65,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 74,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 84,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 103,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 115,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 28,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 31,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 48,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 52,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 66,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 83,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 112,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 29,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 46,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 66,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/wrapping.gts",
+      "line": 42,
+      "column": 32,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-compact-and-events.gts",
+      "line": 81,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-compact-and-routing.gts",
+      "line": 131,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-numbered-and-events.gts",
+      "line": 53,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-numbered-and-routing.gts",
+      "line": 81,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 236,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 362,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
+      "line": 71,
       "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
+      "line": 86,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/inheritance.gts",
+      "line": 94,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
+      "line": 123,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
+      "line": 130,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 62,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 72,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 82,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 113,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 124,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 150,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 164,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 178,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
+      "line": 122,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
+      "line": 123,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
+      "line": 140,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/code-fragments/with-default-implementation.gts",
+      "line": 121,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/code-fragments/with-default-implementation.gts",
+      "line": 130,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/base-elements.gts",
+      "line": 29,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/base-elements.gts",
+      "line": 34,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/example-implementations.gts",
+      "line": 17,
+      "column": 36,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/example-implementations.gts",
+      "line": 20,
+      "column": 36,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 22,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 30,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 37,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 44,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 56,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 63,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 70,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
+      "line": 77,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 75,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 76,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 79,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 80,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 86,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
+      "line": 87,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
+      "line": 59,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
+      "line": 65,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
+      "line": 80,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 67,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 68,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 76,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 77,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 93,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
+      "line": 94,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 76,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 77,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 93,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 94,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 110,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 111,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 127,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
+      "line": 128,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/base-elements.gts",
+      "line": 99,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/base-elements.gts",
+      "line": 165,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/deletion.gts",
+      "line": 121,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/pagination.gts",
+      "line": 106,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<thead> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 203,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 390,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 399,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 415,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 424,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 437,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 446,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 498,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 546,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 793,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 803,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 813,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 1007,
+      "column": 10,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 26,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 27,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 28,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 29,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 33,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 34,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 35,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 36,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/templates/page-components/form/frameless/demo-form-basic.gts",
+      "line": 18,
+      "column": 10,
       "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "showcase/app/components/page-components/modal/sub-sections/demo.gts",
-      "line": 578,
-      "column": 12,
+      "file": "showcase/app/templates/page-components/form/frameless/demo-form-complex.gts",
+      "line": 105,
+      "column": 10,
       "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 469,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 478,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 494,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 503,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 516,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 525,
-      "column": 40,
-      "severity": "warning",
-      "ruleId": "prefer-native-element",
-      "message": "Prefer to use the native <select> element"
     },
     {
       "file": "website/app/components/doc/cards/deck.gts",
@@ -1259,6 +2147,14 @@
       "message": "Redundant role \"list\" on <ul>"
     },
     {
+      "file": "website/app/components/doc/page/sidebar.gjs",
+      "line": 258,
+      "column": 55,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
       "file": "website/app/components/doc/page/sidecar.gts",
       "line": 33,
       "column": 11,
@@ -1267,9 +2163,25 @@
       "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
     },
     {
+      "file": "website/app/components/doc/table-of-contents/collapsible-item.gjs",
+      "line": 47,
+      "column": 49,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
       "file": "website/app/components/doc/table-of-contents/index.gjs",
       "line": 16,
       "column": 43,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/table-of-contents/index.gjs",
+      "line": 56,
+      "column": 53,
       "severity": "error",
       "ruleId": "no-redundant-role",
       "message": "Redundant role \"list\" on <ul>"
