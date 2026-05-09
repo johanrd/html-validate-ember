@@ -1813,14 +1813,24 @@ function containsContentRestrictedStructuralChild(
         if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag) && !wrapperPinned) {
           return true;
         }
-        // (B) Curried sub-component / component invocation that
-        // resolves to a structural tag. Trigger suppression in BOTH
-        // wrapper states — even when the wrapper resolves to a
-        // specific native tag, its template may wrap `{{yield (hash
-        // X=...)}}` in a different native ancestor (the HdsTabs
-        // pattern), so the runtime parent for the curried child
-        // isn't the wrapper's resolved tag.
-        if (glintComponentTagMap && stmt.loc.start) {
+        // (B) Curried sub-component invocation that resolves to a
+        // structural tag. Trigger suppression in BOTH wrapper states
+        // — even when the wrapper resolves to a specific native tag,
+        // its template may wrap `{{yield (hash X=...)}}` in a
+        // different native ancestor (the HdsTabs pattern), so the
+        // runtime parent for the curried child isn't the wrapper's
+        // resolved tag.
+        //
+        // Gate to DOTTED tag names (`<T.Tab>`, `<This.Foo>`): hash-
+        // yielded curried components are always dotted on the
+        // consumer side. A non-dotted single-segment PascalCase
+        // child (`<HdsListItem>`) under a pinned wrapper has the
+        // wrapper itself as the runtime parent — suppressing here
+        // would hide real `<div><li>` violations. The narrower
+        // gate (suggested by Copilot review) preserves case (B)'s
+        // value on the curried/yield-hash pattern while not masking
+        // direct nesting bugs.
+        if (glintComponentTagMap && stmt.loc.start && stmt.tag.includes('.')) {
           const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
           const childResolved = glintComponentTagMap.get(childKey);
           if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {

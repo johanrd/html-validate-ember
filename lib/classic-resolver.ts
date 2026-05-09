@@ -82,10 +82,18 @@ function isEmberAddonPackage(pkgRoot: string): boolean {
 //
 // Stored as the absolute paths to addon roots (sorted by name for
 // determinism), so callers can iterate without re-doing the scan.
-// pnpm-style symlinks are resolved into actual paths for stable
-// `isEmberAddonPackage` lookups (the same package may appear via
-// multiple symlinks; the cache is keyed on the symlink-target path's
-// `node_modules`).
+// pnpm-style layouts: package entries are accepted as either
+// directories or symlinks (`isDirectory()` returns false on a
+// symlink), but symlinks are NOT realpath-resolved before caching.
+// A package reachable through symlinks in multiple `node_modules`
+// directories will produce one cache entry per directory, and its
+// `package.json` may be re-read once per such entry (since
+// `isEmberAddonPackage` keys its own cache on the symlink-source
+// path, not the realpath target). That's bounded — each consumer's
+// `node_modules` is scanned once per process — and cheap relative
+// to the saved cost of re-running the full directory scan on every
+// PascalCase tag lookup. realpath() resolution would dedupe the
+// inner reads but cost an extra syscall per package; not worth it.
 const addonRootsCache = new Map<string, string[]>();
 
 function listAddonRootsIn(nodeModules: string): string[] {
