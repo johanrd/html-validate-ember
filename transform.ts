@@ -247,8 +247,19 @@ function makeHooks(
     // consumer wrote no Glimmer-attr slot for source-side rewriting
     // to use. Inject the literal so `attribute-allowed-values` enum-
     // checks; fall back to DynamicValue when no literal was recorded.
-    const isInput = (el as unknown as { tagName?: string }).tagName === 'input';
-    if (isInput && inputSplatTypeMap.has(templateRelativeOffset)) {
+    //
+    // Same channel handles `<button>` substitutions where the
+    // chain records `type="button"` (canonical addon shape:
+    // `<button type="button" ...attributes>`) but the consumer's
+    // open-tag slots couldn't fit it — typical for self-yield
+    // pattern wrappers (`<HdsRichTooltip><RT.Toggle/></HdsRichTooltip>`)
+    // where the curried child resolves to `<button>` and the
+    // consumer-side Glimmer-attr slots are minimal. Without this,
+    // the substituted `<button>` reaches html-validate type-less
+    // and `no-implicit-button-type` FP-fires.
+    const tagName = (el as unknown as { tagName?: string }).tagName;
+    const isInputOrButton = tagName === 'input' || tagName === 'button';
+    if (isInputOrButton && inputSplatTypeMap.has(templateRelativeOffset)) {
       const elWithAttrs = el as unknown as {
         hasAttribute(name: string): boolean;
         setAttribute(
