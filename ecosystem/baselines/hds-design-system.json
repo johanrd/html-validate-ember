@@ -227,12 +227,28 @@
       "message": "Attribute \"selected\" has invalid value \"true\""
     },
     {
+      "file": "showcase/app/components/mock/app/main/table-complex.gts",
+      "line": 93,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
       "file": "showcase/app/components/mock/app/sidebar/app-side-nav.gts",
       "line": 52,
       "column": 7,
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/accordion/sub-sections/content.gts",
+      "line": 124,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
@@ -329,6 +345,14 @@
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/application-state/sub-sections/container.gts",
+      "line": 54,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
@@ -465,6 +489,14 @@
       "severity": "error",
       "ruleId": "wcag/h32",
       "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/copy/snippet/sub-sections/containers.gts",
+      "line": 48,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
@@ -635,12 +667,20 @@
       "message": "<h1> element is not permitted as content under <ul>"
     },
     {
-      "file": "showcase/app/components/page-components/filter-bar/sub-sections/base-elements.gts",
-      "line": 213,
-      "column": 25,
+      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-complex-table.gts",
+      "line": 375,
+      "column": 12,
       "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-table.gts",
+      "line": 172,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
@@ -1355,36 +1395,12 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/pagination/code-fragments/with-compact-and-events.gts",
-      "line": 81,
-      "column": 8,
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-user-table.gts",
+      "line": 48,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/pagination/code-fragments/with-compact-and-routing.gts",
-      "line": 131,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/pagination/code-fragments/with-numbered-and-events.gts",
-      "line": 53,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/pagination/code-fragments/with-numbered-and-routing.gts",
-      "line": 81,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
@@ -1393,6 +1409,14 @@
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 330,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
@@ -1579,140 +1603,420 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 67,
+      "file": "showcase/app/components/page-components/table/code-fragments/with-cluster-data.gts",
+      "line": 53,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
+      "line": 192,
       "column": 14,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 68,
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/sorting.gts",
+      "line": 145,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-music-data.gts",
+      "line": 26,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-selectable-data.gts",
+      "line": 42,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
+      "line": 60,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
+      "line": 86,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 57,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 58,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 65,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 72,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 95,
       "column": 14,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as content under <ol>"
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 76,
-      "column": 14,
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 96,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 77,
-      "column": 14,
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 97,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 93,
-      "column": 14,
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 100,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
-      "line": 94,
-      "column": 14,
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 101,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as content under <ol>"
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 76,
-      "column": 12,
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 105,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 77,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 93,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 94,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 110,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 111,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 127,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-variable-steps.gts",
-      "line": 128,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/base-elements.gts",
-      "line": 99,
-      "column": 9,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/deletion.gts",
-      "line": 121,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/pagination.gts",
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
       "line": 106,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 125,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 126,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 129,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 151,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 176,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 177,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 178,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 179,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 184,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 204,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 224,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 253,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 254,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 257,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 287,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 302,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 323,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 338,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 363,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 498,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 543,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 588,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 46,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 93,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 148,
       "column": 8,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<thead> element is not permitted as content under <div>"
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 191,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 212,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 254,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/data-model.gts",
+      "line": 27,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/layout.gts",
+      "line": 72,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/multi-select.gts",
+      "line": 62,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
+      "line": 217,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
+      "line": 305,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/tooltip.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
@@ -1809,6 +2113,30 @@
       "severity": "error",
       "ruleId": "no-implicit-button-type",
       "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 855,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 856,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 879,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
