@@ -1022,6 +1022,81 @@ describe('Form-submit-in-else (FP fix): single-branch emission prefers branch wi
   });
 });
 
+describe('curried-yield-hash structural-parent suppression (case C)', () => {
+  // Mirrors HDS's `<HdsStepperList as |S|><S.Step>...</S.Step>`
+  // pattern: wrapper resolves to a structural-content-restrictive
+  // parent (`<ol>`); a dotted curried direct child (`<S.Step>`)
+  // resolves to 'transparent' on the consumer side because Glint's
+  // hash-yielded curried-component chain doesn't statically tie
+  // back to the addon-side source. The static blanker has no way to
+  // see that `<S.Step>` renders `<li>` at runtime, so any block-
+  // level content INSIDE `<S.Step>` ends up looking like a direct
+  // child of the wrapper's `<ol>` and FP-fires
+  // `element-permitted-content` ("<div> not permitted under <ol>").
+  //
+  // Suppression heuristic gated on BOTH conditions: the wrapper
+  // resolves to a structural-restrictive parent (per the
+  // STRUCTURAL_CONTENT_PARENTS set) AND the wrapper has a
+  // transparent dotted direct child. Same per-Source trade-off as
+  // case (B).
+  it('emits element-permitted-content / -parent in disableForRules when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
+    const content = '<W as |S|>\n  <S.Step>\n    <div>step content</div>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'], // <W>
+      ['2:2', 'transparent'], // <S.Step>
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).toContain('element-permitted-content');
+    expect(result.disableForRules).toContain('element-permitted-parent');
+  });
+
+  it('does NOT suppress when wrapper resolves to a permissive parent (e.g. <div>)', () => {
+    const content = '<W as |S|>\n  <S.Step>\n    <span>x</span>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'], // permissive — `<div>` accepts <span> directly
+      ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  it('case (B) ALSO suppresses when dotted child resolves to a structural tag (li/option/etc)', () => {
+    // Case (B) — pre-existing — already handles this: the dotted
+    // child resolves to a CONTENT_RESTRICTED_STRUCTURAL_CHILDREN
+    // tag, so the runtime parent might be a different ancestor than
+    // the static blanker sees. Documents the overlap with case (C):
+    // both fire for this shape; either one alone would suffice.
+    const content = '<W as |S|>\n  <S.Step>\n    <div>x</div>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'],
+      ['2:2', 'li'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).toContain('element-permitted-content');
+    expect(result.disableForRules).toContain('element-permitted-parent');
+  });
+
+  it('does NOT suppress when the direct child is non-dotted (suggests wrapper IS runtime parent)', () => {
+    const content = '<W>\n  <ChildComponent>\n    <div>x</div>\n  </ChildComponent>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'],
+      ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+});
+
 describe('isNativeTag', () => {
   it('returns true for HTML tags', () => {
     expect(isNativeTag('button')).toBe(true);
