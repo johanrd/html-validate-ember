@@ -1096,20 +1096,38 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
           const gtsPath = resolveGtsPath(declFile);
           if (gtsPath) {
             const roots = getSplattedRootsForFile(gtsPath);
-            // Most component files have a single `<template>`. Multi-
-            // template files (helpers + default export, multi-export
-            // with several TOCs) would need declaration→template
-            // matching to pick the right one — deferred. Picking
-            // `roots[0]` blindly cross-pollinates: in a file
-            // containing `Live` (TOC, `<span>`) followed by `Wrapper`
-            // (class, `<div>`), every consumer of `Wrapper` gets
-            // tagged with Live's `<span>`, FP-firing downstream
-            // (e.g. `<ul><Wrapper></ul>` looks like `<ul><span></ul>`,
-            // tripping `element-permitted-content`). Skip the
-            // template-root fallback for multi-template files so
-            // the resolution stays at the underlying Glint Element
-            // type.
-            const first = roots.length === 1 ? roots[0] : null;
+            // Pick the root whose `<template>` block falls inside the
+            // resolving declaration's source range. content-tag's
+            // preprocessor preserves byte positions from the original
+            // .gts in the emitted .ts (so TS's `getStart()`/`getEnd()`
+            // and the block ranges share a coordinate system). For a
+            // class declaration the template is inside the class
+            // body; for a `const Foo = <template>...</template>;` the
+            // template is inside the variable's initializer. In both
+            // cases the template range falls within the declaration
+            // range. This makes multi-template files (helpers +
+            // default export, multi-export TOC sets) resolve each
+            // consumer to its own root rather than blindly picking
+            // `roots[0]` and cross-pollinating.
+            //
+            // Falls back to `roots[0]` only for single-template files
+            // (the common case; the in-range comparison would still
+            // succeed there, but we keep the fast path explicit).
+            let first: ComponentAttrs | null = null;
+            if (roots.length === 1) {
+              first = roots[0]!;
+            } else if (decl) {
+              const declStart = decl.getStart();
+              const declEnd = decl.getEnd();
+              first =
+                roots.find(
+                  (r) =>
+                    r.templateStart !== undefined &&
+                    r.templateEnd !== undefined &&
+                    r.templateStart >= declStart &&
+                    r.templateEnd <= declEnd,
+                ) ?? null;
+            }
             if (first) {
               componentAttrMap.set(key, first);
               // When Glint's TS-only resolution couldn't pin a specific

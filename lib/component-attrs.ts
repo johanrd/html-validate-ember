@@ -161,10 +161,21 @@ function parseGtsFile(filename: string): ComponentAttrs[] {
     }
     const root = findSplattedRoot(ast);
     if (!root) continue;
+    // Record the template block's byte range (as content-tag reports
+    // it on the original .gts source). Glint's side compares this to
+    // the resolving declaration's TS-side range — the root whose
+    // template falls inside the declaration's range is the one the
+    // declaration owns. This makes multi-template files (helpers +
+    // default export, multi-export TOC sets) resolve correctly:
+    // without it, the leaf-fallback picks `roots[0]` and tags every
+    // consumer of any component in the file with the first
+    // template's root tag.
     out.push({
       tag: root.tag,
       attrs: literalAttrs(root),
       hasSplat: elementHasSplat(root),
+      templateStart: block.range.startChar,
+      templateEnd: block.range.endChar,
     });
   }
   return out;
