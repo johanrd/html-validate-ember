@@ -35,46 +35,6 @@
       "message": "Stray end tag '</p>'"
     },
     {
-      "file": "apps/repl/app/templates/docs/embedding.gts",
-      "line": 112,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<ul> element is not permitted as content under <span>"
-    },
-    {
-      "file": "apps/repl/app/templates/docs/embedding.gts",
-      "line": 141,
-      "column": 33,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "apps/repl/app/templates/docs/embedding.gts",
-      "line": 163,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<ul> element is not permitted as content under <span>"
-    },
-    {
-      "file": "apps/repl/app/templates/docs/embedding.gts",
-      "line": 194,
-      "column": 34,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
-      "file": "apps/repl/app/templates/docs/embedding.gts",
-      "line": 203,
-      "column": 36,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" cannot be used on this element"
-    },
-    {
       "file": "apps/repl/app/templates/docs/repl-sdk.gts",
       "line": 130,
       "column": 6,
