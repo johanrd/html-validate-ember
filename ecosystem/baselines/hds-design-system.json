@@ -1539,28 +1539,12 @@
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
-      "file": "showcase/app/components/page-components/stepper/list/code-fragments/with-default-implementation.gts",
-      "line": 130,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
       "file": "showcase/app/components/page-components/stepper/list/sub-sections/base-elements.gts",
       "line": 29,
       "column": 25,
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/base-elements.gts",
-      "line": 34,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
     },
     {
       "file": "showcase/app/components/page-components/stepper/list/sub-sections/example-implementations.gts",
@@ -1588,131 +1572,11 @@
     },
     {
       "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 30,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 37,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 44,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
       "line": 56,
       "column": 9,
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 63,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 70,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/status.gts",
-      "line": 77,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 75,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 76,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 79,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 80,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 86,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-contextual-components.gts",
-      "line": 87,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<a> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
-      "line": 59,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
-      "line": 65,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-overlay-content.gts",
-      "line": 80,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
     },
     {
       "file": "showcase/app/components/page-components/stepper/nav/code-fragments/with-steps-array.gts",
@@ -1833,14 +1697,6 @@
       "severity": "error",
       "ruleId": "aria-label-misuse",
       "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/nav/sub-sections/base-elements.gts",
-      "line": 165,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ol>"
     },
     {
       "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/deletion.gts",
