@@ -1661,6 +1661,32 @@ function detectStructuralYieldRules(
           // half-suppressed noise.
           out.push('element-permitted-content');
           out.push('element-permitted-parent');
+        } else if (
+          stmtResolved &&
+          STRUCTURAL_CONTENT_PARENTS.has(stmtResolved) &&
+          hasTransparentCurriedChild(stmt, glintComponentTagMap, branchSelections)
+        ) {
+          // Mirror of the case above for the curried-yield-hash
+          // pattern from the OPPOSITE direction: the WRAPPER resolves
+          // to a structural-content-restrictive native (`<ol>`,
+          // `<select>`, `<table>`, …) AND has a dotted direct child
+          // that resolves to 'transparent' (curried-via-yield-hash —
+          // `<HdsStepperList as |S|><S.Step>...`). Static blanking
+          // can't see through `<S.Step>` to its template's `<li>`
+          // wrapper, so any block-level content INSIDE `<S.Step>`
+          // looks like a direct child of the wrapper's `<ol>` and
+          // FP-fires `element-permitted-content` ("<div> not
+          // permitted under <ol>").
+          //
+          // Suppression is gated by BOTH conditions: the wrapper
+          // having a content-restrictive permittedContent AND the
+          // direct child being transparent-dotted. A transparent
+          // dotted child under a permissive wrapper (like `<div>`)
+          // doesn't trip these rules, and a non-transparent dotted
+          // child resolves to its actual tag (handled by the case
+          // above).
+          out.push('element-permitted-content');
+          out.push('element-permitted-parent');
         }
         walk(stmt.children);
       }
@@ -1743,6 +1769,66 @@ const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
   'legend',
   'summary',
 ]);
+
+// Native parents whose `permittedContent` (per html-validate's HTML5
+// metadata) constrains direct children to a specific schema rather
+// than accepting flow content broadly. Mirror of the children set
+// above: each tag here is the legal parent of one or more entries
+// in `CONTENT_RESTRICTED_STRUCTURAL_CHILDREN`. When a wrapper
+// resolves to one of these AND has a transparent dotted direct
+// child (curried-via-yield-hash, can't be statically pinned), the
+// runtime DOM may interpose a structural intermediate (`<li>`,
+// `<option>`, `<tr>`, …) that the static blanker can't see —
+// suppress the source-wide content rules instead of FP-firing on
+// the consumer's blanker output.
+const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
+  'ol',
+  'ul',
+  'menu',
+  'select',
+  'optgroup',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'colgroup',
+  'fieldset',
+  'details',
+  'picture',
+  'ruby',
+  'dl',
+]);
+
+// True when `node` has at least one direct child that is a dotted
+// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose Glint
+// resolution is `'transparent'` — i.e. a curried-via-yield-hash
+// component that the static analysis couldn't pin to a specific
+// native tag.
+function hasTransparentCurriedChild(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+): boolean {
+  if (!glintComponentTagMap) return false;
+  const tagMap = glintComponentTagMap;
+  function check(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'ElementNode') {
+        if (!stmt.tag.includes('.')) continue;
+        if (!stmt.loc.start) continue;
+        const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+        const childResolved = tagMap.get(childKey);
+        if (childResolved === 'transparent') return true;
+      } else if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm && check(arm.body)) return true;
+      }
+    }
+    return false;
+  }
+  return check(node.children);
+}
 
 // True when the element node has at least one direct child that is a
 // content-restricted structural element (`<option>`, `<th>`, `<li>`,
