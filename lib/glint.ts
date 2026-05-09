@@ -545,6 +545,79 @@ const GENERIC_BASE_ELEMENT_TYPES: ReadonlySet<string> = new Set([
   'MathMLElement',
 ]);
 
+// Pick the substitution tag/attrs from an `OuterWrapperResolution`.
+//
+// Heuristic: if the outer wrapper tag is structurally meaningful
+// (in STRUCTURAL_CHILD_TAGS — `<li>`, `<tr>`, etc.), keep outer;
+// the consumer-side parent-context check matters and dropping outer
+// would let arbitrary content sit directly under (e.g.) `<ul>`.
+//
+// Otherwise (outer is permissive — `<div>`, `<span>`, `<form>`, etc.)
+// AND the resolution computed a different yield-ancestor: prefer the
+// yield-ancestor. The children's content-model validation hinges on
+// what wraps them at runtime; for a component like `<HdsTabs>` whose
+// template is `<div>...<ul>{{yield}}</ul>...</div>`, the `<ul>` is
+// where children land — using `<div>` lets `<li>`-yielded children
+// sit under `<div>` and FP-fire `element-permitted-content`.
+//
+// Returns the chosen tag + attrs + hasSplat. The caller uses these
+// for both `componentTagMap` and `componentAttrMap`.
+function chooseSubstitutionFromResolution(
+  res: { tag: string; attrs: Record<string, string>; hasSplat: boolean; yieldAncestorTag?: string | null; yieldAncestorAttrs?: Record<string, string> },
+): { tag: string; attrs: Record<string, string>; hasSplat: boolean } {
+  const yieldTag = res.yieldAncestorTag;
+  if (
+    yieldTag &&
+    yieldTag !== res.tag &&
+    !STRUCTURAL_CHILD_TAGS.has(res.tag) &&
+    isNativeTag(yieldTag)
+  ) {
+    return {
+      tag: yieldTag,
+      attrs: res.yieldAncestorAttrs ?? {},
+      // The yield-ancestor accepts whatever consumer-yielded content
+      // flows through, so it always behaves as having content (akin
+      // to a splatted root for child-content purposes).
+      hasSplat: true,
+    };
+  }
+  return { tag: res.tag, attrs: res.attrs, hasSplat: res.hasSplat };
+}
+
+// Tags whose role on the consumer's parent context is structurally
+// meaningful — they require specific parents (`<li>` requires
+// `<ul>`/`<ol>`/`<menu>`, etc.). When a component's outer wrapper is
+// one of these, KEEP the outer for substitution: dropping it would
+// break the consumer's parent-context validation (e.g. losing `<li>`
+// would let arbitrary content sit directly under `<ul>`).
+//
+// For other outer wrappers (`<div>`, `<span>`, `<form>`, etc. — tags
+// that accept flow content broadly), prefer the yield-nearest-
+// ancestor tag (when it differs and is more restrictive). The
+// children's content-model validation hinges on what wraps them at
+// runtime, which is the yield-ancestor in the addon's template, not
+// the outermost div.
+//
+// Mirrors `CONTENT_RESTRICTED_STRUCTURAL_CHILDREN` in blank.ts (these
+// are the same tags — kept here because lib/glint.ts shouldn't depend
+// on the heuristic-suppression set).
+const STRUCTURAL_CHILD_TAGS: ReadonlySet<string> = new Set([
+  'option',
+  'optgroup',
+  'th',
+  'td',
+  'tr',
+  'thead',
+  'tbody',
+  'tfoot',
+  'caption',
+  'colgroup',
+  'col',
+  'li',
+  'legend',
+  'summary',
+]);
+
 function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
   const map = new Map<string, string>();
   const tagNameMaps = ['HTMLElementTagNameMap', 'SVGElementTagNameMap', 'MathMLElementTagNameMap'];
@@ -1064,22 +1137,14 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             const currentResolved = componentTagMap.get(key);
             sameTransitivePackageOuterRan = true;
             if (outerWrapper !== null && isNativeTag(outerWrapper.tag)) {
-              if (outerWrapper.tag !== currentResolved) {
-                componentTagMap.set(key, outerWrapper.tag);
+              const chosen = chooseSubstitutionFromResolution(outerWrapper);
+              if (chosen.tag !== currentResolved) {
+                componentTagMap.set(key, chosen.tag);
               }
-              // Always update componentAttrMap with the chain's
-              // accumulated attrs — even when the leaf tag matches the
-              // current resolution, the chain's deeper attrs (e.g. an
-              // `<a href={{@href}}>` in a wrapper's wrapper) are what
-              // make rules like `aria-label-misuse` pass. Without these,
-              // we'd inject only the SPLATTED-ROOT level's attrs (which
-              // for a non-native splatted root would be the wrapper's
-              // literal/mustache attrs only, missing the ultimately-
-              // rendered native's).
               componentAttrMap.set(key, {
-                tag: outerWrapper.tag,
-                attrs: outerWrapper.attrs,
-                hasSplat: outerWrapper.hasSplat,
+                tag: chosen.tag,
+                attrs: chosen.attrs,
+                hasSplat: chosen.hasSplat,
               });
             }
           }
@@ -1125,15 +1190,14 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         const outerFromImport = resolveOuterWrapperFromConsumerImport(filename, componentName);
         const currentResolved = componentTagMap.get(key);
         if (outerFromImport !== null && isNativeTag(outerFromImport.tag)) {
-          if (outerFromImport.tag !== currentResolved) {
-            componentTagMap.set(key, outerFromImport.tag);
+          const chosen = chooseSubstitutionFromResolution(outerFromImport);
+          if (chosen.tag !== currentResolved) {
+            componentTagMap.set(key, chosen.tag);
           }
-          // Override componentAttrMap with the chain's accumulated
-          // attrs (see same-package branch above for rationale).
           componentAttrMap.set(key, {
-            tag: outerFromImport.tag,
-            attrs: outerFromImport.attrs,
-            hasSplat: outerFromImport.hasSplat,
+            tag: chosen.tag,
+            attrs: chosen.attrs,
+            hasSplat: chosen.hasSplat,
           });
         }
       }
