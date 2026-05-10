@@ -1644,7 +1644,7 @@ function blankTemplateContent(
 // output, and add the rule to `disableForRules` so the transformer can
 // inject a one-shot disable directive into this Source.
 //
-// Three FP classes covered today:
+// Two FP classes covered today:
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
@@ -1661,13 +1661,11 @@ function blankTemplateContent(
 //      user). wcag/h32 is suppressed regardless of submit-button or
 //      yield presence.
 //
-//   3. Unresolvable PascalCase / dotted wrapper containing content-
-//      restricted structural children (`<option>`/`<th>`/`<li>`/...).
-//      At runtime such wrappers typically render the structurally-
-//      correct parent (`<select>`/`<thead>`/`<ul>`) via a yield chain
-//      we can't trace statically. Suppress `element-permitted-content`
-//      so the FP doesn't surface. Same per-Source-suppression
-//      trade-off as cases 1 and 2.
+// (A previous "case 3" suppressed `element-permitted-content` for
+// unresolvable wrappers containing structural children. The canonical
+// resolver — including the `(yield (hash X=...))` chain trace — pins
+// these cases precisely now, so the heuristic was removed in favor of
+// honest FP-firing on the few remaining unresolvable shapes.)
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only

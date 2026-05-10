@@ -24,12 +24,35 @@ describe('findTemplateSource', () => {
     expect(result?.content).toContain('@tag="li"');
   });
 
-  test('returns null for files with multiple <template> blocks', () => {
-    // The single-template constraint mirrors existing parseGtsFile behavior.
-    // No multi-template fixture exists; just verify the API contract by
-    // pointing at a non-existent file to ensure null on read failure.
+  test('returns null on read failure (non-existent file)', () => {
     const result = findTemplateSource({ declFile: '/nonexistent/foo.gts', ts });
     expect(result).toBeNull();
+  });
+
+  test('multi-template file: returns null without a name/range hint', () => {
+    // transparent-li-wrapper-consumer.gts has 3 top-level <template>
+    // blocks (TransparentWrapper, Content, the consumer template). With
+    // no disambiguation hint, the source-finder declines rather than
+    // guessing.
+    const declFile = path.join(FIXTURES, 'transparent-li-wrapper-consumer.gts');
+    const result = findTemplateSource({ declFile, ts });
+    expect(result).toBeNull();
+  });
+
+  test('multi-template file: picks the template matching componentName', () => {
+    // The same fixture: when we pass `componentName: 'TransparentWrapper'`,
+    // the source-finder strips templates, TS-parses to find the named
+    // declaration, and returns ITS template (the `<li>` one) — not
+    // Content's `<div>` or the consumer's outer block.
+    const declFile = path.join(FIXTURES, 'transparent-li-wrapper-consumer.gts');
+    const result = findTemplateSource({
+      declFile,
+      componentName: 'TransparentWrapper',
+      ts,
+    });
+    expect(result?.kind).toBe('gts');
+    expect(result?.content).toContain('<li');
+    expect(result?.content).not.toContain('<div ...attributes');
   });
 
   test('reads .hbs source directly', () => {
