@@ -55,6 +55,7 @@ import { Preprocessor } from 'content-tag';
 import { preprocess, traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
 import fs from 'node:fs';
+import path from 'node:path';
 
 import type { ComponentAttrs } from './builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from './dynamic-value.js';
@@ -108,6 +109,374 @@ export function literalAttrs(node: AST.ElementNode): Record<string, string> {
     }
   }
   return attrs;
+}
+
+// `(element X)` polymorphic-tag detection.
+//
+// HDS-style polymorphic-tag components (HdsText, HdsTextBody, …) use
+// the Glimmer `(element ...)` helper to render whatever tag the
+// `<expr>` argument resolves to:
+//
+//   <template>
+//     {{#let (element this.componentTag) as |Tag|}}
+//       <Tag ...attributes>{{yield}}</Tag>
+//     {{/let}}
+//   </template>
+//
+// Glint's Element-type union for these (`HTMLSpanElement |
+// HTMLHeadingElement | …`) doesn't propagate the runtime tag —
+// our static analysis arbitrarily picks the first match (`<h1>`)
+// when the actual runtime tag is `<li>` (when consumer passes
+// `@tag="li"` through).
+//
+// This helper detects the primitive and classifies the source
+// expression:
+//   - literal:   `(element 'span')`           — runtime tag is fixed
+//   - arg:       `(element @argName)`         — pass-through; caller
+//                                                resolves at wrapper
+//   - this-prop: `(element this.propName)`    — class property; caller
+//                                                resolves via class
+//                                                walk
+// The discriminated union lets the leaf-fallback in `glint.ts` decide
+// whether to surface a concrete tag, mark transparent, or trace the
+// wrapper chain.
+export type PolymorphicTagSource =
+  | { kind: 'literal'; value: string }
+  | { kind: 'arg'; argName: string }
+  | { kind: 'this-prop'; propName: string };
+
+export function detectPolymorphicTag(ast: AST.Template): PolymorphicTagSource | null {
+  let result: PolymorphicTagSource | null = null;
+  function visit(stmts: ReadonlyArray<AST.Statement | AST.TopLevelStatement>): void {
+    for (const stmt of stmts) {
+      if (result !== null) return;
+      if (stmt.type === 'BlockStatement') {
+        const isLet =
+          stmt.path.type === 'PathExpression' && stmt.path.original === 'let';
+        if (isLet) {
+          // Look for `(element <expr>)` as the let's first param.
+          const param = stmt.params[0];
+          if (
+            param &&
+            param.type === 'SubExpression' &&
+            param.path.type === 'PathExpression' &&
+            param.path.original === 'element'
+          ) {
+            const expr = param.params[0];
+            if (expr) {
+              result = classifyTagExpression(expr);
+              if (result) return;
+            }
+          }
+        }
+        visit(stmt.program.body);
+        if (stmt.inverse) visit(stmt.inverse.body);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        visit(stmt.children);
+      }
+    }
+  }
+  visit(ast.body);
+  return result;
+}
+
+function classifyTagExpression(expr: AST.Expression): PolymorphicTagSource | null {
+  if (expr.type === 'StringLiteral' && typeof expr.value === 'string') {
+    return { kind: 'literal', value: expr.value };
+  }
+  if (expr.type === 'PathExpression') {
+    if (expr.head.type === 'AtHead') {
+      // Glimmer's `AtHead.name` is `@argName` (with the leading
+      // `@`). Strip it for caller consistency — the caller compares
+      // against attr-name keys which are also stored with `@`-
+      // prefix in Glimmer ASTs but matched without it semantically.
+      const raw = expr.head.name;
+      const argName = raw.startsWith('@') ? raw.slice(1) : raw;
+      return { kind: 'arg', argName };
+    }
+    if (expr.head.type === 'ThisHead' && expr.tail.length === 1) {
+      return { kind: 'this-prop', propName: expr.tail[0]! };
+    }
+  }
+  return null;
+}
+
+// Resolved polymorphic-tag info, propagated up the wrapper chain.
+//   - { tag }                  — runtime tag is fixed (literal or
+//                                fully traced through @arg).
+//   - { polymorphicOnArg }     — runtime tag is whatever the
+//                                consumer passes for this arg.
+//   - null                     — couldn't determine (e.g.
+//                                this.prop without a class walk,
+//                                or chain hit an untraceable hop).
+export type ResolvedPolymorphicTag =
+  | { kind: 'tag'; tag: string }
+  | { kind: 'arg'; argName: string };
+
+// Read a literal `@argName="X"` value from `node`, or null if the
+// arg isn't present, isn't a literal, or doesn't resolve.
+function readArgLiteral(node: AST.ElementNode, argName: string): string | null {
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== `@${argName}`) continue;
+    if (attr.value.type !== 'TextNode') return null;
+    if (typeof attr.value.chars !== 'string') return null;
+    return attr.value.chars;
+  }
+  return null;
+}
+
+// Read a `@argName={{@otherArg}}` arg value, or null.
+function readArgPassthrough(node: AST.ElementNode, argName: string): string | null {
+  for (const attr of node.attributes ?? []) {
+    if (attr.name !== `@${argName}`) continue;
+    if (attr.value.type !== 'MustacheStatement') return null;
+    const path = attr.value.path;
+    if (path.type !== 'PathExpression') return null;
+    if (path.head.type !== 'AtHead') return null;
+    const raw = path.head.name;
+    return raw.startsWith('@') ? raw.slice(1) : raw;
+  }
+  return null;
+}
+
+// Resolve the polymorphic-tag info for a `.gts` source file. Walks
+// the addon's template chain through PascalCase wrappers, propagating
+// the `(element ...)` helper's source through `@arg` literal /
+// pass-through bindings.
+//
+// Examples (HDS):
+//   - hds/text/index.gts
+//       template uses `(element this.componentTag)`. componentTag is
+//       a class getter — we don't walk class properties (deferred).
+//       Result: null.
+//   - hds/text/body.gts
+//       template root: `<HdsText @tag={{@tag}} ...>`. HdsText is
+//       polymorphic, source = this.componentTag (null). Result: null.
+//
+//   But:
+//   - hds/dropdown/list-item/title.gts
+//       template root: `<HdsTextBody @tag="li" ...>`. HdsTextBody is
+//       polymorphic-on-@tag. Literal value 'li' propagates upward.
+//       Result: { kind: 'tag', tag: 'li' }.
+//
+// Cycle guard via `visited` set; depth-limited to avoid runaway
+// recursion on pathological inputs.
+const polymorphicCache = new Map<string, ResolvedPolymorphicTag | null>();
+
+export function getPolymorphicResolvedTag(filename: string): ResolvedPolymorphicTag | null {
+  return getPolymorphicResolvedTagInner(filename, new Set(), 0);
+}
+
+function getPolymorphicResolvedTagInner(
+  filename: string,
+  visited: Set<string>,
+  depth: number,
+): ResolvedPolymorphicTag | null {
+  if (depth > 10) return null;
+  if (visited.has(filename)) return null;
+  visited.add(filename);
+
+  const cached = polymorphicCache.get(filename);
+  if (cached !== undefined) return cached;
+
+  let contents: string;
+  try {
+    contents = fs.readFileSync(filename, 'utf8');
+  } catch {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  let blocks: ReturnType<Preprocessor['parse']>;
+  try {
+    blocks = preprocessor.parse(contents, { filename });
+  } catch {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  const templateBlocks = blocks.filter((b) => b.tagName === 'template');
+  if (templateBlocks.length !== 1) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  let ast: AST.Template;
+  try {
+    ast = preprocess(templateBlocks[0]!.contents);
+  } catch {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+
+  // Case 1: this template directly uses `(element ...)`.
+  const direct = detectPolymorphicTag(ast);
+  if (direct) {
+    if (direct.kind === 'literal') {
+      const result = { kind: 'tag' as const, tag: direct.value };
+      polymorphicCache.set(filename, result);
+      return result;
+    }
+    if (direct.kind === 'arg') {
+      const result = { kind: 'arg' as const, argName: direct.argName };
+      polymorphicCache.set(filename, result);
+      return result;
+    }
+    // this-prop: walk the class for the named getter. The HDS
+    // convention is a getter that returns `this.args.<argName>` with
+    // a string-literal default, e.g.
+    //   get componentTag(): HdsTextTags {
+    //     const { tag = 'span' } = this.args;
+    //     return tag;
+    //   }
+    // → polymorphic-on-`@tag` with default 'span'. When the consumer
+    // doesn't pass `@tag`, the runtime tag is the default; when it
+    // passes `@tag="X"`, the runtime tag is X.
+    const propResolution = resolveThisPropPolymorphic(contents, direct.propName);
+    if (propResolution) {
+      polymorphicCache.set(filename, propResolution);
+      return propResolution;
+    }
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+
+  // Case 2: template root is a non-native invocation that may itself
+  // be polymorphic. Walk one level into it.
+  const root = findSplattedRoot(ast);
+  if (!root) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  if (isNativeTagLocal(root.tag)) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  if (root.tag.includes('.') || root.tag.startsWith(':')) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  const importPath = resolveLocalImport(filename, root.tag);
+  if (!importPath) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  const inner = getPolymorphicResolvedTagInner(importPath, visited, depth + 1);
+  if (!inner) {
+    polymorphicCache.set(filename, null);
+    return null;
+  }
+  if (inner.kind === 'tag') {
+    polymorphicCache.set(filename, inner);
+    return inner;
+  }
+  // inner.kind === 'arg' — the inner component is polymorphic on this
+  // arg; check our root invocation's `@argName=` for propagation.
+  const literal = readArgLiteral(root, inner.argName);
+  if (literal !== null) {
+    const result = { kind: 'tag' as const, tag: literal };
+    polymorphicCache.set(filename, result);
+    return result;
+  }
+  const passthrough = readArgPassthrough(root, inner.argName);
+  if (passthrough !== null) {
+    const result = { kind: 'arg' as const, argName: passthrough };
+    polymorphicCache.set(filename, result);
+    return result;
+  }
+  // Arg is absent or unrecognized — give up.
+  polymorphicCache.set(filename, null);
+  return null;
+}
+
+// Resolve `this.<propName>` to a polymorphic source by reading the
+// class's getter body. Recognizes the HDS convention:
+//
+//   get componentTag(): HdsTextTags {
+//     const { tag = 'span' } = this.args;
+//     return tag;
+//   }
+//
+// Returns `{ kind: 'arg', argName: 'tag' }` for that example. The
+// default value is currently NOT propagated (would matter for
+// "consumer didn't pass arg" → use default-tag); a no-arg consumer
+// is already covered by the leaf-fallback's transparent path.
+//
+// Anything fancier (computed via conditionals, parameter-validation
+// asserts, etc.) returns null and the caller falls through.
+function resolveThisPropPolymorphic(
+  source: string,
+  propName: string,
+): ResolvedPolymorphicTag | null {
+  // Match: `get <propName>([\s\S]*?) { ... return ... }` and look for
+  // the destructuring + return pattern inside.
+  const getterRe = new RegExp(
+    String.raw`get\s+` +
+      `${propName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` +
+      String.raw`\s*\([^)]*\)(?:\s*:\s*[^{]+)?\s*\{([\s\S]*?)\n\s*\}`,
+    'm',
+  );
+  const m = getterRe.exec(source);
+  if (!m) return null;
+  const body = m[1]!;
+  // Pattern: `const { ARGNAME = 'DEFAULT' } = this.args;` followed by
+  // `return ARGNAME` (or `return ARGNAME;`).
+  const destructureRe =
+    /const\s+\{\s*([A-Za-z_$][A-Za-z_$0-9]*)\s*(?:=\s*['"]([^'"]*)['"])?\s*\}\s*=\s*this\.args/;
+  const dm = destructureRe.exec(body);
+  if (!dm) return null;
+  const argName = dm[1]!;
+  const returnRe = new RegExp(
+    String.raw`return\s+` + `${argName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` + String.raw`\s*;`,
+  );
+  if (!returnRe.test(body)) return null;
+  return { kind: 'arg', argName };
+}
+
+// Local helpers — duplicate of `isNativeTag` from blank.ts and a
+// regex-based import resolver. Avoids cross-module dep cycle:
+// component-attrs.ts is imported by blank.ts, and we'd otherwise
+// need a circular import for `isNativeTag` and a copy of the
+// import-resolver logic.
+function isNativeTagLocal(tag: string): boolean {
+  // Glimmer treats lowercase tags as native; PascalCase as components.
+  return /^[a-z]/.test(tag);
+}
+
+function resolveLocalImport(consumerFile: string, componentName: string): string | null {
+  // Walk the consumer's source for an `import COMPONENT from
+  // 'path';` statement. Resolves relative `.gts/.gjs/.ts` paths and
+  // simple bare-package imports under `node_modules`.
+  let source: string;
+  try {
+    source = fs.readFileSync(consumerFile, 'utf8');
+  } catch {
+    return null;
+  }
+  // Match: `import NAME from 'PATH';` (default import only).
+  const re = new RegExp(
+    String.raw`import\s+(?:type\s+)?` +
+      String.raw`(?:\{\s*default\s+as\s+)?` +
+      `${componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` +
+      String.raw`(?:\s*\})?` +
+      String.raw`\s+from\s+['"]([^'"]+)['"]`,
+    'm',
+  );
+  const m = re.exec(source);
+  if (!m) return null;
+  const spec = m[1]!;
+  const dir = path.dirname(consumerFile);
+  // Relative path
+  if (spec.startsWith('.')) {
+    for (const ext of ['', '.gts', '.gjs', '.ts', '.tsx', '.js']) {
+      const candidate = path.resolve(dir, spec + ext);
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    }
+    return null;
+  }
+  // Skip bare-package resolution here — the polymorphic chain is
+  // typically within one addon package; cross-package walks are
+  // already covered by `outer-wrapper-resolver.ts`.
+  return null;
 }
 
 // Walk a parsed Glimmer template AST and return the splatted-root
