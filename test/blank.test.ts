@@ -719,13 +719,19 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain("disabled=");
   });
 
-  it('block-form: empty-string literal on a non-boolean attr falls back to placeholder', () => {
-    // Bare emission would be wrong for non-boolean attrs: the AST
-    // can't distinguish `<div aria-label ...attributes>` from
-    // `<div aria-label='' ...attributes>` (both produce empty TextNode
-    // chars). Treat empty-string literal as bare only when the attr
-    // is a known HTML boolean; otherwise emit the 3-space placeholder
-    // so processAttribute converts to DynamicValue.
+  it('block-form: aria-* attrs are NOT injected when role is absent (avoids aria-label-misuse FPs)', () => {
+    // The chain-attr injection used to land `aria-label='   '` on
+    // any substituted element regardless of role context. On plain
+    // `<div>` (no role), html-validate's `aria-label-misuse` then
+    // FP-fires ("aria-label cannot be used on this element").
+    //
+    // With anchor-aware injection: aria-* is only emitted when the
+    // anchoring `role` is also recorded AND fits in the consumer's
+    // Glimmer-attr slots. When role isn't present in the chain, all
+    // aria-* attrs are dropped from the substitution. Drift-proof:
+    // gates on the `aria-*` PREFIX, not an enumerated list, so new
+    // role-dependent aria-* attrs added to html-validate won't slip
+    // through.
     const src = "<MyDiv @veryLongFirstAttr={{val}}>x</MyDiv>";
     const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
     const attrMap = new Map<string, ComponentAttrs>([
@@ -737,6 +743,29 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
+    expect(r.content).not.toContain('aria-label');
+  });
+
+  it('block-form: aria-* attrs ARE injected when role anchors them', () => {
+    // When the chain has `role` alongside aria-*, both fit, so the
+    // anchored injection is emitted. The substituted output reads
+    // `<div role='   ' aria-label='   '>`, which html-validate
+    // accepts because the dynamic role authorizes aria-label.
+    const src = "<MyDiv @veryLongFirstArg={{val}} @veryLongSecondArg={{val}}>x</MyDiv>";
+    const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyDiv'),
+        {
+          tag: 'div',
+          attrs: { role: 'dialog', 'aria-label': '' },
+          hasSplat: true,
+        },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toContain("role='dialog'");
     expect(r.content).toContain(`aria-label='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
@@ -1022,6 +1051,40 @@ describe('Form-submit-in-else (FP fix): single-branch emission prefers branch wi
   });
 });
 
+describe('block-form `<button>` substitution registers inputSplatTypeOffsets', () => {
+  // Regression for 76901ba: when a curried/hash-yielded component
+  // resolves to `<button>` and is invoked block-form, the in-place
+  // tag rename produces `<button   ...>` without a `type=` attr.
+  // `tryInjectComponentAttrs` doesn't run for such cases because
+  // the chain `attrCtx` is undefined for hash-yielded curries —
+  // so we register the offset in `inputSplatTypeOffsets` and
+  // `processElement` sets `type` at parse time. Without this,
+  // `no-implicit-button-type` FP-fires.
+  it('records the offset for block-form <button> substitution when consumer has no `type=`', () => {
+    // Use line:col coords directly (locKey isn't in scope outside
+    // its describe block; for `<RT.Toggle>...` at the top of the
+    // string the AST reports it at line 1 col 0).
+    const src = '<RT.Toggle>click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.inputSplatTypeOffsets.size).toBe(1);
+    // Value is null (DynamicValue) since no chain attrs were
+    // provided — the hook will inject DV at parse time.
+    expect([...result.inputSplatTypeOffsets.values()]).toEqual([null]);
+  });
+
+  it('does NOT register the offset when the consumer wrote type= already', () => {
+    const src = '<RT.Toggle type="submit">click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.inputSplatTypeOffsets.size).toBe(0);
+  });
+});
+
 describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // Mirrors HDS's `<HdsStepperList as |S|><S.Step>...</S.Step>`
   // pattern: wrapper resolves to a structural-content-restrictive
@@ -1088,6 +1151,33 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const tagMap = new Map<string, string>([
       ['1:0', 'ol'],
       ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  // Regression for 9ef0b73 (Copilot round 6): case (B) was over-
+  // broad — it suppressed for ANY child resolving to a structural
+  // tag, even non-dotted ones. The Copilot reviewer flagged that a
+  // non-dotted child like `<HdsListItem>` resolved to `<li>` is the
+  // runtime DOM directly under its wrapper, so the wrapper IS the
+  // runtime parent and suppressing would mask real
+  // `<div><HdsListItem>` violations. The fix narrows case (B) to
+  // dotted invocations only (hash-yielded curried components are
+  // always dotted on the consumer side).
+  it('case (B) does NOT suppress when a non-dotted child resolves to a structural tag (wrapper IS runtime parent)', () => {
+    const content =
+      '<NonNativeWrapper>\n  <ListItem>\n    <span>x</span>\n  </ListItem>\n</NonNativeWrapper>\n';
+    const tagMap = new Map<string, string>([
+      // Wrapper is unresolved (no entry); falls into the
+      // !isNativeTag && !lookupBuiltinComponent branch where case
+      // (B) runs. Pre-fix: child `<ListItem>` resolved to `<li>`
+      // would have triggered case (B). Post-fix: only DOTTED
+      // children trigger.
+      ['2:2', 'li'], // <ListItem> → <li> (concrete, non-dotted)
     ]);
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
