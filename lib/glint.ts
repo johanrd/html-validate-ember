@@ -14,7 +14,11 @@ import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
 import { isNativeTag } from '../blank.js';
-import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
+import {
+  getSplattedRootsForFile,
+  extractSplattedRootFromTemplate,
+  getPolymorphicResolvedTag,
+} from './component-attrs.js';
 import {
   resolveOuterWrapperTag,
   resolveOuterWrapperFromConsumerImport,
@@ -1144,6 +1148,49 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
                 componentTagMap.set(key, first.tag);
               }
             }
+            // `(element ...)` polymorphic-tag chain trace: when the
+            // declaring file's template chain bottoms out in a
+            // Glimmer `(element X)` helper and X traces to a literal
+            // (via `@arg="literal"` propagation through wrapper
+            // hops), surface that literal as the resolved tag. Glint
+            // can't see through `(element ...)` — its TS-level union
+            // (`HTMLSpanElement | HTMLHeadingElement | ...`) picks
+            // an arbitrary branch (typically `<h1>`) when the runtime
+            // tag is something different (e.g. `<li>` for HDS's
+            // `<HdsDropdownListItemTitle>`). The chain trace
+            // overrides Glint's pick with the concrete propagated
+            // value.
+            //
+            // Always run the chain trace: Glint's TS-side resolution
+            // CAN already be a concrete native tag (e.g. `<h1>`
+            // arbitrarily picked from a `HTMLSpanElement |
+            // HTMLHeadingElement | ...` union), and that "concrete"
+            // value is exactly what's wrong when the runtime
+            // dispatches via `(element ...)`. The polymorphic chain
+            // is the source of truth here; skip it only when Glint
+            // gave us a tag AND the chain returned no override.
+            //
+            // Performance: the chain is cached per addon file
+            // (polymorphicCache); repeated invocations of the same
+            // component cost a Map.get. Cold cost is one file
+            // read + parse per addon hop, recursing through the
+            // import chain — bounded by the same shape as the
+            // outer-wrapper-resolver and depth-capped to 10.
+            // Measured: full ecosystem-ci run with vs. without the
+            // polymorphic chain (~1500 files across 12 targets) is
+            // within noise (12:33.04 vs 12:33.57). The chain is
+            // cached per addon file and only kicks in when the
+            // leaf-fallback already opened the addon's `.gts` source,
+            // so the overhead is bounded.
+            const polymorphic = getPolymorphicResolvedTag(gtsPath);
+            if (polymorphic && polymorphic.kind === 'tag' && isNativeTag(polymorphic.tag)) {
+              componentTagMap.set(key, polymorphic.tag);
+              componentAttrMap.set(key, {
+                tag: polymorphic.tag,
+                attrs: first?.attrs ?? {},
+                hasSplat: first?.hasSplat ?? true,
+              });
+            }
             // Outer-wrapper override: when the component's template
             // wraps the splatted leaf in an OUTER native ancestor
             // (e.g. `<ListItem><a ...attributes>{{yield}}</a></ListItem>`
@@ -1482,6 +1529,28 @@ function resolveGtsPath(declFile: string): string | null {
     for (const ext of ['.gts', '.gjs']) {
       const candidate = base + ext;
       if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  // `.d.ts` from a v2-addon package (`X/declarations/foo.d.ts` shipped
+  // alongside `X/src/foo.gts`). Try common source-dir mappings: HDS
+  // and similar packages emit `.d.ts` in `declarations/` and ship
+  // `.gts` source in `src/` (not in package exports, but present in
+  // the published package). Other addons use `dist/types/.../X.d.ts`
+  // alongside `src/.../X.gts`.
+  if (declFile.endsWith('.d.ts')) {
+    const baseTs = declFile.slice(0, -'.d.ts'.length);
+    const mappings: Array<[string, string]> = [
+      ['/declarations/', '/src/'],
+      ['/dist/types/', '/src/'],
+      ['/dist/', '/src/'],
+    ];
+    for (const [from, to] of mappings) {
+      if (!baseTs.includes(from)) continue;
+      const sourceBase = baseTs.replace(from, to);
+      for (const ext of ['.gts', '.gjs']) {
+        const candidate = sourceBase + ext;
+        if (fs.existsSync(candidate)) return candidate;
+      }
     }
   }
   return null;

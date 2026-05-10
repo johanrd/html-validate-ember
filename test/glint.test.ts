@@ -8,7 +8,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
-import { getSplattedRootsForFile, _clearCache as clearComponentAttrsCache } from '../lib/component-attrs.js';
+import {
+  getSplattedRootsForFile,
+  _clearCache as clearComponentAttrsCache,
+  getPolymorphicResolvedTag,
+} from '../lib/component-attrs.js';
 import { isDynamicValuePlaceholder } from '../lib/dynamic-value.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -120,6 +124,40 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
     expect(button).toBeDefined();
     // No `...attributes` in typed-button.gts.
     expect(button!.hasSplat).toBe(false);
+  });
+});
+
+describe('Polymorphic-tag chain trace via Glimmer (element ...) helper', () => {
+  // HDS-style polymorphic-tag wrappers use the Glimmer `(element X)`
+  // helper to render whatever tag `X` resolves to. Glint's TS-side
+  // resolution sees the union element type (e.g.
+  // `HTMLSpanElement | HTMLHeadingElement | ...`) and arbitrarily
+  // picks the first match (`<h1>`), even when the runtime tag is
+  // something different (e.g. `<li>` for HDS dropdown list items
+  // that pass `@tag="li"`). The chain trace overrides Glint's pick
+  // with the literal propagated through `@arg` bindings.
+
+  it('detects (element this.componentTag) and traces through @tag class default', () => {
+    const fixture = path.resolve(__dirname, 'glint-fixtures/polymorphic-text-leaf.gts');
+    const result = getPolymorphicResolvedTag(fixture);
+    // PolymorphicText's class getter resolves componentTag to the
+    // `tag` arg; the trace surfaces the polymorphic source as
+    // `{ kind: 'arg', argName: 'tag' }`.
+    expect(result, `expected polymorphic-on-arg; got: ${JSON.stringify(result)}`).toEqual({
+      kind: 'arg',
+      argName: 'tag',
+    });
+  });
+
+  it('resolves to a concrete tag when a wrapper passes a literal `@tag="X"` to the polymorphic component', () => {
+    const fixture = path.resolve(__dirname, 'glint-fixtures/polymorphic-list-item-leaf.gts');
+    const result = getPolymorphicResolvedTag(fixture);
+    // PolymorphicListItem invokes <PolymorphicText @tag="li" ...>;
+    // the chain trace propagates the literal upward.
+    expect(
+      result,
+      `expected concrete tag 'li' from chain trace; got: ${JSON.stringify(result)}`,
+    ).toEqual({ kind: 'tag', tag: 'li' });
   });
 });
 
