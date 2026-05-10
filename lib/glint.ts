@@ -1182,15 +1182,6 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             // cached per addon file and only kicks in when the
             // leaf-fallback already opened the addon's `.gts` source,
             // so the overhead is bounded.
-            const polymorphic = getPolymorphicResolvedTag(gtsPath);
-            if (polymorphic && polymorphic.kind === 'tag' && isNativeTag(polymorphic.tag)) {
-              componentTagMap.set(key, polymorphic.tag);
-              componentAttrMap.set(key, {
-                tag: polymorphic.tag,
-                attrs: first?.attrs ?? {},
-                hasSplat: first?.hasSplat ?? true,
-              });
-            }
             // Outer-wrapper override: when the component's template
             // wraps the splatted leaf in an OUTER native ancestor
             // (e.g. `<ListItem><a ...attributes>{{yield}}</a></ListItem>`
@@ -1219,6 +1210,45 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
                 tag: chosen.tag,
                 attrs: chosen.attrs,
                 hasSplat: chosen.hasSplat,
+              });
+            }
+          }
+        }
+        // `(element ...)` polymorphic-tag chain trace: independent
+        // of the same-package leaf-fallback above. Glint can't see
+        // through the Glimmer `(element X)` helper — its TS-level
+        // union (`HTMLSpanElement | HTMLHeadingElement | ...`) picks
+        // an arbitrary branch (typically `<h1>`) when the runtime
+        // tag is something different (e.g. `<li>` for HDS's
+        // `<HdsDropdownListItemTitle>` whose chain bottoms out in
+        // `(element this.componentTag)`). The chain trace overrides
+        // Glint's pick with the literal propagated through `@arg`
+        // bindings up the wrapper chain.
+        //
+        // Uses `resolveGtsPathForPolymorphic` which extends
+        // `resolveGtsPath` with `<pkg>/declarations/X.d.ts` →
+        // `<pkg>/src/X.gts` mapping for v2-addon packages that ship
+        // `.gts` source alongside `.d.ts` declarations (HDS does
+        // this). The leaf-fallback ABOVE deliberately uses the
+        // narrower `resolveGtsPath` — opening cross-package source
+        // there caused waves of `element-permitted-content` FPs
+        // because the splatted-root tag is wrong for components
+        // Glint already resolved correctly via the union element
+        // type. The polymorphic chain trace is narrower (only acts
+        // on components whose template uses `(element ...)`), so
+        // opening cross-package `.gts` here doesn't trigger the
+        // same broad regression.
+        if (declFile && isTopLevel) {
+          const polyGtsPath = resolveGtsPathForPolymorphic(declFile);
+          if (polyGtsPath) {
+            const polymorphic = getPolymorphicResolvedTag(polyGtsPath);
+            if (polymorphic && polymorphic.kind === 'tag' && isNativeTag(polymorphic.tag)) {
+              componentTagMap.set(key, polymorphic.tag);
+              const existing = componentAttrMap.get(key);
+              componentAttrMap.set(key, {
+                tag: polymorphic.tag,
+                attrs: existing?.attrs ?? {},
+                hasSplat: existing?.hasSplat ?? true,
               });
             }
           }
@@ -1531,12 +1561,25 @@ function resolveGtsPath(declFile: string): string | null {
       if (fs.existsSync(candidate)) return candidate;
     }
   }
-  // `.d.ts` from a v2-addon package (`X/declarations/foo.d.ts` shipped
-  // alongside `X/src/foo.gts`). Try common source-dir mappings: HDS
-  // and similar packages emit `.d.ts` in `declarations/` and ship
-  // `.gts` source in `src/` (not in package exports, but present in
-  // the published package). Other addons use `dist/types/.../X.d.ts`
-  // alongside `src/.../X.gts`.
+  return null;
+}
+
+// `.d.ts` → source `.gts` mapping for v2-addon packages that ship
+// `.gts` source alongside their compiled `.d.ts` declarations (HDS
+// publishes `declarations/X.d.ts` and `src/X.gts` in the same
+// package). Used by the polymorphic-tag chain trace, NOT the
+// general leaf-fallback — the leaf-fallback's substitution
+// behavior on cross-package addon components is brittle (writing
+// the splatted-root tag for components Glint already resolved
+// correctly via the union element type often substitutes to the
+// wrong tag, surfacing waves of `element-permitted-content` FPs).
+// The polymorphic chain trace is narrower: it only acts on
+// components whose template uses `(element ...)`, so opening
+// cross-package `.gts` source via this mapping doesn't cause the
+// same broad regression.
+function resolveGtsPathForPolymorphic(declFile: string): string | null {
+  const direct = resolveGtsPath(declFile);
+  if (direct) return direct;
   if (declFile.endsWith('.d.ts')) {
     const baseTs = declFile.slice(0, -'.d.ts'.length);
     const mappings: Array<[string, string]> = [
