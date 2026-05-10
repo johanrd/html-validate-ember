@@ -59,6 +59,7 @@
     "ecosystem:update": "tsx ecosystem/run.ts --update"
   },
   "dependencies": {
+    "@embroider/shared-internals": "^3.0.2",
     "@glimmer/syntax": "^0.95.0",
     "content-tag": "^4.1.1",
     "html-tags": "^5.1.0",
@@ -91,6 +92,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "packageManager": "pnpm@10.33.4",
   "publishConfig": {
     "access": "public"
   }

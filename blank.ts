@@ -18,6 +18,34 @@ function startOffset(node: { loc: AST.SourceLocation }): number {
 function endOffset(node: { loc: AST.SourceLocation }): number {
   return (node.loc as unknown as SpanLike).getEnd().offset;
 }
+
+// Register an attribute injection at the given source-text offset.
+// First-write-wins on (offset, attr) — matches the prior `*SplatOffsets`
+// channels' behavior (which were Sets by construction or used .has()
+// checks before .set()).
+function addAttrInjection(
+  registry: Map<number, AttrInjection[]>,
+  offset: number,
+  attr: string,
+  value: string | null,
+): void {
+  let arr = registry.get(offset);
+  if (!arr) {
+    arr = [];
+    registry.set(offset, arr);
+  }
+  if (!arr.some((a) => a.attr === attr)) {
+    arr.push({ attr, value });
+  }
+}
+
+function hasAttrInjection(
+  registry: Map<number, AttrInjection[]>,
+  offset: number,
+  attr: string,
+): boolean {
+  return registry.get(offset)?.some((a) => a.attr === attr) ?? false;
+}
 import htmlTags from 'html-tags';
 import svgTags from 'svg-tags';
 import { mathmlTagNames } from 'mathml-tag-names';
@@ -67,10 +95,13 @@ const NATIVE_TAGS: ReadonlySet<string> = new Set([
 // HTML5 void elements (no closing tag, no children). Used to choose
 // between in-place tag rename (void: keeps parent attrs visible) and
 // open+close-pair emission (non-void: needs explicit content).
-const VOID_ELEMENTS: ReadonlySet<string> = new Set([
-  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-  'link', 'meta', 'source', 'track', 'wbr',
-]);
+// Derived from html-validate's HTML5 metadata so we follow its
+// `void: true` flag rather than maintaining a parallel list.
+const VOID_ELEMENTS: ReadonlySet<string> = new Set(
+  Object.entries(html5Schema as MetaDataTable)
+    .filter(([, meta]) => (meta as { void?: boolean })?.void === true)
+    .map(([tag]) => tag),
+);
 
 function isBooleanAttr(tagName: string, attrName: string): boolean {
   return BOOLEAN_ATTR_KEYS.has(`${tagName}/${attrName}`) || BOOLEAN_ATTR_KEYS.has(`*/${attrName}`);
@@ -478,35 +509,25 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
-  // Per-attr hook-injection offsets. The downstream `processElement`
-  // hook injects `src=DynamicValue` only for offsets in
-  // `imgSplatSrcOffsets` and `alt=DynamicValue` only for offsets in
-  // `imgSplatAltOffsets`. Splitting per-attr (rather than a single
-  // imgSplatOffsets list that triggers both) lets us register only
-  // the attrs the component/template actually guarantees — a
-  // template binding `src={{this.src}}` but not `alt` only registers
-  // `src`, so `wcag/h37` (missing alt) still fires when the consumer
-  // forgets to pass an alt.
-  imgSplatSrcOffsets: number[];
-  imgSplatAltOffsets: number[];
-  // Offsets of substituted `<a>` elements where the addon's chain
-  // records `href` (literal or mustache-bound) but the consumer-side
-  // source-rewrite couldn't fit a `href='   '` placeholder into a
-  // narrow Glimmer-attr slot. The processElement hook calls
-  // `setAttribute('href', DynamicValue)` at parse time so rules
-  // requiring `href` (`attribute-misuse` for `target`/`rel`,
-  // `aria-label-misuse` requiring an interactive `<a>`, ...) see
-  // the attribute as present without needing source-side fitting.
-  // Mirrors the same hook-time mechanism used for `<img>` src/alt.
-  aSplatHrefOffsets: number[];
-  // Per-offset hook-time `type` for void `<input>` substitutions
-  // when source-side `tryInjectInputType` couldn't find a Glimmer-
-  // attr slot to rewrite. Map value: a literal string when the chain
-  // recorded a safe literal (`'checkbox'`, `'submit'`, …), or null
-  // to mean "inject DynamicValue at parse time". Carries a value
-  // because `<input type="…">` is enum-checked by html-validate's
-  // `attribute-allowed-values`.
-  inputSplatTypeOffsets: Map<number, string | null>;
+  // Per-offset attribute injections, applied at parse-time by
+  // transform.ts's `processElement` hook via `setAttribute`. Each
+  // entry pairs an attribute name with either a literal value or
+  // null (inject the DynamicValue placeholder).
+  //
+  // Used when the component-substituted source can't carry an
+  // attribute through a narrow Glimmer-attr slot — e.g.:
+  //   - `<img>` rooted in a component template: `src`/`alt` need to
+  //     be present so `wcag/h37` and required-attr rules don't FP-fire.
+  //   - `<a>` rooted in a chain: `href` must be present so
+  //     `attribute-misuse` (target/rel) doesn't FP-fire on an
+  //     anchor-without-href.
+  //   - `<input>`/`<button>`: `type` must carry a value (literal when
+  //     the chain pinned one, else DynamicValue) so
+  //     `no-implicit-input-type` and `attribute-allowed-values`
+  //     don't fire on a substituted void element.
+  //
+  // Replaces four separate `*SplatOffsets` channels.
+  attrInjections: Map<number, AttrInjection[]>;
   effectiveComponentAttrMap?: Map<string, ComponentAttrs>;
   // When set, `handleBlockStatement` uses the selection from this map
   // (keyed by the BlockStatement's source-start offset) instead of the
@@ -700,8 +721,8 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   // the consumer wrote `type=` themselves.
   if (resolved === 'button') {
     const present = new Set((node.attributes ?? []).map((a) => a.name));
-    if (!present.has('type') && !ctx.inputSplatTypeOffsets.has(startOffset(node))) {
-      ctx.inputSplatTypeOffsets.set(startOffset(node), null);
+    if (!present.has('type') && !hasAttrInjection(ctx.attrInjections, startOffset(node), 'type')) {
+      addAttrInjection(ctx.attrInjections, startOffset(node), 'type', null);
     }
   }
   return resolved;
@@ -762,18 +783,16 @@ function tryInjectImgRequiredAttrsViaHook(
   // precedence — the consumer chose to write the literal, html-validate
   // should validate it. Skip per-attr in that case.
   //
-  // Per-attr precision matters here: the downstream `processElement`
-  // hook injects `src` only for offsets in `imgSplatSrcOffsets` and
-  // `alt` only for offsets in `imgSplatAltOffsets`. For a component
-  // whose template binds `src={{this.src}}` but not `alt`, only the
-  // src set gets the offset — `wcag/h37` (missing alt) still fires
-  // correctly when the consumer forgets to pass an alt.
+  // Per-attr precision matters here: a component whose template
+  // binds `src={{this.src}}` but not `alt` registers only `src` in
+  // `attrInjections` — `wcag/h37` (missing alt) still fires correctly
+  // when the consumer forgets to pass an alt.
   const offset = startOffset(node);
   if (!present.has('src') && attrCtx.attrs['src'] !== undefined) {
-    ctx.imgSplatSrcOffsets.push(offset);
+    addAttrInjection(ctx.attrInjections, offset, 'src', null);
   }
   if (!present.has('alt') && attrCtx.attrs['alt'] !== undefined) {
-    ctx.imgSplatAltOffsets.push(offset);
+    addAttrInjection(ctx.attrInjections, offset, 'alt', null);
   }
 }
 
@@ -828,8 +847,8 @@ function tryInjectImgRequiredAttrs(node: AST.ElementNode, ctx: Context): void {
   // explicitly. Real-bug detection happens at the consumer of THIS
   // component (where they may forget to pass src/alt).
   const offset = startOffset(node);
-  if (!present.has('src')) ctx.imgSplatSrcOffsets.push(offset);
-  if (!present.has('alt')) ctx.imgSplatAltOffsets.push(offset);
+  if (!present.has('src')) addAttrInjection(ctx.attrInjections, offset, 'src', null);
+  if (!present.has('alt')) addAttrInjection(ctx.attrInjections, offset, 'alt', null);
 }
 
 function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
@@ -864,7 +883,7 @@ function tryInjectInputType(node: AST.ElementNode, ctx: Context): void {
   // `attribute-allowed-values` to the parent invocation that owns
   // the value (the consumer can still pass an explicit `type=` to
   // override the projection).
-  ctx.inputSplatTypeOffsets.set(startOffset(node), valueLiteral);
+  addAttrInjection(ctx.attrInjections, startOffset(node), 'type', valueLiteral);
 }
 
 // Generalized attr injection for block-form component substitution.
@@ -1039,21 +1058,17 @@ function tryInjectComponentAttrs(
   // parse time. Scoped to `<a>` because that's where the observed FP
   // class lives; extend if other element/attr pairs surface.
   if (resolvedTag === 'a' && unfitted.has('href') && !existingNonGlimmer.has('href')) {
-    ctx.aSplatHrefOffsets.push(startOffset(node));
+    addAttrInjection(ctx.attrInjections, startOffset(node), 'href', null);
   }
-  // Same fallback for `<button>`: when the chain records `type`
-  // (typical canonical addon shape: `<button type="button"
-  // ...attributes>`) but the consumer's narrow open-tag Glimmer
-  // slots can't fit `type='button'`, the substituted `<button>`
-  // reaches html-validate without a `type` and `no-implicit-
-  // button-type` FP-fires. Reuse the `inputSplatTypeOffsets`
-  // hook channel — the processElement hook keys on tagName so it
-  // injects the right attr regardless of whether the element is
-  // `<input>` or `<button>`.
+  // Same fallback for `<button>`: when the chain records `type` (typical
+  // canonical addon shape: `<button type="button" ...attributes>`) but
+  // the narrow open-tag Glimmer slots can't fit `type='button'`, the
+  // substituted `<button>` reaches html-validate without a `type` and
+  // `no-implicit-button-type` FP-fires.
   if (resolvedTag === 'button' && unfitted.has('type') && !existingNonGlimmer.has('type')) {
     const literal = lookupComponentAttr(node, ctx, 'type');
     const value = isLiteralSafeForAttr(literal) ? literal : null;
-    ctx.inputSplatTypeOffsets.set(startOffset(node), value);
+    addAttrInjection(ctx.attrInjections, startOffset(node), 'type', value);
   }
 }
 
@@ -1484,30 +1499,21 @@ function handleBlockStatement(node: AST.BlockStatement, ctx: Context): void {
 // Public entry point.
 // ---------------------------------------------------------------------------
 
+export interface AttrInjection {
+  attr: string;
+  // null → inject DynamicValue placeholder at parse time.
+  // string → inject this literal value (e.g. 'checkbox' for <input type>).
+  value: string | null;
+}
+
 export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
-  // Per-attr offsets for hook-time `setAttribute` injection. The
-  // transformer's `processElement` hook injects `src=DynamicValue`
-  // only at offsets in `imgSplatSrcOffsets` and `alt=DynamicValue`
-  // only at offsets in `imgSplatAltOffsets`. Splitting per-attr
-  // sidesteps the narrow-slot problem (a 13-char `...attributes`
-  // slot can't fit two 9-char `attr='   '` placeholders) AND lets
-  // a component-substituted `<img>` register only the attrs its
-  // template actually guarantees — so a template binding
-  // `src={{this.src}}` but not `alt` only registers `src`, and
-  // `wcag/h37` (missing alt) still fires when the consumer forgets
-  // to pass an alt.
-  imgSplatSrcOffsets: number[];
-  imgSplatAltOffsets: number[];
-  // Offsets of substituted `<a>` elements where href should be
-  // hook-injected (see Context.aSplatHrefOffsets for rationale).
-  aSplatHrefOffsets: number[];
-  // Map of offsets → `type` value for substituted `<input>` elements
-  // where source-side rewriting found no Glimmer-attr slot
-  // (see Context.inputSplatTypeOffsets for rationale).
-  inputSplatTypeOffsets: Map<number, string | null>;
+  // Per-offset attribute injections — applied at parse-time by
+  // transform.ts's `processElement` hook via `setAttribute`. See
+  // `Context.attrInjections` for rationale.
+  attrInjections: Map<number, AttrInjection[]>;
   // Rule IDs that the consumer should disable for this Source as a whole —
   // populated when the template contains structural patterns the static
   // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
@@ -1523,10 +1529,7 @@ export interface BlankErrorResult {
   error: Error;
   dynamicContentOffsets?: undefined;
   disableForRules?: undefined;
-  imgSplatSrcOffsets?: undefined;
-  imgSplatAltOffsets?: undefined;
-  aSplatHrefOffsets?: undefined;
-  inputSplatTypeOffsets?: undefined;
+  attrInjections?: undefined;
 }
 
 function blankTemplateContent(
@@ -1564,10 +1567,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
-    imgSplatSrcOffsets: [],
-    imgSplatAltOffsets: [],
-    aSplatHrefOffsets: [],
-    inputSplatTypeOffsets: new Map(),
+    attrInjections: new Map(),
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
       for (const [s, e] of ctx.fullyBlankedRanges) {
@@ -1630,10 +1630,7 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
-    imgSplatSrcOffsets: ctx.imgSplatSrcOffsets,
-    imgSplatAltOffsets: ctx.imgSplatAltOffsets,
-    aSplatHrefOffsets: ctx.aSplatHrefOffsets,
-    inputSplatTypeOffsets: ctx.inputSplatTypeOffsets,
+    attrInjections: ctx.attrInjections,
     disableForRules: detectStructuralYieldRules(
       ast,
       branchSelections,
@@ -1651,26 +1648,23 @@ function blankTemplateContent(
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
-//      because the yield was blanked away). Wrapper markup like
-//      `<form><div>{{yield}}</div></form>` IS suppressed; a form with
-//      a real `<button type='submit'>` alongside the yield is NOT
-//      (the rule wouldn't fire and the disable would itself trigger
-//      `no-unused-disable`).
+//      because the yield was blanked away).
 //
 //   2. Input-driven `<form {{on "input" …}}>` — search-as-you-type /
-//      live-filter pattern. The `{{on "input"}}` modifier signals that
-//      the form's action is driven by input events, not submission;
-//      a separate submit button would be ceremonial (helps no real
-//      user). wcag/h32 is suppressed regardless of submit-button or
-//      yield presence.
+//      live-filter pattern; submit button would be ceremonial.
 //
-//   3. Unresolvable PascalCase / dotted wrapper containing content-
-//      restricted structural children (`<option>`/`<th>`/`<li>`/...).
-//      At runtime such wrappers typically render the structurally-
-//      correct parent (`<select>`/`<thead>`/`<ul>`) via a yield chain
-//      we can't trace statically. Suppress `element-permitted-content`
-//      so the FP doesn't surface. Same per-Source-suppression
-//      trade-off as cases 1 and 2.
+//   3. Curried-via-yield-hash patterns the resolver can't pin: an
+//      unresolvable PascalCase wrapper containing structural children
+//      (`<li>`/`<option>`/`<th>`/...), OR a structural-content-parent
+//      wrapper (`<ol>`/`<select>`/...) with a transparent dotted
+//      direct child. The runtime DOM has the structurally-correct
+//      parent via a yield chain we can't statically follow (e.g.
+//      `(yield (hash X=PassThrough))` where PassThrough yields
+//      without producing an element). Suppress
+//      `element-permitted-content` / `element-permitted-parent` at
+//      the Source level. Same per-Source-suppression trade-off as
+//      cases 1 and 2; addressable case-by-case by extending the
+//      resolver to follow specific yield-chain shapes.
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
@@ -1756,23 +1750,10 @@ function detectStructuralYieldRules(
           // content-restricted structural children (`<option>`, `<th>`,
           // `<li>`, `<optgroup>`, `<tr>`). At runtime such wrappers
           // typically render the structurally-correct parent
-          // (`<select>`, `<thead>`, `<ul>`, …) via a yield chain, so
-          // the static blanker's transparent-blanking puts the
-          // structural children under whatever native ancestor
-          // happens to be in source — almost always invalid, almost
-          // always FP-firing `element-permitted-content`.
-          //
-          // We can't precisely resolve the runtime parent without
-          // multi-level cross-file yield-chain analysis (deferred).
-          // Suppress the rule for the Source instead — same per-Source
-          // suppression trade-off as the form/fieldset cases above.
-          //
-          // Both `element-permitted-content` and `element-permitted-
-          // parent` fire on the same misnesting (e.g. `<li>` under
-          // `<div>` triggers e-p-c "div doesn't allow li" AND e-p-p
-          // "li requires ul/ol/menu"). Suppress both — they're a
-          // matched pair and treating them separately would leave
-          // half-suppressed noise.
+          // (`<select>`, `<thead>`, `<ul>`, …) via a yield chain we
+          // can't statically pin (curried-via-yield-hash patterns
+          // where the parent's `(yield (hash X=...))` crosses an
+          // addon boundary, etc.). Suppress at the Source level.
           out.push('element-permitted-content');
           out.push('element-permitted-parent');
         } else if (
@@ -1783,22 +1764,11 @@ function detectStructuralYieldRules(
           // Mirror of the case above for the curried-yield-hash
           // pattern from the OPPOSITE direction: the WRAPPER resolves
           // to a structural-content-restrictive native (`<ol>`,
-          // `<select>`, `<table>`, …) AND has a dotted direct child
-          // that resolves to 'transparent' (curried-via-yield-hash —
+          // `<select>`, …) AND has a dotted direct child that
+          // resolves to 'transparent' (curried-via-yield-hash —
           // `<HdsStepperList as |S|><S.Step>...`). Static blanking
           // can't see through `<S.Step>` to its template's `<li>`
-          // wrapper, so any block-level content INSIDE `<S.Step>`
-          // looks like a direct child of the wrapper's `<ol>` and
-          // FP-fires `element-permitted-content` ("<div> not
-          // permitted under <ol>").
-          //
-          // Suppression is gated by BOTH conditions: the wrapper
-          // having a content-restrictive permittedContent AND the
-          // direct child being transparent-dotted. A transparent
-          // dotted child under a permissive wrapper (like `<div>`)
-          // doesn't trip these rules, and a non-transparent dotted
-          // child resolves to its actual tag (handled by the case
-          // above).
+          // wrapper.
           out.push('element-permitted-content');
           out.push('element-permitted-parent');
         }
@@ -1860,65 +1830,72 @@ function selectBranch(
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
 
-// HTML elements with restrictive content models — they only accept
-// specific native parents. When these appear as children of an
-// unresolvable component invocation, the wrapper is presumed to render
-// the structurally-correct parent at runtime via yield chain. Listing
-// kept narrow on purpose: every entry is a tag whose presence inside a
-// PascalCase wrapper is ambiguous evidence of "the wrapper renders my
-// only valid parent". Adding more entries widens suppression.
+// CONTENT_RESTRICTED_STRUCTURAL_CHILDREN and STRUCTURAL_CONTENT_PARENTS
+// are *curated* sets, not direct derivations from html-validate's HTML5
+// schema. The pure derivation (any tag named as a child in some
+// `permittedContent`) is too wide for our purpose: it includes flow
+// content like `<div>`/`<p>` (because `<dl>` permits `<div>` and lots
+// of elements permit `<p>`), and `<button>`/`<source>`/`<track>` —
+// suppressing on those would mask real bugs.
+//
+// The narrow criterion the curated list captures: tags whose runtime
+// behavior REQUIRES a specific structural parent OR INTERPOSES a
+// structural child (HdsTabs interposes `<li>` in `<ul>`; fieldset
+// may interpose `<legend>` from a yielded slot; etc.). That's an
+// empirical pattern, not a clean function of `permittedContent`.
+//
+// The curated lists are validated at module load against the live
+// HTML5 schema. If a future html-validate revision stops listing one
+// of these as a named permittedContent entry the boot assertion
+// surfaces it as a build-time error rather than silent suppression
+// breakage.
+
 const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
-  'option',
-  'optgroup',
-  'th',
-  'td',
-  'tr',
-  'thead',
-  'tbody',
-  'tfoot',
-  'caption',
-  'colgroup',
-  'col',
-  'li',
-  'legend',
-  'summary',
+  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
+  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
 ]);
 
-// Native parents whose `permittedContent` (per html-validate's HTML5
-// metadata) constrains direct children to a specific schema rather
-// than accepting flow content broadly. Mirror of the children set
-// above: each tag here is the legal parent of one or more entries
-// in `CONTENT_RESTRICTED_STRUCTURAL_CHILDREN`. When a wrapper
-// resolves to one of these AND has a transparent dotted direct
-// child (curried-via-yield-hash, can't be statically pinned), the
-// runtime DOM may interpose a structural intermediate (`<li>`,
-// `<option>`, `<tr>`, …) that the static blanker can't see —
-// suppress the source-wide content rules instead of FP-firing on
-// the consumer's blanker output.
 const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
-  'ol',
-  'ul',
-  'menu',
-  'select',
-  'optgroup',
-  'table',
-  'thead',
-  'tbody',
-  'tfoot',
-  'tr',
-  'colgroup',
-  'fieldset',
-  'details',
-  'picture',
-  'ruby',
-  'dl',
+  'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',
+  'tfoot', 'tr', 'colgroup', 'fieldset', 'details', 'picture', 'ruby', 'dl',
 ]);
+
+(function validateStructuralSetsAgainstHtml5Schema(): void {
+  const namedChildren = new Set<string>();
+  const parentsWithNamedChildren = new Set<string>();
+  for (const [tag, meta] of Object.entries(html5Schema as MetaDataTable)) {
+    if (tag === '*' || tag.startsWith('#')) continue;
+    const permitted = (meta as { permittedContent?: ReadonlyArray<unknown> })?.permittedContent;
+    if (!Array.isArray(permitted)) continue;
+    let hasNamed = false;
+    for (const entry of permitted) {
+      if (typeof entry !== 'string') continue;
+      if (entry.startsWith('@')) continue;
+      namedChildren.add(entry.replace(/[?*+]$/, ''));
+      hasNamed = true;
+    }
+    if (hasNamed) parentsWithNamedChildren.add(tag);
+  }
+  for (const c of CONTENT_RESTRICTED_STRUCTURAL_CHILDREN) {
+    if (!namedChildren.has(c)) {
+      throw new Error(
+        `[html-validate-ember] '${c}' is no longer a named-child entry in any HTML5 element's permittedContent — html-validate metadata may have changed`,
+      );
+    }
+  }
+  for (const p of STRUCTURAL_CONTENT_PARENTS) {
+    if (!parentsWithNamedChildren.has(p)) {
+      throw new Error(
+        `[html-validate-ember] '${p}' no longer lists named children in HTML5 permittedContent — html-validate metadata may have changed`,
+      );
+    }
+  }
+})();
 
 // True when `node` has at least one direct child that is a dotted
-// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose Glint
-// resolution is `'transparent'` — i.e. a curried-via-yield-hash
-// component that the static analysis couldn't pin to a specific
-// native tag.
+// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution is
+// 'transparent' — i.e. a curried-via-yield-hash component the resolver
+// couldn't pin to a specific native tag.
 function hasTransparentCurriedChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
@@ -1944,58 +1921,28 @@ function hasTransparentCurriedChild(
   return check(node.children);
 }
 
-// True when the element node has at least one direct child that is a
-// content-restricted structural element (`<option>`, `<th>`, `<li>`,
-// etc.). Mustaches and BlockStatements descend through; we only check
-// for native ElementNode children. Doesn't recurse into other
-// component invocations — those have their own rule check.
+// True when the element node has a direct child that is either a
+// native structural-child element (literal `<li>`/`<th>`/...) under
+// an unpinned wrapper, OR a dotted curried sub-component that resolved
+// to a structural tag. Two cases:
 //
-// Components Glint resolved to a specific native tag are excluded: we
-// trust that resolution and let `element-permitted-content` fire
-// normally. Wrappers that are MISSING from the map AND wrappers Glint
-// resolved as `'transparent'` (children float to parent because the
-// element-type was `unknown`/`any` or generic `HTMLElement`) both fall
-// through to the children check — those are the cases where we can't
-// statically tell what runtime tag the wrapper renders.
+//  A) Wrapper unresolved/transparent: literal structural children
+//     suggest the wrapper renders the structurally-correct parent at
+//     runtime via yield chain. Trigger.
+//
+//  B) Wrapper pinned to a native tag, dotted child resolves to a
+//     structural tag (HdsTabs as |T|<T.Tab>): the curried child's
+//     runtime parent may be a different native ancestor in the parent
+//     template (the `(hash Tab=...)` lands inside `<ul role="tablist">`
+//     not the wrapper's outer `<div>`). Gate to DOTTED tag names —
+//     a non-dotted child like `<HdsListItem>` under a pinned wrapper
+//     IS the wrapper's runtime parent, so suppressing there would
+//     mask real bugs.
 function containsContentRestrictedStructuralChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): boolean {
-  // Two cases trigger this suppression:
-  //
-  //  A) Wrapper is unresolved or resolved as 'transparent': we don't
-  //     know what tag wraps the yielded children at runtime. If any
-  //     child is a structural-child element (literal `<li>`/`<th>`/
-  //     ...) OR a curried sub-component that resolves to one, presume
-  //     the wrapper renders the structurally-correct parent (`<ul>`/
-  //     `<thead>`/...) via yield chain.
-  //
-  //  B) Wrapper resolves to a SPECIFIC native tag, AND has CURRIED
-  //     SUB-COMPONENT children that resolve to structural tags. This
-  //     is the `<HdsTabs as |T|><T.Tab>` pattern: `<HdsTabs>`
-  //     resolves to `<div>` (its splatted root), but its template
-  //     wraps `{{yield (hash Tab=...)}}` inside `<ul role="tablist">`.
-  //     The curried `<T.Tab>` resolves to `<li>` (via PR #18), but at
-  //     runtime that `<li>` lands inside the addon's `<ul>`, not the
-  //     outer `<div>`. Suppress.
-  //
-  // We DO NOT suppress when the wrapper resolves to a specific native
-  // tag AND structural children are LITERAL (case A's `literal-li-in-
-  // resolved-div` doesn't apply because case B excludes literals).
-  // Literal `<th>` inside `<C.Options>` resolved to `<select>` is the
-  // glint-resolved-no-suppression test case: a real bug we want to
-  // catch. The runtime DOM puts `<th>` directly inside `<select>`
-  // (which doesn't allow th); rule must fire.
-  // Walk only the arm that matches what the blanker emits in this pass.
-  // Without `selectBranch`, descending into both arms of a
-  // `{{#if}}/{{else}}` would let one branch's structural children
-  // trigger Source-wide suppression even when that branch isn't being
-  // emitted — silently masking real `element-permitted-content`
-  // violations in the active branch.
-  // Determine whether the wrapper itself resolves to a specific
-  // native tag (for case-B gating). We compute it once up front and
-  // pass into `check` as a closure binding.
   const wrapperResolved =
     glintComponentTagMap && node.loc.start
       ? glintComponentTagMap.get(`${node.loc.start.line}:${node.loc.start.column}`)
@@ -2006,30 +1953,9 @@ function containsContentRestrictedStructuralChild(
   function check(stmts: ReadonlyArray<AST.Statement>): boolean {
     for (const stmt of stmts) {
       if (stmt.type === 'ElementNode') {
-        // (A) Native structural-child literally in source. Trigger
-        // suppression only when the wrapper isn't pinned — a pinned
-        // wrapper IS the runtime parent for literal children, so a
-        // literal `<th>` inside a resolved `<select>` is a real bug.
         if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag) && !wrapperPinned) {
           return true;
         }
-        // (B) Curried sub-component invocation that resolves to a
-        // structural tag. Trigger suppression in BOTH wrapper states
-        // — even when the wrapper resolves to a specific native tag,
-        // its template may wrap `{{yield (hash X=...)}}` in a
-        // different native ancestor (the HdsTabs pattern), so the
-        // runtime parent for the curried child isn't the wrapper's
-        // resolved tag.
-        //
-        // Gate to DOTTED tag names (`<T.Tab>`, `<This.Foo>`): hash-
-        // yielded curried components are always dotted on the
-        // consumer side. A non-dotted single-segment PascalCase
-        // child (`<HdsListItem>`) under a pinned wrapper has the
-        // wrapper itself as the runtime parent — suppressing here
-        // would hide real `<div><li>` violations. The narrower
-        // gate (suggested by Copilot review) preserves case (B)'s
-        // value on the curried/yield-hash pattern while not masking
-        // direct nesting bugs.
         if (glintComponentTagMap && stmt.loc.start && stmt.tag.includes('.')) {
           const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
           const childResolved = glintComponentTagMap.get(childKey);
@@ -2047,6 +1973,8 @@ function containsContentRestrictedStructuralChild(
   return check(node.children);
 }
 
+// HTML elements with restrictive content models — they only accept
+// specific native parents. When these appear as children of an
 function formHasInputModifier(form: AST.ElementNode): boolean {
   for (const modifier of form.modifiers ?? []) {
     if (modifier.path.type !== 'PathExpression') continue;

@@ -13,19 +13,17 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
-import { isNativeTag } from '../blank.js';
-import {
-  getSplattedRootsForFile,
-  extractSplattedRootFromTemplate,
-  getPolymorphicResolvedTag,
-} from './component-attrs.js';
-import {
-  resolveOuterWrapperTag,
-  resolveOuterWrapperFromConsumerImport,
-} from './outer-wrapper-resolver.js';
+import { Preprocessor } from 'content-tag';
+import { preprocess as glimmerPreprocess, traverse, type AST } from '@glimmer/syntax';
+
+import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
+import { findTemplateSource } from './resolver/template-source.js';
+import { resolveTemplate, resolveYieldHashBinding, type Resolution } from './resolver/walk.js';
+
+const consumerPreprocessor = new Preprocessor();
 
 // Minimal local typing for the @glint/ember-tsc API surface we use.
 // Avoids importing types from @glint/ember-tsc (an optional peerDep)
@@ -549,78 +547,201 @@ const GENERIC_BASE_ELEMENT_TYPES: ReadonlySet<string> = new Set([
   'MathMLElement',
 ]);
 
-// Pick the substitution tag/attrs from an `OuterWrapperResolution`.
-//
-// Heuristic: if the outer wrapper tag is structurally meaningful
-// (in STRUCTURAL_CHILD_TAGS — `<li>`, `<tr>`, etc.), keep outer;
-// the consumer-side parent-context check matters and dropping outer
-// would let arbitrary content sit directly under (e.g.) `<ul>`.
-//
-// Otherwise (outer is permissive — `<div>`, `<span>`, `<form>`, etc.)
-// AND the resolution computed a different yield-ancestor: prefer the
-// yield-ancestor. The children's content-model validation hinges on
-// what wraps them at runtime; for a component like `<HdsTabs>` whose
-// template is `<div>...<ul>{{yield}}</ul>...</div>`, the `<ul>` is
-// where children land — using `<div>` lets `<li>`-yielded children
-// sit under `<div>` and FP-fire `element-permitted-content`.
-//
-// Returns the chosen tag + attrs + hasSplat. The caller uses these
-// for both `componentTagMap` and `componentAttrMap`.
-function chooseSubstitutionFromResolution(
-  res: { tag: string; attrs: Record<string, string>; hasSplat: boolean; yieldAncestorTag?: string | null; yieldAncestorAttrs?: Record<string, string> },
-): { tag: string; attrs: Record<string, string>; hasSplat: boolean } {
-  const yieldTag = res.yieldAncestorTag;
-  if (
-    yieldTag &&
-    yieldTag !== res.tag &&
-    !STRUCTURAL_CHILD_TAGS.has(res.tag) &&
-    isNativeTag(yieldTag)
-  ) {
-    return {
-      tag: yieldTag,
-      attrs: res.yieldAncestorAttrs ?? {},
-      // The yield-ancestor accepts whatever consumer-yielded content
-      // flows through, so it always behaves as having content (akin
-      // to a splatted root for child-content purposes).
-      hasSplat: true,
-    };
-  }
-  return { tag: res.tag, attrs: res.attrs, hasSplat: res.hasSplat };
-}
-
 // Tags whose role on the consumer's parent context is structurally
 // meaningful — they require specific parents (`<li>` requires
 // `<ul>`/`<ol>`/`<menu>`, etc.). When a component's outer wrapper is
 // one of these, KEEP the outer for substitution: dropping it would
-// break the consumer's parent-context validation (e.g. losing `<li>`
-// would let arbitrary content sit directly under `<ul>`).
-//
-// For other outer wrappers (`<div>`, `<span>`, `<form>`, etc. — tags
-// that accept flow content broadly), prefer the yield-nearest-
-// ancestor tag (when it differs and is more restrictive). The
-// children's content-model validation hinges on what wraps them at
-// runtime, which is the yield-ancestor in the addon's template, not
-// the outermost div.
-//
-// Mirrors `CONTENT_RESTRICTED_STRUCTURAL_CHILDREN` in blank.ts (these
-// are the same tags — kept here because lib/glint.ts shouldn't depend
-// on the heuristic-suppression set).
+// break the consumer's parent-context validation. For permissive
+// outer wrappers (`<div>`, `<span>`, etc.), prefer the yield-ancestor
+// when it differs — that's where consumer-yielded content actually
+// lands at runtime, and content-model rules hinge on it.
 const STRUCTURAL_CHILD_TAGS: ReadonlySet<string> = new Set([
-  'option',
-  'optgroup',
-  'th',
-  'td',
-  'tr',
-  'thead',
-  'tbody',
-  'tfoot',
-  'caption',
-  'colgroup',
-  'col',
-  'li',
-  'legend',
-  'summary',
+  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
+  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
 ]);
+
+// Translate a Resolution from the canonical resolver into the
+// componentTagMap + componentAttrMap shape that blank.ts consumes.
+function applyResolution(
+  componentTagMap: Map<string, string>,
+  componentAttrMap: Map<string, ComponentAttrs>,
+  key: string,
+  resolution: Resolution,
+): void {
+  if (resolution.kind !== 'tag') return;
+  if (!isNativeTag(resolution.tag)) return;
+
+  let chosenTag = resolution.tag;
+  let chosenAttrs: Map<string, string> = resolution.attrs;
+  let hasSplat = resolution.hasSplat;
+  const yieldTag = resolution.yieldAncestorTag;
+  if (
+    yieldTag &&
+    yieldTag !== resolution.tag &&
+    !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
+    isNativeTag(yieldTag)
+  ) {
+    chosenTag = yieldTag;
+    chosenAttrs = resolution.yieldAncestorAttrs ?? new Map();
+    hasSplat = true;
+  }
+
+  componentTagMap.set(key, chosenTag);
+  componentAttrMap.set(key, {
+    tag: chosenTag,
+    attrs: Object.fromEntries(chosenAttrs),
+    hasSplat,
+  });
+}
+
+// Parse the consumer file's <template> blocks and build:
+//   1. argsByLoc: line:col → @arg literal values for each PascalCase
+//      invocation. Lets the resolver propagate `@tag="li"` etc.
+//   2. dottedBindings: line:col → resolution context for each dotted
+//      invocation `<X.Y>`. Records the enclosing block's binder tag
+//      and the hash key, so the resolver can follow the parent's
+//      `{{yield (hash Y=...)}}` chain.
+
+interface DottedBinding {
+  /** Enclosing block's binder tag (e.g. 'HdsStepperList' for `<HdsStepperList as |S|>`). */
+  binderTag: string;
+  /** The hash key from the dotted invocation: `<S.Step>` → 'Step'. */
+  hashKey: string;
+  /** Args the consumer passed to the binder. Lets `(hash Y=@arg)` chain through. */
+  binderArgs: Map<string, string>;
+  /** line:col of the binder invocation (lookup key into a binder→decl map
+   *  populated during the Glint walk). Lets us reach binder templates
+   *  that live in the same consumer file (no import to follow). */
+  binderKey: string;
+}
+
+interface ConsumerInfo {
+  argsByLoc: Map<string, Map<string, string>>;
+  dottedBindings: Map<string, DottedBinding>;
+}
+
+function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
+  const argsByLoc = new Map<string, Map<string, string>>();
+  const dottedBindings = new Map<string, DottedBinding>();
+  let blocks: Array<{ contents: string; tagName: string }>;
+  try {
+    blocks = consumerPreprocessor.parse(contents, { filename });
+  } catch {
+    return { argsByLoc, dottedBindings };
+  }
+  const templates = blocks.filter((b) => b.tagName === 'template');
+
+  // A block-param scope binds names introduced via `<Binder as |x y|>`.
+  // Inner scopes shadow outer; we walk a stack while traversing so a
+  // nested `<A as |x|><B as |x|>` resolves `x` to the inner B-binding.
+  interface Scope {
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }
+
+  for (const block of templates) {
+    let ast: AST.Template;
+    try {
+      // Match `blankTemplateContent`'s preprocessing: strip TS-flavored
+      // block-param type annotations (`as |x: T|`) before parsing so
+      // typed-block consumers don't get silently dropped (which would
+      // leave argsByLoc/dottedBindings empty for their invocations).
+      ast = glimmerPreprocess(stripBlockParamTypeAnnotations(block.contents), {
+        mode: 'codemod',
+      });
+    } catch {
+      continue;
+    }
+    const scopeStack: Scope[] = [];
+    function walk(node: AST.Node): void {
+      if (node.type === 'ElementNode') {
+        const elem = node;
+        // Args + dotted-binding lookup happen on entry, before pushing
+        // any scope this element introduces. Block-params shadow inside
+        // its body, not at the binder itself.
+        if (/^[A-Z]/.test(elem.tag) && elem.loc.start) {
+          const args = collectLiteralArgs(elem);
+          const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
+          if (args.size > 0) argsByLoc.set(key, args);
+          if (elem.tag.includes('.')) {
+            const [paramName, ...tail] = elem.tag.split('.');
+            const binding = lookupParam(scopeStack, paramName!);
+            if (binding && tail.length === 1) {
+              dottedBindings.set(key, {
+                binderTag: binding.binderTag,
+                hashKey: tail[0]!,
+                binderArgs: binding.binderArgs,
+                binderKey: binding.binderKey,
+              });
+            }
+          }
+        }
+        // Push any block-params this element introduces.
+        const pushedCount = elem.blockParams.length;
+        const elemArgs = collectLiteralArgs(elem);
+        const binderKey = elem.loc.start
+          ? `${elem.loc.start.line}:${elem.loc.start.column}`
+          : '';
+        for (const paramName of elem.blockParams) {
+          scopeStack.push({
+            paramName,
+            binderTag: elem.tag,
+            binderArgs: elemArgs,
+            binderKey,
+          });
+        }
+        for (const child of elem.children) walk(child);
+        for (let i = 0; i < pushedCount; i++) scopeStack.pop();
+        return;
+      }
+      if (node.type === 'BlockStatement') {
+        for (const child of node.program.body) walk(child);
+        if (node.inverse) for (const child of node.inverse.body) walk(child);
+        return;
+      }
+      if (node.type === 'Template') {
+        for (const child of node.body) walk(child);
+      }
+    }
+    walk(ast);
+  }
+  return { argsByLoc, dottedBindings };
+}
+
+function collectLiteralArgs(node: AST.ElementNode): Map<string, string> {
+  const args = new Map<string, string>();
+  for (const attr of node.attributes) {
+    if (!attr.name.startsWith('@')) continue;
+    const argName = attr.name.slice(1);
+    if (attr.value.type === 'TextNode') {
+      args.set(argName, attr.value.chars);
+    }
+  }
+  return args;
+}
+
+function lookupParam(
+  stack: ReadonlyArray<{
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }>,
+  name: string,
+): { binderTag: string; binderArgs: Map<string, string>; binderKey: string } | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i]!.paramName === name) {
+      return {
+        binderTag: stack[i]!.binderTag,
+        binderArgs: stack[i]!.binderArgs,
+        binderKey: stack[i]!.binderKey,
+      };
+    }
+  }
+  return null;
+}
 
 function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
   const map = new Map<string, string>();
@@ -1018,12 +1139,20 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
 
   const attrTypeMap = new Map<string, AttrTypeInfo>();
   const componentTagMap = new Map<string, string>();
-  // Maps "line:column" of a component invocation to its resolved
-  // splatted-root attributes (literal values from the component's
-  // template, e.g. `{ type: 'range', min: '0', max: '100' }` for an
-  // <input>-rooted slider). Built alongside componentTagMap when we
-  // can resolve the component's declaration source file.
   const componentAttrMap = new Map<string, ComponentAttrs>();
+  // Per-invocation consumer-side info: @args (for arg propagation) and
+  // dotted-binding context (for `<S.Step>` curried-via-yield-hash
+  // resolution).
+  const { argsByLoc: consumerArgsByLoc, dottedBindings } = buildConsumerInfo(
+    filename,
+    contents,
+  );
+  // Populated as we resolve binder invocations during walkMapping. Keys
+  // by binder's line:col; value is its TemplateSource. Lets dotted-
+  // child resolution reach binders defined in the consumer file
+  // itself (no import to follow). Initialized lazy: only created if
+  // the consumer has any dotted invocations needing it.
+  const binderSourceByKey = new Map<string, ReturnType<typeof findTemplateSource>>();
   if (!ctx.elementTypeToTag) {
     ctx.elementTypeToTag = buildElementTypeToTag(ts, program);
   }
@@ -1072,17 +1201,16 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       const tag = emitCall ? resolveComponentElement(ts, checker, emitCall, elementTypeToTag) : null;
       const elementLoc = node.parent.sourceNode.loc.start;
       const key = locKey(elementLoc.line, elementLoc.column);
-      // Tracks whether the same-package outer-wrapper override path
-      // ran for this invocation. When false, the import-based fallback
-      // (which doesn't depend on Glint's symbol resolution) takes
-      // over below.
-      let sameTransitivePackageOuterRan = false;
       if (tag) {
         componentTagMap.set(key, tag);
       }
-      // Resolve the component's declaration source file (cross-file or
-      // same-file). When found, parse its `<template>` for the splatted
-      // root and stash literal attributes for blank.ts to inject.
+      // Run the canonical resolver: walks the component's template AST,
+      // handles polymorphic-tag chain, PascalCase wrapper recursion,
+      // conditional convergence, and yield-ancestor analysis in one
+      // pass. Replaces the previous six-path resolution sprawl
+      // (leaf-fallback, outer-wrapper override, polymorphic chain,
+      // classic-.hbs fallback, import-based outer-wrapper fallback,
+      // dual-tag heuristic).
       if (emitCall) {
         const declFile = findComponentDeclSourceFile(ts, checker, emitCall);
         // Skip the same-package outer-wrapper override when the
@@ -1096,213 +1224,64 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
         const decl = symbol?.declarations?.[0];
         const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
-        if (declFile && isTopLevel) {
-          const gtsPath = resolveGtsPath(declFile);
-          if (gtsPath) {
-            const roots = getSplattedRootsForFile(gtsPath);
-            // Pick the root whose `<template>` block falls inside the
-            // resolving declaration's source range. content-tag's
-            // preprocessor preserves byte positions from the original
-            // .gts in the emitted .ts (so TS's `getStart()`/`getEnd()`
-            // and the block ranges share a coordinate system). For a
-            // class declaration the template is inside the class
-            // body; for a `const Foo = <template>...</template>;` the
-            // template is inside the variable's initializer. In both
-            // cases the template range falls within the declaration
-            // range. This makes multi-template files (helpers +
-            // default export, multi-export TOC sets) resolve each
-            // consumer to its own root rather than blindly picking
-            // `roots[0]` and cross-pollinating.
-            //
-            // Falls back to `roots[0]` only for single-template files
-            // (the common case; the in-range comparison would still
-            // succeed there, but we keep the fast path explicit).
-            let first: ComponentAttrs | null = null;
-            if (roots.length === 1) {
-              first = roots[0]!;
-            } else if (decl) {
-              const declStart = decl.getStart();
-              const declEnd = decl.getEnd();
-              first =
-                roots.find(
-                  (r) =>
-                    r.templateStart !== undefined &&
-                    r.templateEnd !== undefined &&
-                    r.templateStart >= declStart &&
-                    r.templateEnd <= declEnd,
-                ) ?? null;
-            }
-            if (first) {
-              componentAttrMap.set(key, first);
-              // When Glint's TS-only resolution couldn't pin a specific
-              // tag (`null` or `'transparent'`) — typically because the
-              // component declares `Element: HTMLElement` (bare generic),
-              // or because the type chain didn't propagate cleanly across
-              // a barrel re-export — fall back to the splatted-root's tag
-              // from the component's own template. The runtime render IS
-              // that tag (the template literally writes `<li ...attributes>`,
-              // `<button ...attributes>`, etc.), so this is at least as
-              // accurate as 'transparent' and lets `element-permitted-
-              // content` validate the correct parent context.
-              if ((tag === null || tag === 'transparent') && isNativeTag(first.tag)) {
-                componentTagMap.set(key, first.tag);
-              }
-            }
-            // `(element ...)` polymorphic-tag chain trace: when the
-            // declaring file's template chain bottoms out in a
-            // Glimmer `(element X)` helper and X traces to a literal
-            // (via `@arg="literal"` propagation through wrapper
-            // hops), surface that literal as the resolved tag. Glint
-            // can't see through `(element ...)` — its TS-level union
-            // (`HTMLSpanElement | HTMLHeadingElement | ...`) picks
-            // an arbitrary branch (typically `<h1>`) when the runtime
-            // tag is something different (e.g. `<li>` for HDS's
-            // `<HdsDropdownListItemTitle>`). The chain trace
-            // overrides Glint's pick with the concrete propagated
-            // value.
-            //
-            // Always run the chain trace: Glint's TS-side resolution
-            // CAN already be a concrete native tag (e.g. `<h1>`
-            // arbitrarily picked from a `HTMLSpanElement |
-            // HTMLHeadingElement | ...` union), and that "concrete"
-            // value is exactly what's wrong when the runtime
-            // dispatches via `(element ...)`. The polymorphic chain
-            // is the source of truth here; skip it only when Glint
-            // gave us a tag AND the chain returned no override.
-            //
-            // Performance: the chain is cached per addon file
-            // (polymorphicCache); repeated invocations of the same
-            // component cost a Map.get. Cold cost is one file
-            // read + parse per addon hop, recursing through the
-            // import chain — bounded by the same shape as the
-            // outer-wrapper-resolver and depth-capped to 10.
-            // Measured: full ecosystem-ci run with vs. without the
-            // polymorphic chain (~1500 files across 12 targets) is
-            // within noise (12:33.04 vs 12:33.57). The chain is
-            // cached per addon file and only kicks in when the
-            // leaf-fallback already opened the addon's `.gts` source,
-            // so the overhead is bounded.
-            // Outer-wrapper override: when the component's template
-            // wraps the splatted leaf in an OUTER native ancestor
-            // (e.g. `<ListItem><a ...attributes>{{yield}}</a></ListItem>`
-            // where ListItem renders `<li>`), Glint resolves the
-            // consumer-side substitution to the LEAF type (`<a>`).
-            // That fires `element-permitted-content` when the consumer
-            // places the component under a structurally-restrictive
-            // parent (`<ul>`, `<ol>`, etc.) even though the runtime
-            // DOM is `<ul><li><a>…</a></li></ul>` (legal). Walk the
-            // component's template AST to find the OUTERMOST native
-            // ancestor (recursing through PascalCase wrappers via local
-            // imports), and prefer that tag when it differs from the
-            // leaf-resolved tag. Single-substitution trade-off: the
-            // inner-content semantics (e.g. `<button>`-under-`<a>`)
-            // are lost on the consumer-side lint pass; the addon's
-            // own template lint catches them on its side.
-            const outerWrapper = resolveOuterWrapperTag(gtsPath);
-            const currentResolved = componentTagMap.get(key);
-            sameTransitivePackageOuterRan = true;
-            if (outerWrapper !== null && isNativeTag(outerWrapper.tag)) {
-              const chosen = chooseSubstitutionFromResolution(outerWrapper);
-              if (chosen.tag !== currentResolved) {
-                componentTagMap.set(key, chosen.tag);
-              }
-              componentAttrMap.set(key, {
-                tag: chosen.tag,
-                attrs: chosen.attrs,
-                hasSplat: chosen.hasSplat,
-              });
-            }
-          }
-        }
-        // `(element ...)` polymorphic-tag chain trace: independent
-        // of the same-package leaf-fallback above. Glint can't see
-        // through the Glimmer `(element X)` helper — its TS-level
-        // union (`HTMLSpanElement | HTMLHeadingElement | ...`) picks
-        // an arbitrary branch (typically `<h1>`) when the runtime
-        // tag is something different (e.g. `<li>` for HDS's
-        // `<HdsDropdownListItemTitle>` whose chain bottoms out in
-        // `(element this.componentTag)`). The chain trace overrides
-        // Glint's pick with the literal propagated through `@arg`
-        // bindings up the wrapper chain.
-        //
-        // Uses `resolveGtsPathForPolymorphic` which extends
-        // `resolveGtsPath` with `<pkg>/declarations/X.d.ts` →
-        // `<pkg>/src/X.gts` mapping for v2-addon packages that ship
-        // `.gts` source alongside `.d.ts` declarations (HDS does
-        // this). The leaf-fallback ABOVE deliberately uses the
-        // narrower `resolveGtsPath` — opening cross-package source
-        // there caused waves of `element-permitted-content` FPs
-        // because the splatted-root tag is wrong for components
-        // Glint already resolved correctly via the union element
-        // type. The polymorphic chain trace is narrower (only acts
-        // on components whose template uses `(element ...)`), so
-        // opening cross-package `.gts` here doesn't trigger the
-        // same broad regression.
-        if (declFile && isTopLevel) {
-          const polyGtsPath = resolveGtsPathForPolymorphic(declFile);
-          if (polyGtsPath) {
-            const polymorphic = getPolymorphicResolvedTag(polyGtsPath);
-            if (polymorphic && polymorphic.kind === 'tag' && isNativeTag(polymorphic.tag)) {
-              componentTagMap.set(key, polymorphic.tag);
-              const existing = componentAttrMap.get(key);
-              componentAttrMap.set(key, {
-                tag: polymorphic.tag,
-                attrs: existing?.attrs ?? {},
-                hasSplat: existing?.hasSplat ?? true,
-              });
-            }
-          }
-        }
-        // Classic Ember addon fallback: when the JS-driven resolution
-        // didn't yield a concrete tag AND the same-package template
-        // didn't either, try the component's `.hbs` template via the
-        // addon's import path. Modern shapes (class form, TOC forms,
-        // curried block-params) already resolved above take priority —
-        // this only runs as a last resort.
-        const currentTag = componentTagMap.get(key);
-        if (currentTag === undefined || currentTag === 'transparent') {
-          const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
-          if (addonRoot) {
-            componentTagMap.set(key, addonRoot.tag);
-            componentAttrMap.set(key, addonRoot);
-          }
-        }
-      }
-      // Import-based outer-wrapper fallback: when Glint's TS symbol
-      // resolution failed to give us a `.gts` source (typically
-      // because the component is imported through a cross-package
-      // barrel and TS can't trace the symbol back to its origin
-      // through the package's exports/declarations), try the
-      // consumer-side AST: look up the `import` statement for this
-      // component name, resolve the import path (relative or
-      // package-style), follow barrel re-exports, and walk the
-      // resulting `.gts` template chain. Same single-substitution
-      // trade-off as the same-package outer-wrapper override.
-      // Import-based outer-wrapper fallback. Runs only when the same-
-      // package outer-wrapper override (inside `if (declFile)` /
-      // `if (gtsPath)` above) did NOT get a chance — typically because
-      // Glint's TS symbol resolution couldn't reach the component's
-      // source through a cross-package barrel re-export. In that case
-      // we bypass TS by parsing the consumer file's `import` statement
-      // for `componentName`, resolving the path (relative or
-      // package-style), following barrel re-exports, and walking the
-      // resulting `<template>` chain to find the outermost native
-      // wrapper. Same single-substitution trade-off as the same-
-      // package override.
-      if (!sameTransitivePackageOuterRan) {
         const componentName = node.parent.sourceNode.tag;
-        const outerFromImport = resolveOuterWrapperFromConsumerImport(filename, componentName);
-        const currentResolved = componentTagMap.get(key);
-        if (outerFromImport !== null && isNativeTag(outerFromImport.tag)) {
-          const chosen = chooseSubstitutionFromResolution(outerFromImport);
-          if (chosen.tag !== currentResolved) {
-            componentTagMap.set(key, chosen.tag);
+
+        // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
+        // resolve via the binder's `{{yield (hash Step=...)}}` chain.
+        const dottedBinding = dottedBindings.get(key);
+        if (dottedBinding) {
+          let binderSource = binderSourceByKey.get(dottedBinding.binderKey) ?? null;
+          if (!binderSource) {
+            binderSource = findTemplateSource({
+              consumerFile: filename,
+              componentName: dottedBinding.binderTag,
+              ts,
+            });
           }
-          componentAttrMap.set(key, {
-            tag: chosen.tag,
-            attrs: chosen.attrs,
-            hasSplat: chosen.hasSplat,
+          if (binderSource) {
+            const resolution = resolveYieldHashBinding({
+              parentSource: binderSource,
+              hashKey: dottedBinding.hashKey,
+              parentArgs: dottedBinding.binderArgs,
+              ts,
+            });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+          }
+        } else if (declFile && isTopLevel) {
+          // Skip non-top-level decls (let-block-params): walking their
+          // declaring file's template returns whatever's at the file's
+          // root, unrelated to what the binding renders.
+          const declRange = decl ? { start: decl.getStart(), end: decl.getEnd() } : null;
+          const source = findTemplateSource({
+            declFile,
+            declRange,
+            consumerFile: filename,
+            componentName,
+            ts,
           });
+          // Cache for any dotted-children that name this invocation as
+          // their binder. Accept null too — a transparent binder result
+          // still belongs to this invocation, no point re-querying.
+          binderSourceByKey.set(key, source);
+          if (source) {
+            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const resolution = resolveTemplate(source, { consumerArgs, ts });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+          }
+        } else {
+          // Cross-package barrel: TS resolved through a re-export and
+          // we can't reach the source via decl. Fall back to consumer-
+          // side import resolution.
+          const source = findTemplateSource({
+            consumerFile: filename,
+            componentName,
+            ts,
+          });
+          if (source) {
+            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const resolution = resolveTemplate(source, { consumerArgs, ts });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+          }
         }
       }
     }
@@ -1401,225 +1380,6 @@ function isTopLevelDeclaration(ts: typeof TS, decl: TS.Declaration): boolean {
     node = node.parent;
   }
   return false;
-}
-
-// Resolve the rendered tag (and splatted-root attrs) for a classic Ember
-// addon component imported as `import X from '<addon>/components/<name>'`
-// — addons whose template lives at `addon/templates/components/<name>.hbs`
-// (legacy v1 addon) or `app/components/<name>.hbs` (Module Unification /
-// authored-as-app shim). These have no JS-side `Signature['Element']`, no
-// `satisfies TOC<…>`, so the JS-driven resolution paths return null.
-//
-// We extract the import's `moduleSpecifier` from the AST, match the
-// addon-component shape, walk up from the consumer file to find
-// `node_modules/<addon>`, and probe the canonical template paths. The
-// `.hbs` file is parsed with the same `extractSplattedRootFromTemplate`
-// helper used for `.gts` splatted-root extraction.
-//
-// Returns null when the import doesn't match an addon-component shape,
-// when the addon isn't found in node_modules, when no template file
-// exists at the expected paths, or when the template parses to no
-// element root (e.g. `{{outlet}}`-only).
-// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs.
-// POSITIVE results only — the map type enforces that. Caching negatives
-// indefinitely would permanently hide a template that's later installed
-// (linked workspace addons, IDE/watch mode where the user installs an
-// addon mid-session). Templates with many invocations of the same addon
-// component would otherwise hit the dir walk + multiple existsSync
-// probes + read+parse on every call; what we actually wanted to skip
-// with caching is the file read + Glimmer parse on positive hits.
-// Negatives stay cheap (regex + a handful of existsSync calls up to
-// the filesystem root) and re-probe each call.
-//
-// Keyed on the consumer file's directory so a monorepo with multiple
-// node_modules trees stays correct (different projects can resolve the
-// same addonName to different physical paths).
-//
-// Note: this in-memory cache is independent of the disk cache in
-// `lib/cache.ts`, which keys by consumer file content + mtime; that
-// disk cache will preserve a prior negative resolution until the
-// consumer file changes. Hot-installing a new addon mid-session may
-// require an editor restart to pick up if the consumer file's mtime
-// hasn't moved.
-const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
-
-function resolveAddonHbsTemplate(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
-  emitComponentCall: TS.CallExpression,
-  consumerFile: string,
-): ComponentAttrs | null {
-  const innerCall = emitComponentCall.arguments[0];
-  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
-  const resolveCall = innerCall.expression;
-  if (!ts.isCallExpression(resolveCall)) return null;
-  const componentRef = resolveCall.arguments[0];
-  if (!componentRef) return null;
-  const symbol = checker.getSymbolAtLocation(componentRef);
-  if (!symbol) return null;
-  let importDecl: TS.Node | undefined;
-  for (const decl of symbol.declarations ?? []) {
-    let n: TS.Node | undefined = decl;
-    while (n && !ts.isImportDeclaration(n)) n = n.parent;
-    if (n && ts.isImportDeclaration(n)) {
-      importDecl = n;
-      break;
-    }
-  }
-  if (!importDecl || !ts.isImportDeclaration(importDecl)) return null;
-  const moduleSpecifier = importDecl.moduleSpecifier;
-  if (!ts.isStringLiteral(moduleSpecifier)) return null;
-  const importPath = moduleSpecifier.text;
-  const consumerDir = path.dirname(consumerFile);
-  const cacheKey = `${consumerDir}\0${importPath}`;
-  const cached = addonHbsResolutionCache.get(cacheKey);
-  if (cached !== undefined) return cached;
-  // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
-  // Addon name follows npm package-name rules: lowercase letters, digits,
-  // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
-  // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
-  // Component name is kebab-case, lowercase only, allowing nested-by-slash
-  // like `forms/text-input`.
-  const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
-  const COMPONENT = '[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)*';
-  const importRe = new RegExp(
-    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
-  );
-  const m = importRe.exec(importPath);
-  if (!m || importPath.includes('..')) return null;
-  const addonName = m[1]!;
-  const componentName = m[2]!;
-  // Walk up looking for node_modules/<addon>. Always check the current
-  // dir BEFORE stepping up, so the filesystem root (e.g. POSIX `/`,
-  // Windows `C:\`) is also probed — Node's module resolver does this
-  // and we should match. A `while (dir !== path.dirname(dir))` loop
-  // would skip the root.
-  let dir = consumerDir;
-  for (;;) {
-    const addonRoot = path.join(dir, 'node_modules', addonName);
-    if (fs.existsSync(addonRoot)) {
-      for (const subPath of [
-        `addon/templates/components/${componentName}.hbs`,
-        `app/components/${componentName}.hbs`,
-        `addon/components/${componentName}.hbs`,
-      ]) {
-        const hbsPath = path.join(addonRoot, subPath);
-        if (fs.existsSync(hbsPath)) {
-          // Read can still fail post-existsSync (TOCTOU race, perms,
-          // unreadable file). Return null without caching — the read
-          // may succeed on a subsequent call once the underlying issue
-          // clears.
-          let contents: string;
-          try {
-            contents = fs.readFileSync(hbsPath, 'utf8');
-          } catch {
-            return null;
-          }
-          const result = extractSplattedRootFromTemplate(contents);
-          // Guard: only return when the addon's root element is a
-          // native HTML tag. If the addon template's root is itself a
-          // component (PascalCase tag) we'd otherwise feed that
-          // non-native name into `componentTagMap`, and blank.ts's
-          // substitution path would rename the consumer's invocation
-          // to that PascalCase string — making content-model checks
-          // worse than the transparent-blanking fallback. In that
-          // case treat as unresolved so the caller falls back to
-          // `'transparent'` (children float to the actual parent).
-          if (!result || !isNativeTag(result.tag)) return null;
-          addonHbsResolutionCache.set(cacheKey, result);
-          return result;
-        }
-      }
-      return null;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
-}
-
-// Test-only: clear the addon-hbs resolution cache. Tests that mutate
-// fixtures' .hbs templates between runs need this to avoid stale hits.
-export function _clearAddonHbsCache(): void {
-  addonHbsResolutionCache.clear();
-}
-
-// Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.
-// The compilerHost shim lays virtual `.ts` shadows alongside their
-// originals; both forms may show up in `decl.getSourceFile().fileName`
-// depending on how TS resolved the import. Returns null when no
-// underlying source file exists.
-function resolveGtsPath(declFile: string): string | null {
-  if (declFile.endsWith('.gts') || declFile.endsWith('.gjs')) {
-    return fs.existsSync(declFile) ? declFile : null;
-  }
-  if (declFile.endsWith('.ts') && !declFile.endsWith('.d.ts')) {
-    const base = declFile.slice(0, -3);
-    for (const ext of ['.gts', '.gjs']) {
-      const candidate = base + ext;
-      if (fs.existsSync(candidate)) return candidate;
-    }
-  }
-  return null;
-}
-
-// `.d.ts` → template-source resolver for the polymorphic-tag chain
-// trace. NOT used by the general leaf-fallback (writing splatted-
-// root tags for components Glint already resolved correctly was
-// the cause of an earlier ~+397 FP regression on HDS).
-//
-// The polymorphic chain only acts on components whose template
-// uses `(element ...)`, so it doesn't cause the same regression.
-// To make it work on standard v2-addon packages — which (per
-// emberjs/rfcs#0931 and the v2-addon spec) typically ship
-// `.js + .d.ts` only, NOT `.gts` source — we accept either:
-//
-//   - HDS-style: `<pkg>/declarations/X.d.ts` AND `<pkg>/src/X.gts`
-//     ship together. Read the `.gts`. Same as `resolveGtsPath`'s
-//     extension.
-//   - v2-spec-standard: `<pkg>/dist/X.js` is the runtime; the
-//     compiled `.js` carries the template inline as a string
-//     literal in `precompileTemplate("CONTENT", ...)` (existing
-//     shape) or `template("CONTENT", ...)` (the
-//     `@ember/template-compiler` shape introduced by
-//     emberjs/rfcs#0931). `extractTemplateContent` reads either.
-//
-// Returns the path to whichever source is most useful — `.gts`
-// when present (faster and more direct), `.js` otherwise.
-function resolveGtsPathForPolymorphic(declFile: string): string | null {
-  const direct = resolveGtsPath(declFile);
-  if (direct) return direct;
-  if (declFile.endsWith('.d.ts')) {
-    const baseTs = declFile.slice(0, -'.d.ts'.length);
-    const sourceMappings: Array<[string, string]> = [
-      ['/declarations/', '/src/'],
-      ['/dist/types/', '/src/'],
-      ['/dist/', '/src/'],
-    ];
-    for (const [from, to] of sourceMappings) {
-      if (!baseTs.includes(from)) continue;
-      const sourceBase = baseTs.replace(from, to);
-      for (const ext of ['.gts', '.gjs']) {
-        const candidate = sourceBase + ext;
-        if (fs.existsSync(candidate)) return candidate;
-      }
-    }
-    // Fall back to compiled `.js` (the v2-addon-spec shipping
-    // mode). Most addons publish `<pkg>/dist/X.js` and
-    // `<pkg>/declarations/X.d.ts` in parallel.
-    const jsMappings: Array<[string, string]> = [
-      ['/declarations/', '/dist/'],
-      ['/dist/types/', '/dist/'],
-    ];
-    for (const [from, to] of jsMappings) {
-      if (!baseTs.includes(from)) continue;
-      const jsBase = baseTs.replace(from, to);
-      const jsCandidate = jsBase + '.js';
-      if (fs.existsSync(jsCandidate)) return jsCandidate;
-    }
-  }
-  return null;
 }
 
 // Find the `__glintDSL__.emitComponent(...)` CallExpression that contains

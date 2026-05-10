@@ -131,12 +131,16 @@ describe('end-to-end fixtures', () => {
 
   it('const-resolution: top-level consts resolve in attribute positions', async () => {
     const r = await validate('const-resolution.gts', { 'no-implicit-button-type': 'off', 'void-style': 'off' });
-    // Trade-off: html-validate v10.13.1 schema doesn't include popover yet,
-    // so the BAD_POPOVER='bogus' const doesn't fire attribute-allowed-values.
-    // Instead, validate the const did NOT cause spurious errors on the
-    // valid resolutions (POPOVER_MODE='auto', FORM_METHOD='post').
-    const popoverErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
-    expect(popoverErrors).toHaveLength(0);
+    // The fixture has three consts in attribute positions:
+    //   <div popover={{POPOVER_MODE}}>   — 'auto' (valid)
+    //   <div popover={{BAD_POPOVER}}>    — 'bogus' (invalid)
+    //   <form method={{FORM_METHOD}}>    — 'post' (valid)
+    // Confirm exactly one attribute-allowed-values error fires (for the
+    // bogus value) — proves the consts resolved AND that the valid
+    // resolutions don't cause spurious errors.
+    const enumErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
+    expect(enumErrors).toHaveLength(1);
+    expect(enumErrors[0]!.message).toContain('"bogus"');
   });
 
   it('concat-attr: concat-mustache values resolve to DynamicValue (no false matches on partial literal)', async () => {
@@ -968,21 +972,15 @@ describe('end-to-end fixtures', () => {
   it.fails(
     'heuristic-masks-real-bug.gts: per-Source element-permitted-content suppression DOES mask real bugs elsewhere (documented trade-off)',
     async () => {
-      // Documents PR #21's per-Source suppression trade-off. The
-      // template has an unresolvable wrapper with structural children
-      // (triggers suppression, correct) AND a real `<p><div></div></p>`
-      // spec violation (which html-validate would normally catch).
-      // With the whole-Source suppression, the real bug is masked.
-      //
-      // Marked `.fails(...)` so this asserts our intended-but-not-yet-
-      // achieved future behavior: when we eventually implement multi-
-      // level yield-chain analysis, heuristic suppression narrows or
-      // disappears, the real bug surfaces, this assertion starts to
-      // pass, and vitest signals "remove .fails — your fix worked".
+      // Documents the per-Source suppression trade-off: when a template
+      // also contains an unresolvable curried-yield-hash shape (which
+      // triggers case-B/C suppression), real bugs in the same Source
+      // get masked too. Marked .fails — when the resolver eventually
+      // pins all curried-yield-hash patterns precisely, suppression
+      // narrows or disappears, this test starts to pass, and vitest
+      // signals "remove .fails".
       const r = await validate('heuristic-masks-real-bug.gts');
       const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
-      // Today: 0 (whole-Source suppression masks the real bug).
-      // Aspiration: 1 (the real <p><div></div></p> violation).
       expect(offenders.length).toBeGreaterThan(0);
     },
   );

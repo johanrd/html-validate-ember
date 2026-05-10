@@ -111,14 +111,7 @@ describe('mustache blanking', () => {
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
-    expect(
-      out.imgSplatSrcOffsets,
-      `expected the <img ...attributes> offset to be recorded for src injection`,
-    ).toEqual([0]);
-    expect(
-      out.imgSplatAltOffsets,
-      `expected the <img ...attributes> offset to be recorded for alt injection`,
-    ).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['src', 'alt']));
   });
 
   it('records the offset even when there are multiple Glimmer-only slots', () => {
@@ -128,36 +121,39 @@ describe('mustache blanking', () => {
     const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    expect(out.imgSplatSrcOffsets).toEqual([0]);
-    expect(out.imgSplatAltOffsets).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['src', 'alt']));
   });
 
   it('does not record offset when the consumer wrote both src and alt explicitly', () => {
     // When src AND alt are both already on the element, no injection is
-    // needed — leave the offset out of the per-attr sets so the hook
-    // skips it.
+    // needed — leave the offset out of the registry so the hook skips it.
     const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    // Original literal values survive.
     expect(out.content).toContain('src="/foo.png"');
     expect(out.content).toContain('alt="bar"');
-    expect(out.imgSplatSrcOffsets).toEqual([]);
-    expect(out.imgSplatAltOffsets).toEqual([]);
+    expect(out.attrInjections!.has(0)).toBe(false);
   });
 
   it('records offset only for the missing attr when only one is consumer-written', () => {
     // When the consumer wrote only `src=` but not `alt=`, alt still needs
-    // synthesis (record in altOffsets) but src does NOT (already there).
-    // Per-attr precision: this is exactly the FN-avoidance Copilot flagged
-    // — synthesizing both for any registered offset would silence
-    // wcag/h37 (missing alt) when the component only guarantees src.
+    // synthesis (record `alt`) but src does NOT (already there).
+    // Per-attr precision: synthesizing both for any registered offset
+    // would silence wcag/h37 (missing alt) when the component only
+    // guarantees src.
     const src = '<img src="/foo.png" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
-    expect(out.imgSplatSrcOffsets).toEqual([]);
-    expect(out.imgSplatAltOffsets).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['alt']));
   });
 });
+
+// Helper: which attrs are registered for hook-injection at this offset.
+function injectedAttrsAt(
+  out: { attrInjections?: Map<number, Array<{ attr: string; value: string | null }>> },
+  offset: number,
+): Set<string> {
+  return new Set((out.attrInjections?.get(offset) ?? []).map((i) => i.attr));
+}
 
 describe('component substitution (transparent fallback)', () => {
   // Without Glint resolution, component invocations have their open and
@@ -1055,24 +1051,22 @@ describe('block-form `<button>` substitution registers inputSplatTypeOffsets', (
   // Regression for 76901ba: when a curried/hash-yielded component
   // resolves to `<button>` and is invoked block-form, the in-place
   // tag rename produces `<button   ...>` without a `type=` attr.
-  // `tryInjectComponentAttrs` doesn't run for such cases because
-  // the chain `attrCtx` is undefined for hash-yielded curries —
-  // so we register the offset in `inputSplatTypeOffsets` and
-  // `processElement` sets `type` at parse time. Without this,
-  // `no-implicit-button-type` FP-fires.
+  // `tryInjectComponentAttrs` doesn't run for such cases because the
+  // chain `attrCtx` is undefined for hash-yielded curries — so we
+  // register a `type` injection in `attrInjections` and processElement
+  // sets it at parse time. Without this, `no-implicit-button-type`
+  // FP-fires.
   it('records the offset for block-form <button> substitution when consumer has no `type=`', () => {
-    // Use line:col coords directly (locKey isn't in scope outside
-    // its describe block; for `<RT.Toggle>...` at the top of the
-    // string the AST reports it at line 1 col 0).
     const src = '<RT.Toggle>click</RT.Toggle>';
     const tagMap = new Map([['1:0', 'button']]);
     const r = blankTemplateContent(src, undefined, undefined, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.inputSplatTypeOffsets.size).toBe(1);
+    const typeInjections = [...result.attrInjections.values()].flat().filter((i) => i.attr === 'type');
+    expect(typeInjections).toHaveLength(1);
     // Value is null (DynamicValue) since no chain attrs were
     // provided — the hook will inject DV at parse time.
-    expect([...result.inputSplatTypeOffsets.values()]).toEqual([null]);
+    expect(typeInjections[0]!.value).toBeNull();
   });
 
   it('does NOT register the offset when the consumer wrote type= already', () => {
@@ -1081,7 +1075,8 @@ describe('block-form `<button>` substitution registers inputSplatTypeOffsets', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.inputSplatTypeOffsets.size).toBe(0);
+    const typeInjections = [...result.attrInjections.values()].flat().filter((i) => i.attr === 'type');
+    expect(typeInjections).toHaveLength(0);
   });
 });
 
