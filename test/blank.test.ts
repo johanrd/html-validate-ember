@@ -1318,6 +1318,49 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     ).toBe('transparent');
   });
 
+  // Ecosystem regression: limber's `Option` TOC component has shape
+  // `<div><h3/><pre><code/></pre><p>{{yield}}</p></div>`. The yield
+  // sits inside `<p>`, which is phrasing-content-only. When consumers
+  // yield flow content (`<ul>`, `<dl>`, `<div>`), the runtime DOM
+  // browser-implicitly-closes `<p>` before the flow element. Static
+  // analysis can't tell the consumer's intent, so picking the yield-
+  // ancestor `<p>` as the substitution tag cascades FPs:
+  //   - `no-implicit-close` ("Element <p> is implicitly closed by
+  //     adjacent <ul>")
+  //   - `close-order` ("Stray end tag '</p>'")
+  //
+  // Tighten the yield-ancestor preference: don't prefer yield-ancestor
+  // when it's a phrasing-content-only element. Outer wrapper (often
+  // `<div>`) is a safer fallback — accepts both phrasing and flow,
+  // and structural-content-model-mismatches surface against the
+  // consumer's actual yielded content rather than a phrasing-only
+  // wrapper they didn't author.
+  // The resolver itself returns both outer and yield-ancestor; the
+  // PICK between them happens in applyResolution (lib/glint.ts). These
+  // tests assert the resolver's shape — the picker test lives in
+  // test/integration.test.ts where we can drive an end-to-end pipeline.
+  it('canonical resolver: outer + yield-ancestor returned for permissive (flow-accepting) wrap', () => {
+    // HdsTabs shape: <div><ul>{{yield}}</ul></div>.
+    const tpl = '<div class="tabs"><ul>{{yield}}</ul></div>';
+    const r = resolveTemplate({ content: tpl, origin: '/x.gts', kind: 'gts' });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('div');
+    expect((r as { yieldAncestorTag?: string }).yieldAncestorTag).toBe('ul');
+  });
+
+  it('canonical resolver: outer + yield-ancestor returned for phrasing-only wrap', () => {
+    // Option shape: <div><p>{{yield}}</p></div>.
+    const tpl = '<div class="opt"><h3>title</h3><p>{{yield}}</p></div>';
+    const r = resolveTemplate({ content: tpl, origin: '/x.gts', kind: 'gts' });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('div');
+    expect((r as { yieldAncestorTag?: string }).yieldAncestorTag).toBe('p');
+    // The picker (applyResolution) is responsible for NOT picking <p>
+    // (a phrasing-only element) when consumer yields flow content.
+    // That gate is asserted via integration test on
+    // examples/option-as-p-yields-flow.gts.
+  });
+
   // Ecosystem regression: HDS's `<HdsInteractive>` (Element:
   // HTMLAnchorElement | HTMLButtonElement) wrapping a `<div>`. Glint's
   // TS-side picks one branch arbitrarily; if it picks `<button>`,

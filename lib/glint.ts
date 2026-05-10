@@ -15,6 +15,8 @@ import type * as TS from 'typescript';
 
 import { Preprocessor } from 'content-tag';
 import { preprocess as glimmerPreprocess, traverse, type AST } from '@glimmer/syntax';
+import html5Schema from 'html-validate/elements/html5';
+import type { MetaDataTable } from 'html-validate';
 
 import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
@@ -560,6 +562,35 @@ const STRUCTURAL_CHILD_TAGS: ReadonlySet<string> = new Set([
   'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
 ]);
 
+// Elements whose `permittedContent` is restricted to phrasing/embedded/
+// interactive/script categories — they don't accept flow content.
+// Picking one of these as the yield-ancestor substitution tag mis-
+// represents what the consumer's runtime DOM actually accepts: if
+// the consumer yielded flow content (`<ul>`, `<div>`, ...), the
+// runtime browser implicitly closes the phrasing wrapper; static
+// substitution to that wrapper FP-fires `no-implicit-close` /
+// `close-order` on consumer code that didn't author the wrapper.
+//
+// Derived from html-validate's HTML5 schema at module load: every
+// entry's `permittedContent` is exclusively `@phrasing` / `@embedded`
+// / `@interactive` / `@script` content categories — no `@flow` or
+// specific-tag allowances. Drift-tracked: if a future schema revision
+// loosens one of these to flow, the derivation widens automatically.
+const PHRASING_ONLY_CONTENT_ELEMENTS: ReadonlySet<string> = (() => {
+  const out = new Set<string>();
+  const PHRASING_CATEGORIES = new Set(['@phrasing', '@embedded', '@interactive', '@script']);
+  for (const [tag, meta] of Object.entries(html5Schema as MetaDataTable)) {
+    if (tag === '*' || tag.startsWith('#')) continue;
+    const permitted = (meta as { permittedContent?: ReadonlyArray<unknown> })?.permittedContent;
+    if (!Array.isArray(permitted) || permitted.length === 0) continue;
+    const onlyPhrasing = permitted.every(
+      (e) => typeof e === 'string' && PHRASING_CATEGORIES.has(e),
+    );
+    if (onlyPhrasing) out.add(tag);
+  }
+  return out;
+})();
+
 // Translate a Resolution from the canonical resolver into the
 // componentTagMap + componentAttrMap shape that blank.ts consumes.
 //
@@ -596,7 +627,16 @@ function applyResolution(
     yieldTag &&
     yieldTag !== resolution.tag &&
     !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
-    isNativeTag(yieldTag)
+    isNativeTag(yieldTag) &&
+    // Don't pick a phrasing-only-content yield-ancestor (`<p>`, `<h1>`,
+    // `<label>`, ...). Consumers may yield flow content (`<ul>`,
+    // `<div>`, ...) that the runtime DOM browser-implicitly-closes
+    // around. Pinning the consumer-side substitution to the phrasing
+    // wrapper would FP-fire `no-implicit-close` / `close-order` on
+    // markup the consumer didn't author. Outer (typically `<div>`)
+    // is a safer fallback — flow-accepting, no false content-model
+    // mismatches.
+    !PHRASING_ONLY_CONTENT_ELEMENTS.has(yieldTag)
   ) {
     chosenTag = yieldTag;
     chosenAttrs = resolution.yieldAncestorAttrs ?? new Map();
