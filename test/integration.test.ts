@@ -969,20 +969,23 @@ describe('end-to-end fixtures', () => {
     expect(wcagH32).toHaveLength(0);
   });
 
-  it('heuristic-masks-real-bug.gts: real <p><div></div></p> bug surfaces (heuristic suppression removed in canonical-resolver rewrite)', async () => {
-    // Pre-rewrite: per-Source suppression masked this real bug because
-    // the SAME source also had an unresolvable wrapper with structural
-    // children (which triggered case-B suppression).
-    // Post-rewrite: case-B/C suppression is gone. The real bug is
-    // visible. The unresolvable wrapper FP-fires too — that's the
-    // honest trade-off, addressable by extending the resolver to
-    // follow curried-yield-hash.
-    const r = await validate('heuristic-masks-real-bug.gts');
-    const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
-    expect(offenders.length).toBeGreaterThan(0);
-  });
+  it.fails(
+    'heuristic-masks-real-bug.gts: per-Source element-permitted-content suppression DOES mask real bugs elsewhere (documented trade-off)',
+    async () => {
+      // Documents the per-Source suppression trade-off: when a template
+      // also contains an unresolvable curried-yield-hash shape (which
+      // triggers case-B/C suppression), real bugs in the same Source
+      // get masked too. Marked .fails — when the resolver eventually
+      // pins all curried-yield-hash patterns precisely, suppression
+      // narrows or disappears, this test starts to pass, and vitest
+      // signals "remove .fails".
+      const r = await validate('heuristic-masks-real-bug.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(offenders.length).toBeGreaterThan(0);
+    },
+  );
 
-  it.skip('multi-level-yield-chain-options.gts: [REWRITE-TODO] FP-fires until resolver follows curried-yield-hash (case-B suppression removed)', async () => {
+  it('multi-level-yield-chain-options.gts: heuristic suppression silences element-permitted-content for unresolvable wrappers with structural children', async () => {
     // Unresolvable curried sub-component case: `<F.Options>` is
     // `PassThrough` (no specific Element type), wrapped in a
     // `<FormSelectField>` whose outer Element is bare HTMLElement

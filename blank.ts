@@ -1644,28 +1644,27 @@ function blankTemplateContent(
 // output, and add the rule to `disableForRules` so the transformer can
 // inject a one-shot disable directive into this Source.
 //
-// Two FP classes covered today:
+// Three FP classes covered today:
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
-//      because the yield was blanked away). Wrapper markup like
-//      `<form><div>{{yield}}</div></form>` IS suppressed; a form with
-//      a real `<button type='submit'>` alongside the yield is NOT
-//      (the rule wouldn't fire and the disable would itself trigger
-//      `no-unused-disable`).
+//      because the yield was blanked away).
 //
 //   2. Input-driven `<form {{on "input" …}}>` — search-as-you-type /
-//      live-filter pattern. The `{{on "input"}}` modifier signals that
-//      the form's action is driven by input events, not submission;
-//      a separate submit button would be ceremonial (helps no real
-//      user). wcag/h32 is suppressed regardless of submit-button or
-//      yield presence.
+//      live-filter pattern; submit button would be ceremonial.
 //
-// (A previous "case 3" suppressed `element-permitted-content` for
-// unresolvable wrappers containing structural children. The canonical
-// resolver — including the `(yield (hash X=...))` chain trace — pins
-// these cases precisely now, so the heuristic was removed in favor of
-// honest FP-firing on the few remaining unresolvable shapes.)
+//   3. Curried-via-yield-hash patterns the resolver can't pin: an
+//      unresolvable PascalCase wrapper containing structural children
+//      (`<li>`/`<option>`/`<th>`/...), OR a structural-content-parent
+//      wrapper (`<ol>`/`<select>`/...) with a transparent dotted
+//      direct child. The runtime DOM has the structurally-correct
+//      parent via a yield chain we can't statically follow (e.g.
+//      `(yield (hash X=PassThrough))` where PassThrough yields
+//      without producing an element). Suppress
+//      `element-permitted-content` / `element-permitted-parent` at
+//      the Source level. Same per-Source-suppression trade-off as
+//      cases 1 and 2; addressable case-by-case by extending the
+//      resolver to follow specific yield-chain shapes.
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
@@ -1742,6 +1741,36 @@ function detectStructuralYieldRules(
           elementYieldsAndLacksLegend(stmt, branchSelections)
         ) {
           out.push('wcag/h71');
+        } else if (
+          !isNativeTag(stmt.tag) &&
+          !lookupBuiltinComponent(stmt.tag) &&
+          containsContentRestrictedStructuralChild(stmt, glintComponentTagMap, branchSelections)
+        ) {
+          // Unresolvable PascalCase / dotted wrapper containing
+          // content-restricted structural children (`<option>`, `<th>`,
+          // `<li>`, `<optgroup>`, `<tr>`). At runtime such wrappers
+          // typically render the structurally-correct parent
+          // (`<select>`, `<thead>`, `<ul>`, …) via a yield chain we
+          // can't statically pin (curried-via-yield-hash patterns
+          // where the parent's `(yield (hash X=...))` crosses an
+          // addon boundary, etc.). Suppress at the Source level.
+          out.push('element-permitted-content');
+          out.push('element-permitted-parent');
+        } else if (
+          stmtResolved &&
+          STRUCTURAL_CONTENT_PARENTS.has(stmtResolved) &&
+          hasTransparentCurriedChild(stmt, glintComponentTagMap, branchSelections)
+        ) {
+          // Mirror of the case above for the curried-yield-hash
+          // pattern from the OPPOSITE direction: the WRAPPER resolves
+          // to a structural-content-restrictive native (`<ol>`,
+          // `<select>`, …) AND has a dotted direct child that
+          // resolves to 'transparent' (curried-via-yield-hash —
+          // `<HdsStepperList as |S|><S.Step>...`). Static blanking
+          // can't see through `<S.Step>` to its template's `<li>`
+          // wrapper.
+          out.push('element-permitted-content');
+          out.push('element-permitted-parent');
         }
         walk(stmt.children);
       }
@@ -1800,6 +1829,149 @@ function selectBranch(
 // bare-mustache event names like `{{on @event …}}` could resolve to
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+// CONTENT_RESTRICTED_STRUCTURAL_CHILDREN and STRUCTURAL_CONTENT_PARENTS
+// are *curated* sets, not direct derivations from html-validate's HTML5
+// schema. The pure derivation (any tag named as a child in some
+// `permittedContent`) is too wide for our purpose: it includes flow
+// content like `<div>`/`<p>` (because `<dl>` permits `<div>` and lots
+// of elements permit `<p>`), and `<button>`/`<source>`/`<track>` —
+// suppressing on those would mask real bugs.
+//
+// The narrow criterion the curated list captures: tags whose runtime
+// behavior REQUIRES a specific structural parent OR INTERPOSES a
+// structural child (HdsTabs interposes `<li>` in `<ul>`; fieldset
+// may interpose `<legend>` from a yielded slot; etc.). That's an
+// empirical pattern, not a clean function of `permittedContent`.
+//
+// The curated lists are validated at module load against the live
+// HTML5 schema. If a future html-validate revision stops listing one
+// of these as a named permittedContent entry the boot assertion
+// surfaces it as a build-time error rather than silent suppression
+// breakage.
+
+const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
+  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
+  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
+]);
+
+const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
+  'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',
+  'tfoot', 'tr', 'colgroup', 'fieldset', 'details', 'picture', 'ruby', 'dl',
+]);
+
+(function validateStructuralSetsAgainstHtml5Schema(): void {
+  const namedChildren = new Set<string>();
+  const parentsWithNamedChildren = new Set<string>();
+  for (const [tag, meta] of Object.entries(html5Schema as MetaDataTable)) {
+    if (tag === '*' || tag.startsWith('#')) continue;
+    const permitted = (meta as { permittedContent?: ReadonlyArray<unknown> })?.permittedContent;
+    if (!Array.isArray(permitted)) continue;
+    let hasNamed = false;
+    for (const entry of permitted) {
+      if (typeof entry !== 'string') continue;
+      if (entry.startsWith('@')) continue;
+      namedChildren.add(entry.replace(/[?*+]$/, ''));
+      hasNamed = true;
+    }
+    if (hasNamed) parentsWithNamedChildren.add(tag);
+  }
+  for (const c of CONTENT_RESTRICTED_STRUCTURAL_CHILDREN) {
+    if (!namedChildren.has(c)) {
+      throw new Error(
+        `[html-validate-ember] '${c}' is no longer a named-child entry in any HTML5 element's permittedContent — html-validate metadata may have changed`,
+      );
+    }
+  }
+  for (const p of STRUCTURAL_CONTENT_PARENTS) {
+    if (!parentsWithNamedChildren.has(p)) {
+      throw new Error(
+        `[html-validate-ember] '${p}' no longer lists named children in HTML5 permittedContent — html-validate metadata may have changed`,
+      );
+    }
+  }
+})();
+
+// True when `node` has at least one direct child that is a dotted
+// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution is
+// 'transparent' — i.e. a curried-via-yield-hash component the resolver
+// couldn't pin to a specific native tag.
+function hasTransparentCurriedChild(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+): boolean {
+  if (!glintComponentTagMap) return false;
+  const tagMap = glintComponentTagMap;
+  function check(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'ElementNode') {
+        if (!stmt.tag.includes('.')) continue;
+        if (!stmt.loc.start) continue;
+        const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+        const childResolved = tagMap.get(childKey);
+        if (childResolved === 'transparent') return true;
+      } else if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm && check(arm.body)) return true;
+      }
+    }
+    return false;
+  }
+  return check(node.children);
+}
+
+// True when the element node has a direct child that is either a
+// native structural-child element (literal `<li>`/`<th>`/...) under
+// an unpinned wrapper, OR a dotted curried sub-component that resolved
+// to a structural tag. Two cases:
+//
+//  A) Wrapper unresolved/transparent: literal structural children
+//     suggest the wrapper renders the structurally-correct parent at
+//     runtime via yield chain. Trigger.
+//
+//  B) Wrapper pinned to a native tag, dotted child resolves to a
+//     structural tag (HdsTabs as |T|<T.Tab>): the curried child's
+//     runtime parent may be a different native ancestor in the parent
+//     template (the `(hash Tab=...)` lands inside `<ul role="tablist">`
+//     not the wrapper's outer `<div>`). Gate to DOTTED tag names —
+//     a non-dotted child like `<HdsListItem>` under a pinned wrapper
+//     IS the wrapper's runtime parent, so suppressing there would
+//     mask real bugs.
+function containsContentRestrictedStructuralChild(
+  node: AST.ElementNode,
+  glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+): boolean {
+  const wrapperResolved =
+    glintComponentTagMap && node.loc.start
+      ? glintComponentTagMap.get(`${node.loc.start.line}:${node.loc.start.column}`)
+      : undefined;
+  const wrapperPinned =
+    typeof wrapperResolved === 'string' && wrapperResolved !== 'transparent';
+
+  function check(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'ElementNode') {
+        if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag) && !wrapperPinned) {
+          return true;
+        }
+        if (glintComponentTagMap && stmt.loc.start && stmt.tag.includes('.')) {
+          const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+          const childResolved = glintComponentTagMap.get(childKey);
+          if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {
+            return true;
+          }
+        }
+      } else if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm && check(arm.body)) return true;
+      }
+    }
+    return false;
+  }
+  return check(node.children);
+}
 
 // HTML elements with restrictive content models — they only accept
 // specific native parents. When these appear as children of an

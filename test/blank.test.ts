@@ -1080,14 +1080,7 @@ describe('block-form `<button>` substitution registers inputSplatTypeOffsets', (
   });
 });
 
-// REWRITE-NOTE: case A/B/C suppression heuristics were removed in the
-// canonical-resolver rewrite. The honest position: when a wrapper is
-// genuinely unresolvable (curried-via-yield-hash where the static
-// resolver can't see through the parent's `{{yield (hash X=...)}}`),
-// `element-permitted-content` will FP-fire on the consumer. The fix is
-// to extend the resolver to follow the yield hash, not to suppress
-// rules. Tests below are skipped pending that resolver extension.
-describe.skip('curried-yield-hash structural-parent suppression (case C — REMOVED)', () => {
+describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // Mirrors HDS's `<HdsStepperList as |S|><S.Step>...</S.Step>`
   // pattern: wrapper resolves to a structural-content-restrictive
   // parent (`<ol>`); a dotted curried direct child (`<S.Step>`)
