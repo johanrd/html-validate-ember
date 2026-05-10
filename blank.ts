@@ -1962,25 +1962,33 @@ function containsContentRestrictedStructuralChild(
           if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {
             return true;
           }
-          // (B') Descend through transparent/unresolved dotted children
-          // to find structural-child literals NESTED inside. This catches
-          // the multi-level yield-hash chain where the IMMEDIATE wrapper
-          // resolves to some native tag (e.g. Glint's TS-side propagating
-          // the leaf element type rather than the curried-yield-hash's
-          // own tag) but contains a transparent/unresolved dotted curried
-          // child whose content is literal `<option>`/`<li>`/...
+          // (B') Descend through dotted children to find structural-
+          // child literals NESTED inside, when the dotted child's
+          // resolution doesn't pin it to a tag whose runtime DOM is
+          // believably the structural parent of the literal.
           //
-          // Example (HDS pattern):
-          //   <HdsFormSelectField as |F|>     // resolves to <div> (or
-          //                                   //   <select> via Element)
-          //     <F.Options>                    // transparent dotted
-          //       <option>...</option>         // structural literal 2 levels deep
-          //     </F.Options>
-          //   </HdsFormSelectField>
-          if (childResolved === 'transparent' || childResolved === undefined) {
-            if (containsLiteralStructuralChild(stmt, branchSelections)) {
-              return true;
-            }
+          // We TRUST the dotted child's resolution when it lands on a
+          // structural-content-parent (`<select>`/`<ul>`/`<tr>`/...).
+          // In that case structural-literal mismatches are real bugs
+          // we want surfaced (the `glint-resolved-no-suppression`
+          // fixture: `<C.Options>` resolved to `<select>`, contains
+          // `<th>` literal — `<th>` under `<select>` is a real bug,
+          // don't suppress).
+          //
+          // We DON'T trust when:
+          //   - childResolved === 'transparent' / undefined: the
+          //     resolver couldn't pin it; runtime tag is the curried
+          //     yield-hash target which we can't trace.
+          //   - childResolved is a NON-structural-parent tag (e.g.
+          //     'div'): Glint's chain may have narrowed to an outer
+          //     wrapper's element type. The structural literals
+          //     inside still go to their canonical structural parent
+          //     at runtime via the yield chain.
+          const trustsResolution =
+            typeof childResolved === 'string' &&
+            STRUCTURAL_CONTENT_PARENTS.has(childResolved);
+          if (!trustsResolution && containsLiteralStructuralChild(stmt, branchSelections)) {
+            return true;
           }
         }
       } else if (stmt.type === 'BlockStatement') {
