@@ -159,6 +159,34 @@ describe('Polymorphic-tag chain trace via Glimmer (element ...) helper', () => {
       `expected concrete tag 'li' from chain trace; got: ${JSON.stringify(result)}`,
     ).toEqual({ kind: 'tag', tag: 'li' });
   });
+
+  it('resolves polymorphic chain through cross-package addon (.d.ts → .gts mapping)', () => {
+    // Mirrors the HDS layout: a v2-addon publishes
+    // `<pkg>/declarations/X.d.ts` for TS resolution AND
+    // `<pkg>/src/X.gts` source. TS resolves the consumer's
+    // `import PolyListItem from 'polymorphic-addon/components/poly-list-item'`
+    // to the `.d.ts` declFile. Our polymorphic chain uses
+    // `resolveGtsPathForPolymorphic` which extends `resolveGtsPath`
+    // with `<pkg>/declarations/X.d.ts` → `<pkg>/src/X.gts` so the
+    // chain trace can read the addon's template.
+    //
+    // CRITICAL regression guard: the SAME cross-package shape must
+    // NOT cause the leaf-fallback to over-resolve non-polymorphic
+    // components. An earlier version had `resolveGtsPath` (used by
+    // the leaf-fallback) doing the .d.ts → .gts mapping itself,
+    // which surfaced ~397 new `element-permitted-content` FPs on
+    // HDS by tagging components via splatted-root scans they
+    // weren't designed to support. The narrower
+    // `resolveGtsPathForPolymorphic` is gated to the polymorphic
+    // chain only.
+    const { filename, contents } = readFixture('cross-package-polymorphic-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const tags = [...componentTagMap.values()];
+    expect(
+      tags,
+      `expected PolyListItem to resolve to 'li' via polymorphic chain trace through cross-package .d.ts→.gts; got: ${JSON.stringify(tags)}`,
+    ).toContain('li');
+  });
 });
 
 describe('Glint integration: cross-file .gts type resolution', () => {
