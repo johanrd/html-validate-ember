@@ -1757,6 +1757,25 @@ function detectStructuralYieldRules(
           out.push('element-permitted-content');
           out.push('element-permitted-parent');
         } else if (
+          stmt.selfClosing &&
+          stmtResolved &&
+          ELEMENTS_WITH_REQUIRED_CONTENT.has(stmtResolved)
+        ) {
+          // Self-closing component invocation that resolves to a
+          // native element with required content (`<details>` requires
+          // `<summary>`, `<head>` requires `<title>`, etc.). The
+          // blanker substitutes the self-closing form to a
+          // `<resolved>...</resolved>` paired-tag pair around an
+          // empty body — the required child lives in the addon's
+          // template, not at the consumer's call site, so html-
+          // validate sees the substituted element as missing its
+          // required content. Suppress at the Source level.
+          //
+          // Pattern: recursive `<CalculationDetails />` self-closing
+          // invocations whose addon template is `<details><summary>
+          // ...</summary>...</details>`.
+          out.push('element-required-content');
+        } else if (
           stmtResolved &&
           STRUCTURAL_CONTENT_PARENTS.has(stmtResolved) &&
           hasTransparentCurriedChild(stmt, glintComponentTagMap, branchSelections)
@@ -1859,6 +1878,22 @@ const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
   'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',
   'tfoot', 'tr', 'colgroup', 'fieldset', 'details', 'picture', 'ruby', 'dl',
 ]);
+
+// Native elements with `requiredContent` per html-validate's HTML5
+// metadata. When a PascalCase component invocation resolves to one of
+// these AND is self-closing at the consumer's call site, the blanker
+// substitutes to `<resolved>...</resolved>` paired tags around an
+// empty body — html-validate fires `element-required-content` because
+// it can't see the required child the addon's template renders.
+const ELEMENTS_WITH_REQUIRED_CONTENT: ReadonlySet<string> = (() => {
+  const out = new Set<string>();
+  for (const [tag, meta] of Object.entries(html5Schema as MetaDataTable)) {
+    if (tag === '*' || tag.startsWith('#')) continue;
+    const required = (meta as { requiredContent?: ReadonlyArray<unknown> })?.requiredContent;
+    if (Array.isArray(required) && required.length > 0) out.add(tag);
+  }
+  return out;
+})();
 
 (function validateStructuralSetsAgainstHtml5Schema(): void {
   const namedChildren = new Set<string>();

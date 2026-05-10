@@ -1304,12 +1304,10 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // overrides the TS-side arbitrary union pick. Pinning to one branch
   // of a polymorphic-on-runtime-condition component cascades FPs.
   it('canonical resolver transparent overrides TS-side arbitrary union pick', () => {
-    // Pre-existing tagMap from the TS-side resolveComponentElement
-    // arbitrary union pick (HTMLAnchorElement | HTMLButtonElement → 'a').
-    // The canonical resolver SHOULD overwrite this to 'transparent' when
-    // it can't pin a single tag.
     // Direct test: the resolver returns transparent for a conditional with
-    // differing branches; applyResolution must overwrite.
+    // differing branches; applyResolution then overwrites the TS-side
+    // arbitrary first-match pick (e.g. `<a>` from
+    // `HTMLAnchorElement | HTMLButtonElement`).
     const ifConditionalTpl = '{{#if @route}}<a href={{@href}}>...</a>{{else}}<button>...</button>{{/if}}';
     const r = resolveTemplate(
       { content: ifConditionalTpl, origin: '/x.gts', kind: 'gts' },
@@ -1318,6 +1316,31 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       r.kind,
       `conditional with differing branches should resolve transparent; got: ${JSON.stringify(r)}`,
     ).toBe('transparent');
+  });
+
+  // Ecosystem regression: HDS's `<HdsInteractive>` (Element:
+  // HTMLAnchorElement | HTMLButtonElement) wrapping a `<div>`. Glint's
+  // TS-side picks one branch arbitrarily; if it picks `<button>`,
+  // children like `<HdsBadgeCount>` (which renders `<div>`) FP-fire
+  // `element-permitted-content` ("<div> not permitted under <button>").
+  //
+  // The canonical resolver walks the conditional template:
+  //   {{#if @route}}<LinkTo>{{else if @href}}<a>{{else}}<button>{{/if}}
+  // Sees differing branches, returns transparent. applyResolution
+  // overrides componentTagMap with 'transparent' so the consumer-side
+  // substitution doesn't cascade FPs from the arbitrary pick.
+  it('canonical resolver transparent overrides TS-side first-match for polymorphic-condition templates (no FPs in consumer-side substitution)', () => {
+    // The fixture mirrors HdsInteractive's shape: a TOC component with
+    // a conditional template where each branch renders a different tag.
+    // Resolution should return transparent (children float to actual
+    // parent), not arbitrarily pick one branch's tag.
+    const polyConditional = '{{#if @route}}<a href={{@href}}>{{yield}}</a>{{else}}<button type="button">{{yield}}</button>{{/if}}';
+    const r = resolveTemplate({
+      content: polyConditional,
+      origin: '/x.gts',
+      kind: 'gts',
+    });
+    expect(r.kind).toBe('transparent');
   });
 });
 

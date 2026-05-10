@@ -378,6 +378,29 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('details-with-curried-component.gts: element-required-content does not fire on self-closing component that resolves to <details>', async () => {
+    // Ecosystem regression (proapi-webapp `punch-card.gts`):
+    // a self-closing component invocation that resolves to <details>
+    // gets substituted to `<details>...</details>` (paired tags around
+    // empty body) — the addon's `<summary>` lives inside its template,
+    // not in the consumer's call site, so the blanker can't see it.
+    // html-validate fires `element-required-content` ("<details>
+    // requires <summary>") on the substituted shape.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('details-with-curried-component.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-required-content');
+      expect(
+        offenders,
+        `element-required-content must not fire on substituted <details> from a self-closing component invocation; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
     // <LinkTo> is substituted to <a> via the built-in components map,
     // and block-form substitution injects an href placeholder so the

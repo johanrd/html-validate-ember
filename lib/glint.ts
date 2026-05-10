@@ -562,13 +562,30 @@ const STRUCTURAL_CHILD_TAGS: ReadonlySet<string> = new Set([
 
 // Translate a Resolution from the canonical resolver into the
 // componentTagMap + componentAttrMap shape that blank.ts consumes.
+//
+// `transparent` from the canonical resolver overrides any prior
+// TS-side resolveComponentElement pick. The TS-side resolves to the
+// FIRST matching branch of a Signature['Element'] union — which for
+// `HTMLAnchorElement | HTMLButtonElement` arbitrarily picks one. The
+// canonical resolver, however, walks the actual template AST: when
+// the outer is a conditional with differing branches (HDS's
+// `HdsInteractive` shape: `{{#if @route}}<LinkTo>{{else if @href}}
+// <a>{{else}}<button>{{/if}}`), it returns transparent — meaning
+// "no single tag pins this; children float to the actual parent."
+// Overriding the arbitrary union pick with transparent eliminates
+// FPs cascading from the wrong branch (`<div>` under `<button>` for
+// elements that would actually render `<a>` at runtime).
 function applyResolution(
   componentTagMap: Map<string, string>,
   componentAttrMap: Map<string, ComponentAttrs>,
   key: string,
   resolution: Resolution,
 ): void {
-  if (resolution.kind !== 'tag') return;
+  if (resolution.kind === 'transparent') {
+    componentTagMap.set(key, 'transparent');
+    componentAttrMap.delete(key);
+    return;
+  }
   if (!isNativeTag(resolution.tag)) return;
 
   let chosenTag = resolution.tag;
