@@ -57,6 +57,7 @@
     "validate": "node dist/run.js"
   },
   "dependencies": {
+    "@embroider/shared-internals": "^3.0.2",
     "@glimmer/syntax": "^0.95.0",
     "content-tag": "^4.1.1",
     "html-tags": "^5.1.0",

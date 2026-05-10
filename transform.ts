@@ -17,7 +17,7 @@ import {
   blankTemplateContentMultipass,
   stripBlockParamTypeAnnotations,
 } from './blank.js';
-import { buildClassicComponentTagMap } from './lib/classic-resolver.js';
+import { buildResolutionMaps } from './lib/resolver/build-maps.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
@@ -317,7 +317,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       // resolution. Rare in practice (typed params are conventionally
       // `.gts`), but keeps both paths consistent.
       const ast = preprocess(stripBlockParamTypeAnnotations(data), { mode: 'codemod' });
-      const maps = buildClassicComponentTagMap(filename, ast);
+      const maps = buildResolutionMaps(filename, ast);
       classicTagMap = maps.componentTagMap;
       classicAttrMap = maps.componentAttrMap;
     } catch {

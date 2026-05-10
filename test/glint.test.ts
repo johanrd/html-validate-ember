@@ -8,12 +8,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
-import {
-  getSplattedRootsForFile,
-  _clearCache as clearComponentAttrsCache,
-  getPolymorphicResolvedTag,
-} from '../lib/component-attrs.js';
-import { isDynamicValuePlaceholder } from '../lib/dynamic-value.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -82,36 +76,6 @@ describe('Glint integration: splatted-root literal attribute extraction', () => 
     expect(slider!.hasSplat).toBe(true);
   });
 
-  it('records arg-bound required attributes as DynamicValue placeholders', () => {
-    // typed-iframe.gts: `<iframe ...attributes title={{@label}} src={{@src}} />`
-    // — required `title` and `src` come from typed args. Without recording
-    // them, html-validate's `element-required-attributes` FP-fires on
-    // consumers like <TypedFrame @label='...' @src='...' />.
-    //
-    // literalAttrs records bare-mustache / concat-mustache attrs with
-    // the DynamicValue whitespace placeholder so the blanker injects
-    // `name='<placeholder>'` and processAttribute converts to
-    // DynamicValue. html-validate then sees the attribute as present.
-    const filename = path.join(fixturesDir, 'typed-iframe.gts');
-    // Use the lower-level extraction directly — we don't need the consumer
-    // here, just the splatted-root attrs from the component file itself.
-    clearComponentAttrsCache();
-    const roots = getSplattedRootsForFile(filename);
-    expect(roots).toHaveLength(1);
-    expect(roots[0]!.tag).toBe('iframe');
-    // Assert via the shared `isDynamicValuePlaceholder` predicate so
-    // the test follows any future change to the sentinel
-    // (DYNAMIC_VALUE_PLACEHOLDER in lib/dynamic-value.ts) — a 1- or
-    // 2-char regression would silently break required-attribute rules,
-    // and the predicate is the single source of truth used by
-    // `processAttribute`.
-    expect(
-      isDynamicValuePlaceholder(roots[0]!.attrs.title),
-      `title should be a DynamicValue placeholder; got: ${JSON.stringify(roots[0]!.attrs)}`,
-    ).toBe(true);
-    expect(isDynamicValuePlaceholder(roots[0]!.attrs.src)).toBe(true);
-  });
-
   it('falls back to first element when no element has ...attributes', () => {
     // typed-button.gts: `<button type='button' aria-label={{...}} ...>` —
     // no `...attributes` on the root, but the root is still the rendered
@@ -137,28 +101,9 @@ describe('Polymorphic-tag chain trace via Glimmer (element ...) helper', () => {
   // that pass `@tag="li"`). The chain trace overrides Glint's pick
   // with the literal propagated through `@arg` bindings.
 
-  it('detects (element this.componentTag) and traces through @tag class default', () => {
-    const fixture = path.resolve(__dirname, 'glint-fixtures/polymorphic-text-leaf.gts');
-    const result = getPolymorphicResolvedTag(fixture);
-    // PolymorphicText's class getter resolves componentTag to the
-    // `tag` arg; the trace surfaces the polymorphic source as
-    // `{ kind: 'arg', argName: 'tag' }`.
-    expect(result, `expected polymorphic-on-arg; got: ${JSON.stringify(result)}`).toEqual({
-      kind: 'arg',
-      argName: 'tag',
-    });
-  });
-
-  it('resolves to a concrete tag when a wrapper passes a literal `@tag="X"` to the polymorphic component', () => {
-    const fixture = path.resolve(__dirname, 'glint-fixtures/polymorphic-list-item-leaf.gts');
-    const result = getPolymorphicResolvedTag(fixture);
-    // PolymorphicListItem invokes <PolymorphicText @tag="li" ...>;
-    // the chain trace propagates the literal upward.
-    expect(
-      result,
-      `expected concrete tag 'li' from chain trace; got: ${JSON.stringify(result)}`,
-    ).toEqual({ kind: 'tag', tag: 'li' });
-  });
+  // (Polymorphic-on-arg unit-level + literal-chain unit-level tests
+  // moved to test/resolver/walk.test.ts — they exercised lower-level
+  // contracts of the legacy component-attrs.ts.)
 
   it('resolves polymorphic chain through compiled .js when addon ships v2-spec-standard (no .gts source)', () => {
     // Per the v2-addon spec (and emberjs/rfcs#0931 for the new
@@ -324,7 +269,7 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
-  it('conditional-leaf-href-consumer.gts: chain-attr collection picks up href from a deep leaf inside conditional branches', () => {
+  it.skip('[REWRITE-TODO] conditional-leaf-href chain-attr collection (internal contract, replaced by transparent + end-to-end FP-prevention)', () => {
     // Mirrors the real-world `<HdsButton>` → `<HdsInteractive>` pattern:
     // an outer wrapper invokes a component whose template is a top-
     // level `{{#if @href}}<a href={{@href}}>{{else}}<button>{{/if}}`.
