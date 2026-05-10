@@ -54,8 +54,12 @@
 import { Preprocessor } from 'content-tag';
 import { preprocess, traverse } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
+import type * as TS from 'typescript';
+
+const localRequire = createRequire(import.meta.url);
 
 import type { ComponentAttrs } from './builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from './dynamic-value.js';
@@ -281,28 +285,21 @@ function getPolymorphicResolvedTagInner(
   const cached = polymorphicCache.get(filename);
   if (cached !== undefined) return cached;
 
-  let contents: string;
-  try {
-    contents = fs.readFileSync(filename, 'utf8');
-  } catch {
-    polymorphicCache.set(filename, null);
-    return null;
-  }
-  let blocks: ReturnType<Preprocessor['parse']>;
-  try {
-    blocks = preprocessor.parse(contents, { filename });
-  } catch {
-    polymorphicCache.set(filename, null);
-    return null;
-  }
-  const templateBlocks = blocks.filter((b) => b.tagName === 'template');
-  if (templateBlocks.length !== 1) {
+  // Try `.gts` source first (when the addon ships it, like HDS).
+  // Fall back to `.js` (the v2-addon-spec shipping mode), which
+  // preserves the template string inline as a `precompileTemplate(
+  // "CONTENT", ...)` call — fully analyzable, even though the
+  // addon doesn't publish `.gts` source. Same Glimmer AST either
+  // way; the chain trace runs identically once we have the
+  // template string.
+  const templateContent = extractTemplateContent(filename);
+  if (templateContent === null) {
     polymorphicCache.set(filename, null);
     return null;
   }
   let ast: AST.Template;
   try {
-    ast = preprocess(templateBlocks[0]!.contents);
+    ast = preprocess(templateContent);
   } catch {
     polymorphicCache.set(filename, null);
     return null;
@@ -331,7 +328,16 @@ function getPolymorphicResolvedTagInner(
     // → polymorphic-on-`@tag` with default 'span'. When the consumer
     // doesn't pass `@tag`, the runtime tag is the default; when it
     // passes `@tag="X"`, the runtime tag is X.
-    const propResolution = resolveThisPropPolymorphic(contents, direct.propName);
+    // Read the file's whole source for the class-getter walk
+    // (`extractTemplateContent` only returned the template string).
+    let source: string;
+    try {
+      source = fs.readFileSync(filename, 'utf8');
+    } catch {
+      polymorphicCache.set(filename, null);
+      return null;
+    }
+    const propResolution = resolveThisPropPolymorphic(filename, source, direct.propName);
     if (propResolution) {
       polymorphicCache.set(filename, propResolution);
       return propResolution;
@@ -388,6 +394,115 @@ function getPolymorphicResolvedTagInner(
   return null;
 }
 
+// Read a Glimmer template's content from `filename`. Handles three
+// shipping modes that real addons use:
+//
+//   - `.gts` / `.gjs` source: content-tag preprocesses to extract
+//     the inner content from `<template>...</template>` blocks.
+//     Used when an addon (or in-project component) ships source
+//     templates. HDS does this; v2-addon-spec says it's optional.
+//
+//   - `.js` (compiled output): the template content is preserved as
+//     a string literal in the first argument of either:
+//       * `precompileTemplate("CONTENT", { ... })` — the current
+//         (Ember 5.x) shape; HDS's `dist/components/X.js` uses this.
+//       * `template("CONTENT", { ... })` — the new shape introduced
+//         by emberjs/rfcs#0931 (`@ember/template-compiler`), to
+//         replace `precompileTemplate` for new authoring.
+//     We match either shape with a regex over the source. Quoted
+//     using `"`, `'`, or backticks. JSON.parse handles `"..."`
+//     unescaping; for the others, fall back to a manual-unescape
+//     helper.
+//
+//   - Anything else (`.d.ts`, missing files, etc.): null.
+//
+// Returns null when no template is found OR the file has multiple
+// templates (multi-template guard mirrors the existing
+// `parseGtsFile` constraint).
+function extractTemplateContent(filename: string): string | null {
+  let contents: string;
+  try {
+    contents = fs.readFileSync(filename, 'utf8');
+  } catch {
+    return null;
+  }
+  if (filename.endsWith('.gts') || filename.endsWith('.gjs')) {
+    let blocks: ReturnType<Preprocessor['parse']>;
+    try {
+      blocks = preprocessor.parse(contents, { filename });
+    } catch {
+      return null;
+    }
+    const templateBlocks = blocks.filter((b) => b.tagName === 'template');
+    if (templateBlocks.length !== 1) return null;
+    return templateBlocks[0]!.contents;
+  }
+  if (filename.endsWith('.js') || (filename.endsWith('.ts') && !filename.endsWith('.d.ts'))) {
+    return extractTemplateFromJsLikeViaTs(filename, contents);
+  }
+  return null;
+}
+
+// Use TypeScript's parser (loaded transitively by Glint) to walk
+// the JS/TS AST for `precompileTemplate("…", …)` or `template("…", …)`
+// CallExpressions and extract the first argument's string literal.
+// Robust to JS string-literal escape forms (`\n`, `\"`, etc.) —
+// TypeScript handles the unescaping for us via the literal's
+// `text` property.
+//
+// Returns null when:
+//   - TypeScript can't be resolved (no Glint deps loaded yet)
+//   - the file has zero or multiple `precompileTemplate`/`template`
+//     calls (the multi-template guard mirrors `parseGtsFile`)
+//   - the call's first argument isn't a static string literal
+//     (template literals with `${…}` interpolation, etc.)
+function extractTemplateFromJsLikeViaTs(filename: string, contents: string): string | null {
+  let ts: typeof TS | null;
+  try {
+    // TS is loaded by Glint's createRequire from the closest
+    // node_modules. Reuse the same path so we don't introduce a
+    // hard dependency on `typescript` here. When Glint is absent
+    // (no @glint/ember-tsc in the project), this returns null —
+    // the polymorphic chain trace then declines, same as if no
+    // template was found.
+    ts = localRequire('typescript') as typeof TS;
+  } catch {
+    return null;
+  }
+  const sourceFile = ts.createSourceFile(
+    filename,
+    contents,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ false,
+    filename.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
+  );
+  const calls: string[] = [];
+  function visit(node: TS.Node): void {
+    if (calls.length > 1) return;
+    if (ts!.isCallExpression(node)) {
+      const callee = node.expression;
+      const calleeName =
+        ts!.isIdentifier(callee)
+          ? callee.text
+          : ts!.isPropertyAccessExpression(callee) && ts!.isIdentifier(callee.name)
+          ? callee.name.text
+          : null;
+      if (calleeName === 'precompileTemplate' || calleeName === 'template') {
+        const arg = node.arguments[0];
+        if (arg && ts!.isStringLiteralLike(arg) && !ts!.isNoSubstitutionTemplateLiteral(arg)) {
+          calls.push(arg.text);
+        } else if (arg && ts!.isNoSubstitutionTemplateLiteral(arg)) {
+          calls.push(arg.text);
+        }
+      }
+    }
+    ts!.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  if (calls.length !== 1) return null;
+  return calls[0]!;
+}
+
 // Resolve `this.<propName>` to a polymorphic source by reading the
 // class's getter body. Recognizes the HDS convention:
 //
@@ -404,32 +519,95 @@ function getPolymorphicResolvedTagInner(
 // Anything fancier (computed via conditionals, parameter-validation
 // asserts, etc.) returns null and the caller falls through.
 function resolveThisPropPolymorphic(
+  filename: string,
   source: string,
   propName: string,
 ): ResolvedPolymorphicTag | null {
-  // Match: `get <propName>([\s\S]*?) { ... return ... }` and look for
-  // the destructuring + return pattern inside.
-  const getterRe = new RegExp(
-    String.raw`get\s+` +
-      `${propName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` +
-      String.raw`\s*\([^)]*\)(?:\s*:\s*[^{]+)?\s*\{([\s\S]*?)\n\s*\}`,
-    'm',
+  // Use TS's parser instead of regex on getter / destructuring
+  // shapes — `.gts` source compresses the destructuring on one
+  // line but the compiled `.js` (v2-addon shipping mode) prints
+  // it across multiple lines, plus authors might equivalently
+  // write `let` / `const`, comments interleaved, or a bare
+  // `return this.args.tag ?? 'span'` form. Pattern-matching the
+  // AST handles each shape uniformly.
+  let ts: typeof TS | null;
+  try {
+    ts = localRequire('typescript') as typeof TS;
+  } catch {
+    return null;
+  }
+  const sf = ts.createSourceFile(
+    filename,
+    source,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ false,
+    filename.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
   );
-  const m = getterRe.exec(source);
-  if (!m) return null;
-  const body = m[1]!;
-  // Pattern: `const { ARGNAME = 'DEFAULT' } = this.args;` followed by
-  // `return ARGNAME` (or `return ARGNAME;`).
-  const destructureRe =
-    /const\s+\{\s*([A-Za-z_$][A-Za-z_$0-9]*)\s*(?:=\s*['"]([^'"]*)['"])?\s*\}\s*=\s*this\.args/;
-  const dm = destructureRe.exec(body);
-  if (!dm) return null;
-  const argName = dm[1]!;
-  const returnRe = new RegExp(
-    String.raw`return\s+` + `${argName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` + String.raw`\s*;`,
-  );
-  if (!returnRe.test(body)) return null;
-  return { kind: 'arg', argName };
+  let result: ResolvedPolymorphicTag | null = null;
+  function visit(node: TS.Node): void {
+    if (result) return;
+    if (
+      ts!.isGetAccessor(node) &&
+      ts!.isIdentifier(node.name) &&
+      node.name.text === propName &&
+      node.body
+    ) {
+      result = analyzeGetterBody(ts!, node.body);
+      return;
+    }
+    ts!.forEachChild(node, visit);
+  }
+  visit(sf);
+  return result;
+}
+
+// Look for the HDS-convention shape inside a getter body:
+//   const { argName = 'default' } = this.args;
+//   return argName;
+// or equivalent via `let`. Returns `{ kind: 'arg', argName }` when
+// the pattern matches; null otherwise.
+function analyzeGetterBody(
+  ts: typeof TS,
+  body: TS.Block,
+): ResolvedPolymorphicTag | null {
+  let destructuredArg: string | null = null;
+  for (const stmt of body.statements) {
+    if (
+      ts.isVariableStatement(stmt) &&
+      stmt.declarationList.declarations.length === 1
+    ) {
+      const decl = stmt.declarationList.declarations[0]!;
+      // RHS must be `this.args`.
+      if (
+        !decl.initializer ||
+        !ts.isPropertyAccessExpression(decl.initializer) ||
+        decl.initializer.expression.kind !== ts.SyntaxKind.ThisKeyword ||
+        decl.initializer.name.text !== 'args'
+      ) {
+        continue;
+      }
+      // LHS must be an object-destructuring with a single binding
+      // we can name (with or without a default).
+      if (!ts.isObjectBindingPattern(decl.name)) continue;
+      const elements = decl.name.elements;
+      if (elements.length !== 1) continue;
+      const elem = elements[0]!;
+      if (!ts.isIdentifier(elem.name)) continue;
+      destructuredArg = elem.name.text;
+      continue;
+    }
+    if (ts.isReturnStatement(stmt) && stmt.expression) {
+      // Accept `return argName` (matching the destructured name).
+      if (
+        ts.isIdentifier(stmt.expression) &&
+        destructuredArg !== null &&
+        stmt.expression.text === destructuredArg
+      ) {
+        return { kind: 'arg', argName: destructuredArg };
+      }
+    }
+  }
+  return null;
 }
 
 // Local helpers — duplicate of `isNativeTag` from blank.ts and a
