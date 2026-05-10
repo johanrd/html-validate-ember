@@ -1342,6 +1342,48 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     });
     expect(r.kind).toBe('transparent');
   });
+
+  // Ecosystem regression: HDS's `<HdsCardContainer @tag="li">` shape.
+  // Outer template is a `{{#if (eq this.componentTag "div")}}<div>
+  // {{else}}<Tag>{{/if}}` polymorphic conditional. With the consumer
+  // passing `@tag="li"`, the IF condition evaluates to false at
+  // runtime → the runtime DOM is `<li>`. My resolveConditional walks
+  // both branches, sees they pin to different tags (`<div>` vs `<li>`),
+  // returns transparent. In a `<ul><HdsCardContainer @tag="li">`
+  // consumer, transparent cascades FPs (the `<div>` inside floats to
+  // `<ul>` because the wrapper blanks transparent).
+  //
+  // Fix: when an `{{#if}}` condition is `(eq <getter-or-arg> "literal")`
+  // AND the consumer's args pin the comparison's value, pick the
+  // matching branch instead of bailing to transparent.
+  it('canonical resolver: evaluates `(eq @arg "literal")` if-conditions against consumer args to pick a branch', () => {
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate(
+      { content: tpl, origin: '/x.gts', kind: 'gts' },
+      { consumerArgs: new Map([['tag', 'li']]) },
+    );
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('li');
+  });
+
+  it('canonical resolver: bails on `(eq @arg "literal")` when consumer @arg is unknown', () => {
+    // Without consumerArgs, the condition is undeterminable — fall back
+    // to walking both branches and converging (or transparent).
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate({ content: tpl, origin: '/x.gts', kind: 'gts' });
+    expect(r.kind).toBe('transparent');
+  });
+
+  it('canonical resolver: `(eq @arg "literal")` truthy → IF branch', () => {
+    // consumer @tag="div": IF condition true → IF branch <div>.
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate(
+      { content: tpl, origin: '/x.gts', kind: 'gts' },
+      { consumerArgs: new Map([['tag', 'div']]) },
+    );
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('div');
+  });
 });
 
 describe('isNativeTag', () => {
