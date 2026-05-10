@@ -1564,36 +1564,59 @@ function resolveGtsPath(declFile: string): string | null {
   return null;
 }
 
-// `.d.ts` → source `.gts` mapping for v2-addon packages that ship
-// `.gts` source alongside their compiled `.d.ts` declarations (HDS
-// publishes `declarations/X.d.ts` and `src/X.gts` in the same
-// package). Used by the polymorphic-tag chain trace, NOT the
-// general leaf-fallback — the leaf-fallback's substitution
-// behavior on cross-package addon components is brittle (writing
-// the splatted-root tag for components Glint already resolved
-// correctly via the union element type often substitutes to the
-// wrong tag, surfacing waves of `element-permitted-content` FPs).
-// The polymorphic chain trace is narrower: it only acts on
-// components whose template uses `(element ...)`, so opening
-// cross-package `.gts` source via this mapping doesn't cause the
-// same broad regression.
+// `.d.ts` → template-source resolver for the polymorphic-tag chain
+// trace. NOT used by the general leaf-fallback (writing splatted-
+// root tags for components Glint already resolved correctly was
+// the cause of an earlier ~+397 FP regression on HDS).
+//
+// The polymorphic chain only acts on components whose template
+// uses `(element ...)`, so it doesn't cause the same regression.
+// To make it work on standard v2-addon packages — which (per
+// emberjs/rfcs#0931 and the v2-addon spec) typically ship
+// `.js + .d.ts` only, NOT `.gts` source — we accept either:
+//
+//   - HDS-style: `<pkg>/declarations/X.d.ts` AND `<pkg>/src/X.gts`
+//     ship together. Read the `.gts`. Same as `resolveGtsPath`'s
+//     extension.
+//   - v2-spec-standard: `<pkg>/dist/X.js` is the runtime; the
+//     compiled `.js` carries the template inline as a string
+//     literal in `precompileTemplate("CONTENT", ...)` (existing
+//     shape) or `template("CONTENT", ...)` (the
+//     `@ember/template-compiler` shape introduced by
+//     emberjs/rfcs#0931). `extractTemplateContent` reads either.
+//
+// Returns the path to whichever source is most useful — `.gts`
+// when present (faster and more direct), `.js` otherwise.
 function resolveGtsPathForPolymorphic(declFile: string): string | null {
   const direct = resolveGtsPath(declFile);
   if (direct) return direct;
   if (declFile.endsWith('.d.ts')) {
     const baseTs = declFile.slice(0, -'.d.ts'.length);
-    const mappings: Array<[string, string]> = [
+    const sourceMappings: Array<[string, string]> = [
       ['/declarations/', '/src/'],
       ['/dist/types/', '/src/'],
       ['/dist/', '/src/'],
     ];
-    for (const [from, to] of mappings) {
+    for (const [from, to] of sourceMappings) {
       if (!baseTs.includes(from)) continue;
       const sourceBase = baseTs.replace(from, to);
       for (const ext of ['.gts', '.gjs']) {
         const candidate = sourceBase + ext;
         if (fs.existsSync(candidate)) return candidate;
       }
+    }
+    // Fall back to compiled `.js` (the v2-addon-spec shipping
+    // mode). Most addons publish `<pkg>/dist/X.js` and
+    // `<pkg>/declarations/X.d.ts` in parallel.
+    const jsMappings: Array<[string, string]> = [
+      ['/declarations/', '/dist/'],
+      ['/dist/types/', '/dist/'],
+    ];
+    for (const [from, to] of jsMappings) {
+      if (!baseTs.includes(from)) continue;
+      const jsBase = baseTs.replace(from, to);
+      const jsCandidate = jsBase + '.js';
+      if (fs.existsSync(jsCandidate)) return jsCandidate;
     }
   }
   return null;
