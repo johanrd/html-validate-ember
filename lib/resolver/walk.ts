@@ -768,11 +768,94 @@ function isConditional(stmt: AST.BlockStatement): boolean {
   return stmt.path.original === 'if' || stmt.path.original === 'unless';
 }
 
+// Statically evaluate a condition expression against the consumer's
+// @args. Returns `true`/`false` when the condition is determinable,
+// `null` when not.
+//
+// Supported forms:
+//   - PathExpression with AtHead (`@arg`): truthy if consumerArgs has
+//     a non-empty value for it. Strings are truthy unless empty.
+//   - SubExpression `(eq <a> <b>)`: literal equality between operands
+//     where each operand is either a StringLiteral, NumberLiteral, or
+//     resolvable @arg.
+//   - `(not <inner>)`: inverts a determinable inner condition.
+function evaluateConditionAgainstArgs(
+  expr: AST.Expression,
+  consumerArgs: ReadonlyMap<string, string> | undefined,
+): boolean | null {
+  if (expr.type === 'PathExpression') {
+    if (expr.head?.type === 'AtHead') {
+      const argName = expr.head.name.replace(/^@/, '');
+      const value = consumerArgs?.get(argName);
+      if (value === undefined) return null;
+      return value !== '' && value !== 'false';
+    }
+    return null;
+  }
+  if (expr.type === 'StringLiteral') return expr.value !== '';
+  if (expr.type === 'NumberLiteral') return expr.value !== 0;
+  if (expr.type === 'BooleanLiteral') return expr.value;
+  if (expr.type === 'NullLiteral' || expr.type === 'UndefinedLiteral') return false;
+  if (expr.type === 'SubExpression' && expr.path.type === 'PathExpression') {
+    const helper = expr.path.original;
+    if (helper === 'eq' && expr.params.length === 2) {
+      const a = readLiteralValue(expr.params[0]!, consumerArgs);
+      const b = readLiteralValue(expr.params[1]!, consumerArgs);
+      if (a === null || b === null) return null;
+      return a === b;
+    }
+    if (helper === 'not' && expr.params.length === 1) {
+      const inner = evaluateConditionAgainstArgs(expr.params[0]!, consumerArgs);
+      return inner === null ? null : !inner;
+    }
+  }
+  return null;
+}
+
+// Resolve an expression to a string/number literal value (for `eq`-style
+// helper evaluation). Returns null when the expression isn't a known
+// literal or arg-resolvable PathExpression.
+function readLiteralValue(
+  expr: AST.Expression,
+  consumerArgs: ReadonlyMap<string, string> | undefined,
+): string | null {
+  if (expr.type === 'StringLiteral') return expr.value;
+  if (expr.type === 'NumberLiteral') return String(expr.value);
+  if (expr.type === 'BooleanLiteral') return String(expr.value);
+  if (expr.type === 'PathExpression' && expr.head?.type === 'AtHead') {
+    const argName = expr.head.name.replace(/^@/, '');
+    return consumerArgs?.get(argName) ?? null;
+  }
+  return null;
+}
+
 function resolveConditional(
   stmt: AST.BlockStatement,
   source: TemplateSource,
   options: ResolveOptions,
 ): Resolution {
+  // Static evaluation of the condition expression against the consumer's
+  // @args. For `{{#if (eq @tag "li")}}<li>{{else}}<div>{{/if}}` with
+  // consumer @tag="li", the IF is statically true → pick `program`
+  // branch. For `{{#unless ...}}`, invert.
+  //
+  // Without this, branches that would have converged to a single tag
+  // at runtime appear as differing-tag union to the resolver →
+  // bails to transparent → cascades FPs at the consumer.
+  const isUnless = stmt.path.type === 'PathExpression' && stmt.path.original === 'unless';
+  const condValue = stmt.params[0]
+    ? evaluateConditionAgainstArgs(stmt.params[0], options.consumerArgs)
+    : null;
+  if (condValue !== null) {
+    const truthy = isUnless ? !condValue : condValue;
+    const arm = truthy ? stmt.program : stmt.inverse;
+    if (arm) return resolveBody(arm.body, source, options);
+    // Empty arm — the conditional resolves to whitespace, not an
+    // element. Treat as transparent: caller's body had no element-
+    // producing content in the picked branch.
+    return TRANSPARENT;
+  }
+
   const branches = [resolveBody(stmt.program.body, source, options)];
   if (stmt.inverse) branches.push(resolveBody(stmt.inverse.body, source, options));
 
