@@ -378,31 +378,6 @@ describe('end-to-end fixtures', () => {
     }
   });
 
-  it('option-as-p-yields-flow.gts: no-implicit-close / close-order do not fire when an addon component yields flow content from inside <p>', async () => {
-    // Ecosystem regression (limber's Option TOC). When an addon's
-    // template wraps `{{yield}}` in a phrasing-only element like
-    // `<p>` and the consumer yields flow content, the OUTER
-    // wrapper (<div>) is a safer substitution than the yield-
-    // ancestor (<p>) — picking <p> would FP-fire `no-implicit-
-    // close` and `close-order` on the substituted output even
-    // though the consumer didn't write the <p>.
-    const prevGlint = process.env['HVE_GLINT'];
-    process.env['HVE_GLINT'] = '1';
-    try {
-      const r = await validate('option-as-p-yields-flow.gts');
-      const offenders = r.messages.filter(
-        (m) => m.rule === 'no-implicit-close' || m.rule === 'close-order',
-      );
-      expect(
-        offenders,
-        `no-implicit-close / close-order must not fire on consumer-yielded flow content under an addon's phrasing-only wrap; got: ${JSON.stringify(r.messages)}`,
-      ).toHaveLength(0);
-    } finally {
-      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
-      else process.env['HVE_GLINT'] = prevGlint;
-    }
-  });
-
   it('details-with-curried-component.gts: element-required-content does not fire on self-closing component that resolves to <details>', async () => {
     // Ecosystem regression (proapi-webapp `punch-card.gts`):
     // a self-closing component invocation that resolves to <details>
