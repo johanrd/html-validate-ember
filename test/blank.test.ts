@@ -1189,6 +1189,51 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // in their canonical structural parent (<select>) — not in the
   // wrapper's resolved tag. case-A's recursive descent through
   // transparent dotted children should fire suppression.
+  // Ecosystem regression: HDS's `<HdsFormSelectField as |F|>
+  // <F.Options><option>` shape where F.Options resolves to <div>
+  // (Glint's chain narrowing on TemplateOnlyComponent<Sig> with a
+  // wrapping outer element bleeds the wrapper's element type into
+  // the curried-yield-hash sub-component's resolution).
+  //
+  // Descent should fire when the dotted child's resolved tag is NOT
+  // a structural-content-parent — in that case we don't trust the
+  // resolution to be the runtime parent of the structural literals
+  // inside.
+  it('case (A) descent: fires when dotted child resolves to a non-structural-parent native (e.g. <div>) but contains literal structural children', () => {
+    const content = '<W as |F|>\n  <F.Options>\n    <option>x</option>\n  </F.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'],     // <W> resolved to <div>
+      ['2:2', 'div'],     // <F.Options> resolved to <div> (Glint chain narrowing)
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected suppression when F.Options resolves to non-structural-parent <div> with <option> inside; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Counter-test: when the dotted child resolves to a structural-
+  // content-parent (e.g. <select>), TRUST the resolution. Structural-
+  // literal mismatches there are real bugs (e.g. <th> under <select>)
+  // and should fire `element-permitted-content` rather than be
+  // suppressed.
+  it('case (A) descent: does NOT fire when dotted child resolves to a structural-content-parent (trust Glint resolution)', () => {
+    const content = '<W as |C|>\n  <C.Options>\n    <th>real bug</th>\n  </C.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'],     // <W>
+      ['2:2', 'select'],  // <C.Options> pinned to <select> by Glint
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `must not suppress when dotted child is Glint-resolved to structural parent (real <th>-under-<select> bug); got: ${JSON.stringify(result.disableForRules)}`,
+    ).not.toContain('element-permitted-content');
+  });
+
   it('case (A) suppresses when a NATIVE-resolved wrapper has a transparent dotted child containing literal structural elements (multi-level descent)', () => {
     // Wrapper resolves to <div> (NOT a structural-content-parent).
     // Without descent, case-A's wrapper-pinned check would skip
