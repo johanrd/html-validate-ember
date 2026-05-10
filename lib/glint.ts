@@ -21,7 +21,7 @@ import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
 import { findTemplateSource } from './resolver/template-source.js';
-import { resolveTemplate, type Resolution } from './resolver/walk.js';
+import { resolveTemplate, resolveYieldHashBinding, type Resolution } from './resolver/walk.js';
 
 const consumerPreprocessor = new Preprocessor();
 
@@ -594,25 +594,53 @@ function applyResolution(
   });
 }
 
-// Parse the consumer file's <template> blocks and build a map of
-// `line:col` (matching the Glint mapping key format) to the consumer's
-// @arg literal values for each PascalCase invocation.
-//
-// Used to propagate `@tag="li"` (and friends) into the canonical
-// resolver so polymorphic-tag chains terminate with the correct value
-// at the call site.
-function buildConsumerArgsByLoc(
-  filename: string,
-  contents: string,
-): Map<string, Map<string, string>> {
-  const out = new Map<string, Map<string, string>>();
+// Parse the consumer file's <template> blocks and build:
+//   1. argsByLoc: line:col → @arg literal values for each PascalCase
+//      invocation. Lets the resolver propagate `@tag="li"` etc.
+//   2. dottedBindings: line:col → resolution context for each dotted
+//      invocation `<X.Y>`. Records the enclosing block's binder tag
+//      and the hash key, so the resolver can follow the parent's
+//      `{{yield (hash Y=...)}}` chain.
+
+interface DottedBinding {
+  /** Enclosing block's binder tag (e.g. 'HdsStepperList' for `<HdsStepperList as |S|>`). */
+  binderTag: string;
+  /** The hash key from the dotted invocation: `<S.Step>` → 'Step'. */
+  hashKey: string;
+  /** Args the consumer passed to the binder. Lets `(hash Y=@arg)` chain through. */
+  binderArgs: Map<string, string>;
+  /** line:col of the binder invocation (lookup key into a binder→decl map
+   *  populated during the Glint walk). Lets us reach binder templates
+   *  that live in the same consumer file (no import to follow). */
+  binderKey: string;
+}
+
+interface ConsumerInfo {
+  argsByLoc: Map<string, Map<string, string>>;
+  dottedBindings: Map<string, DottedBinding>;
+}
+
+function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
+  const argsByLoc = new Map<string, Map<string, string>>();
+  const dottedBindings = new Map<string, DottedBinding>();
   let blocks: Array<{ contents: string; tagName: string }>;
   try {
     blocks = consumerPreprocessor.parse(contents, { filename });
   } catch {
-    return out;
+    return { argsByLoc, dottedBindings };
   }
   const templates = blocks.filter((b) => b.tagName === 'template');
+
+  // A block-param scope binds names introduced via `<Binder as |x y|>`.
+  // Inner scopes shadow outer; we walk a stack while traversing so a
+  // nested `<A as |x|><B as |x|>` resolves `x` to the inner B-binding.
+  interface Scope {
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }
+
   for (const block of templates) {
     let ast: AST.Template;
     try {
@@ -620,26 +648,93 @@ function buildConsumerArgsByLoc(
     } catch {
       continue;
     }
-    traverse(ast, {
-      ElementNode(node: AST.ElementNode) {
-        if (!/^[A-Z]/.test(node.tag)) return;
-        if (!node.loc.start) return;
-        const args = new Map<string, string>();
-        for (const attr of node.attributes) {
-          if (!attr.name.startsWith('@')) continue;
-          const argName = attr.name.slice(1);
-          if (attr.value.type === 'TextNode') {
-            args.set(argName, attr.value.chars);
+    const scopeStack: Scope[] = [];
+    function walk(node: AST.Node): void {
+      if (node.type === 'ElementNode') {
+        const elem = node;
+        // Args + dotted-binding lookup happen on entry, before pushing
+        // any scope this element introduces. Block-params shadow inside
+        // its body, not at the binder itself.
+        if (/^[A-Z]/.test(elem.tag) && elem.loc.start) {
+          const args = collectLiteralArgs(elem);
+          const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
+          if (args.size > 0) argsByLoc.set(key, args);
+          if (elem.tag.includes('.')) {
+            const [paramName, ...tail] = elem.tag.split('.');
+            const binding = lookupParam(scopeStack, paramName!);
+            if (binding && tail.length === 1) {
+              dottedBindings.set(key, {
+                binderTag: binding.binderTag,
+                hashKey: tail[0]!,
+                binderArgs: binding.binderArgs,
+                binderKey: binding.binderKey,
+              });
+            }
           }
         }
-        if (args.size > 0) {
-          const key = `${node.loc.start.line}:${node.loc.start.column}`;
-          out.set(key, args);
+        // Push any block-params this element introduces.
+        const pushedCount = elem.blockParams.length;
+        const elemArgs = collectLiteralArgs(elem);
+        const binderKey = elem.loc.start
+          ? `${elem.loc.start.line}:${elem.loc.start.column}`
+          : '';
+        for (const paramName of elem.blockParams) {
+          scopeStack.push({
+            paramName,
+            binderTag: elem.tag,
+            binderArgs: elemArgs,
+            binderKey,
+          });
         }
-      },
-    });
+        for (const child of elem.children) walk(child);
+        for (let i = 0; i < pushedCount; i++) scopeStack.pop();
+        return;
+      }
+      if (node.type === 'BlockStatement') {
+        for (const child of node.program.body) walk(child);
+        if (node.inverse) for (const child of node.inverse.body) walk(child);
+        return;
+      }
+      if (node.type === 'Template') {
+        for (const child of node.body) walk(child);
+      }
+    }
+    walk(ast);
   }
-  return out;
+  return { argsByLoc, dottedBindings };
+}
+
+function collectLiteralArgs(node: AST.ElementNode): Map<string, string> {
+  const args = new Map<string, string>();
+  for (const attr of node.attributes) {
+    if (!attr.name.startsWith('@')) continue;
+    const argName = attr.name.slice(1);
+    if (attr.value.type === 'TextNode') {
+      args.set(argName, attr.value.chars);
+    }
+  }
+  return args;
+}
+
+function lookupParam(
+  stack: ReadonlyArray<{
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }>,
+  name: string,
+): { binderTag: string; binderArgs: Map<string, string>; binderKey: string } | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i]!.paramName === name) {
+      return {
+        binderTag: stack[i]!.binderTag,
+        binderArgs: stack[i]!.binderArgs,
+        binderKey: stack[i]!.binderKey,
+      };
+    }
+  }
+  return null;
 }
 
 function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
@@ -1039,10 +1134,19 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   const attrTypeMap = new Map<string, AttrTypeInfo>();
   const componentTagMap = new Map<string, string>();
   const componentAttrMap = new Map<string, ComponentAttrs>();
-  // line:col → consumer-side @args literal values. Built once per file
-  // so the canonical resolver can propagate values like @tag="li"
-  // through polymorphic-tag chains.
-  const consumerArgsByLoc = buildConsumerArgsByLoc(filename, contents);
+  // Per-invocation consumer-side info: @args (for arg propagation) and
+  // dotted-binding context (for `<S.Step>` curried-via-yield-hash
+  // resolution).
+  const { argsByLoc: consumerArgsByLoc, dottedBindings } = buildConsumerInfo(
+    filename,
+    contents,
+  );
+  // Populated as we resolve binder invocations during walkMapping. Keys
+  // by binder's line:col; value is its TemplateSource. Lets dotted-
+  // child resolution reach binders defined in the consumer file
+  // itself (no import to follow). Initialized lazy: only created if
+  // the consumer has any dotted invocations needing it.
+  const binderSourceByKey = new Map<string, ReturnType<typeof findTemplateSource>>();
   if (!ctx.elementTypeToTag) {
     ctx.elementTypeToTag = buildElementTypeToTag(ts, program);
   }
@@ -1116,10 +1220,31 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
         const componentName = node.parent.sourceNode.tag;
 
-        // Skip non-top-level decls (let-block-params): walking their
-        // declaring file's template returns whatever's at the file's
-        // root, unrelated to what the binding renders.
-        if (declFile && isTopLevel) {
+        // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
+        // resolve via the binder's `{{yield (hash Step=...)}}` chain.
+        const dottedBinding = dottedBindings.get(key);
+        if (dottedBinding) {
+          let binderSource = binderSourceByKey.get(dottedBinding.binderKey) ?? null;
+          if (!binderSource) {
+            binderSource = findTemplateSource({
+              consumerFile: filename,
+              componentName: dottedBinding.binderTag,
+              ts,
+            });
+          }
+          if (binderSource) {
+            const resolution = resolveYieldHashBinding({
+              parentSource: binderSource,
+              hashKey: dottedBinding.hashKey,
+              parentArgs: dottedBinding.binderArgs,
+              ts,
+            });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+          }
+        } else if (declFile && isTopLevel) {
+          // Skip non-top-level decls (let-block-params): walking their
+          // declaring file's template returns whatever's at the file's
+          // root, unrelated to what the binding renders.
           const declRange = decl ? { start: decl.getStart(), end: decl.getEnd() } : null;
           const source = findTemplateSource({
             declFile,
@@ -1128,12 +1253,16 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             componentName,
             ts,
           });
+          // Cache for any dotted-children that name this invocation as
+          // their binder. Accept null too — a transparent binder result
+          // still belongs to this invocation, no point re-querying.
+          binderSourceByKey.set(key, source);
           if (source) {
             const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
             const resolution = resolveTemplate(source, { consumerArgs, ts });
             applyResolution(componentTagMap, componentAttrMap, key, resolution);
           }
-        } else if (!declFile || !isTopLevel) {
+        } else {
           // Cross-package barrel: TS resolved through a re-export and
           // we can't reach the source via decl. Fall back to consumer-
           // side import resolution.

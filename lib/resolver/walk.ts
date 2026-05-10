@@ -23,9 +23,30 @@
 // when content-permission validation hinges on it).
 
 import { preprocess, type AST } from '@glimmer/syntax';
+import { Preprocessor } from 'content-tag';
 import type * as TS from 'typescript';
 import path from 'node:path';
 import fs from 'node:fs';
+
+const ctPreprocessor = new Preprocessor();
+
+function stripTemplateBlocks(contents: string, filename: string): string {
+  let blocks: ReturnType<Preprocessor['parse']>;
+  try {
+    blocks = ctPreprocessor.parse(contents, { filename });
+  } catch {
+    return contents;
+  }
+  let buf = contents;
+  for (const block of [...blocks].reverse()) {
+    if (block.tagName !== 'template') continue;
+    if (!block.range) continue;
+    const start = block.range.startUtf16Codepoint;
+    const end = block.range.endUtf16Codepoint;
+    buf = buf.slice(0, start) + ' '.repeat(end - start) + buf.slice(end);
+  }
+  return buf;
+}
 
 import {
   findTemplateSource,
@@ -518,6 +539,209 @@ function trySiblingProbe(originFile: string, componentName: string): TemplateSou
     }
   }
   return null;
+}
+
+// --- yield-hash binding resolution ---------------------------------------
+//
+// Pattern: a parent component yields a hash of bound components,
+// consumer destructures via block-params, dotted invocation refers
+// to a hash entry.
+//
+//   {{!-- Parent (e.g. HdsStepperList.gts) --}}
+//   <ol>{{yield (hash Step=WrappedStep)}}</ol>
+//
+//   {{!-- Consumer --}}
+//   <HdsStepperList as |S|>
+//     <S.Step>...</S.Step>
+//   </HdsStepperList>
+//
+// `<S.Step>` resolves to whatever WrappedStep renders. This function
+// takes the parent template + the hash key and returns the resolution.
+
+export interface YieldHashBindingOptions {
+  /** Parent's template source (e.g. HdsStepperList.gts). */
+  parentSource: TemplateSource;
+  /** The hash key from the dotted invocation: `<S.Step>` → 'Step'. */
+  hashKey: string;
+  /** Args the consumer passed to the parent (`<HdsStepperList @x="y">` →
+   *  {x: 'y'}). Lets `(hash X=@arg)` chain through to the consumer. */
+  parentArgs?: ReadonlyMap<string, string>;
+  ts?: typeof TS | null;
+  visited?: Set<string>;
+  depth?: number;
+}
+
+export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resolution {
+  const { parentSource, hashKey, parentArgs, ts, visited, depth } = opts;
+  let ast: AST.Template;
+  try {
+    ast = preprocess(parentSource.content);
+  } catch {
+    return TRANSPARENT;
+  }
+
+  const binding = findYieldHashEntry(ast, hashKey);
+  if (!binding) return TRANSPARENT;
+
+  return resolveBinding(binding, parentSource, {
+    consumerArgs: parentArgs,
+    ts: ts ?? null,
+    visited,
+    depth,
+  });
+}
+
+// Walk the parent template for `{{yield (hash <hashKey>=<expr>)}}` and
+// return <expr>, or null when not found.
+function findYieldHashEntry(
+  ast: AST.Template,
+  hashKey: string,
+): AST.Expression | null {
+  let result: AST.Expression | null = null;
+  function visit(node: AST.Node): void {
+    if (result) return;
+    if (node.type === 'MustacheStatement' || node.type === 'SubExpression') {
+      const mu = node as AST.MustacheStatement | AST.SubExpression;
+      if (mu.path.type === 'PathExpression' && mu.path.original === 'yield') {
+        for (const param of mu.params) {
+          if (param.type !== 'SubExpression') continue;
+          if (param.path.type !== 'PathExpression') continue;
+          if (param.path.original !== 'hash') continue;
+          for (const pair of param.hash.pairs) {
+            if (pair.key === hashKey) {
+              result = pair.value;
+              return;
+            }
+          }
+        }
+      }
+    }
+    if (node.type === 'ElementNode') {
+      for (const child of node.children) visit(child);
+    } else if (node.type === 'BlockStatement') {
+      for (const child of node.program.body) visit(child);
+      if (node.inverse) for (const child of node.inverse.body) visit(child);
+    } else if (node.type === 'Template') {
+      for (const child of node.body) visit(child);
+    }
+  }
+  visit(ast);
+  return result;
+}
+
+// Resolve a binding expression (the value of a hash entry) to a
+// Resolution. Three forms:
+//   - PathExpression with VarHead (`WrappedStep`): in-scope identifier;
+//     follow the parent's import.
+//   - PathExpression with ThisHead (`this.WrappedStep`): class-property
+//     assignment; walk the class body for `WrappedStep = X`.
+//   - PathExpression with AtHead (`@arg`): pass-through; look up in
+//     parentArgs.
+function resolveBinding(
+  expr: AST.Expression,
+  parentSource: TemplateSource,
+  options: ResolveOptions,
+): Resolution {
+  if (expr.type !== 'PathExpression') return TRANSPARENT;
+  if (!expr.head) return TRANSPARENT;
+
+  if (expr.head.type === 'VarHead') {
+    return resolveByName(expr.head.name, parentSource, options);
+  }
+
+  if (expr.head.type === 'AtHead') {
+    const argName = expr.head.name.replace(/^@/, '');
+    const value = options.consumerArgs?.get(argName);
+    if (!value) return TRANSPARENT;
+    if (isNativeTagName(value)) {
+      return { kind: 'tag', tag: value, attrs: new Map(), hasSplat: true };
+    }
+    return TRANSPARENT;
+  }
+
+  if (expr.head.type === 'ThisHead') {
+    const propName = expr.tail[0];
+    if (!propName) return TRANSPARENT;
+    const ts = options.ts;
+    if (!ts) return TRANSPARENT;
+    const targetName = readClassPropAssignment(parentSource.origin, propName, ts);
+    if (!targetName) return TRANSPARENT;
+    return resolveByName(targetName, parentSource, options);
+  }
+
+  return TRANSPARENT;
+}
+
+// Resolve a named identifier to a TemplateSource. Tries:
+//   1. An import in the parent's origin (`import Foo from '...'`).
+//   2. A same-file declaration (the parent's origin contains
+//      `const Foo = <template>...</template>;`). Multi-template files
+//      get matched by name.
+function resolveByName(
+  name: string,
+  parentSource: TemplateSource,
+  options: ResolveOptions,
+): Resolution {
+  const importedFile = resolveImport(parentSource.origin, name, options.ts ?? null);
+  if (importedFile) {
+    const source = findTemplateSource({ declFile: importedFile, ts: options.ts });
+    if (source) return resolveTemplate(source, options);
+  }
+  const sameFileSource = findTemplateSource({
+    declFile: parentSource.origin,
+    componentName: name,
+    ts: options.ts,
+  });
+  if (sameFileSource) return resolveTemplate(sameFileSource, options);
+  return TRANSPARENT;
+}
+
+// Walk the class body in `originFile` for a property assignment
+// `<propName> = <Identifier>;`. Returns the right-hand identifier name
+// (the imported symbol), or null when the assignment doesn't fit this
+// shape (literal value, computed expression, etc.).
+function readClassPropAssignment(
+  originFile: string,
+  propName: string,
+  ts: typeof TS,
+): string | null {
+  let contents: string;
+  try {
+    contents = fs.readFileSync(originFile, 'utf8');
+  } catch {
+    return null;
+  }
+  if (originFile.endsWith('.gts') || originFile.endsWith('.gjs')) {
+    contents = stripTemplateBlocks(contents, originFile);
+  }
+  const sf = ts.createSourceFile(
+    originFile,
+    contents,
+    ts.ScriptTarget.Latest,
+    false,
+    originFile.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
+  );
+  let result: string | null = null;
+  function visit(node: TS.Node): void {
+    if (result) return;
+    if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
+      for (const member of node.members) {
+        if (
+          ts.isPropertyDeclaration(member) &&
+          ts.isIdentifier(member.name) &&
+          member.name.text === propName &&
+          member.initializer &&
+          ts.isIdentifier(member.initializer)
+        ) {
+          result = member.initializer.text;
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return result;
 }
 
 // --- conditionals --------------------------------------------------------

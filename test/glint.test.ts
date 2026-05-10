@@ -439,4 +439,21 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       `expected componentTagMap to resolve <TocAnnotatedListItem> to 'li'; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
   });
+
+  it('curried-via-yield-hash: resolves <S.Step> via parent\'s `{{yield (hash Step=...)}}` when the sub-component has bare HTMLElement', () => {
+    // The HDS `<HdsStepperList as |S|><S.Step>` pattern with a curried
+    // sub-component whose Signature['Element'] is bare HTMLElement
+    // (Glint returns transparent). The canonical resolver follows the
+    // parent's `{{yield (hash Step=this.WrappedStep)}}` chain through
+    // the class property assignment to the imported component, then
+    // walks that component's template to find `<li>`.
+    const { filename, contents } = readFixture('yielded-curried-via-template.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const stepEntries = entries.filter(([, tag]) => tag === 'li');
+    expect(
+      stepEntries.length,
+      `expected <S.Step> to resolve to 'li' via yield-hash chain; got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThan(0);
+  });
 });

@@ -66,16 +66,17 @@ export function findTemplateSource(opts: FindOptions): TemplateSource | null {
   const { declFile, declRange, componentName, consumerFile, ts } = opts;
 
   if (declFile) {
-    // Range-bearing lookups bypass the cache (cache key would need to
-    // include the range, and multi-template files are uncommon enough
-    // that caching them as a separate path isn't worth the complexity).
-    if (declRange) {
-      const result = findFromDecl(declFile, ts ?? null, declRange);
+    // Range-bearing or name-bearing lookups bypass the cache (cache
+    // key would need to include them, and multi-template files are
+    // uncommon enough that caching them as a separate path isn't
+    // worth the complexity).
+    if (declRange || componentName) {
+      const result = findFromDecl(declFile, ts ?? null, declRange ?? null, componentName ?? null);
       if (result) return result;
     } else {
       const cacheKey = `decl:${declFile}`;
       if (cache.has(cacheKey)) return cache.get(cacheKey)!;
-      const result = findFromDecl(declFile, ts ?? null, null);
+      const result = findFromDecl(declFile, ts ?? null, null, null);
       cache.set(cacheKey, result);
       if (result) return result;
     }
@@ -114,7 +115,7 @@ function findFromImport(
   depth = 0,
 ): TemplateSource | null {
   if (depth >= 10) return null;
-  const direct = findFromDecl(resolvedFile, ts, null);
+  const direct = findFromDecl(resolvedFile, ts, null, componentName);
   if (direct) return direct;
   // Barrel walk: only for .ts/.js. Look for re-exports of componentName.
   if (!ts) return null;
@@ -150,7 +151,7 @@ function findFromImport(
       const target = innerName === 'default' ? null : innerName;
       const result = target
         ? findFromImport(next, target, ts, depth + 1)
-        : findFromDecl(next, ts, null);
+        : findFromDecl(next, ts, null, null);
       if (result) return result;
     }
   }
@@ -163,9 +164,10 @@ function findFromDecl(
   declFile: string,
   ts: typeof TS | null,
   declRange: { start: number; end: number } | null,
+  componentName: string | null,
 ): TemplateSource | null {
-  if (declFile.endsWith('.gts')) return readGts(declFile, 'gts', declRange);
-  if (declFile.endsWith('.gjs')) return readGts(declFile, 'gjs', declRange);
+  if (declFile.endsWith('.gts')) return readGts(declFile, 'gts', declRange, componentName);
+  if (declFile.endsWith('.gjs')) return readGts(declFile, 'gjs', declRange, componentName);
   if (declFile.endsWith('.hbs')) return readHbs(declFile);
 
   if (declFile.endsWith('.d.ts')) {
@@ -180,17 +182,17 @@ function findFromDecl(
     return tryHbsPeer(declFile);
   }
   if (declFile.endsWith('.ts')) {
-    // Glint's rewriteModule lays a virtual `.ts` shadow alongside its
-    // `.gts`/`.gjs` source. When TS resolves a symbol declaration it
-    // hands us the `.ts` filename — but the original template lives
-    // in the sibling `.gts`/`.gjs`. Map back. content-tag preserves
-    // byte/codepoint positions across the rewrite, so the decl range
-    // is valid against the original source too.
+    // Glint lays a virtual `.ts` shadow alongside its `.gts`/`.gjs`
+    // source. Map back so we read the original Glimmer templates.
+    // We deliberately drop `declRange` here (TS positions in the
+    // shadow don't match content-tag positions in the .gts when
+    // Glint's emit prepends imports — see findDeclRangeByName for
+    // the name-based fallback that operates entirely in .gts coords).
     const base = declFile.slice(0, -'.ts'.length);
     for (const ext of ['.gts', '.gjs'] as const) {
       const candidate = base + ext;
       if (fs.existsSync(candidate)) {
-        return readGts(candidate, ext.slice(1) as 'gts' | 'gjs', declRange);
+        return readGts(candidate, ext.slice(1) as 'gts' | 'gjs', null, componentName);
       }
     }
     return tryHbsPeer(declFile);
@@ -203,6 +205,7 @@ function readGts(
   file: string,
   kind: 'gts' | 'gjs',
   declRange: { start: number; end: number } | null = null,
+  componentName: string | null = null,
 ): TemplateSource | null {
   let contents: string;
   try {
@@ -221,22 +224,90 @@ function readGts(
     return { content: templates[0]!.contents, origin: file, kind };
   }
   if (templates.length === 0) return null;
-  // Multi-template file: pick the template whose UTF-16 codepoint
-  // range falls within the declaration's source range. TypeScript's
-  // `getStart()`/`getEnd()` return UTF-16 codepoint offsets (matching
-  // JavaScript string indexing); content-tag exposes the same units
-  // via `startUtf16Codepoint`/`endUtf16Codepoint` (NOT `startByte`/
-  // `endByte`, which diverge on multibyte content).
-  if (!declRange) return null;
+
+  // Multi-template file. We need to pick the template that belongs to
+  // the resolving declaration. Two candidate routes:
+  //
+  //  1. componentName + .gts coord-range: parse the .gts with templates
+  //     stripped (whitespace-padded by content-tag) to get TS-parseable
+  //     content in .gts coordinates, find the named declaration, use
+  //     its .gts-coord range. Robust against Glint's TS-emit preamble
+  //     shifting positions.
+  //
+  //  2. declRange (fallback): TS's `decl.getStart()/getEnd()`. Works
+  //     when no preamble shift exists, but fails on multi-template
+  //     class files where Glint inserts hundreds of chars of imports.
+  let resolvedRange: { start: number; end: number } | null = null;
+  if (componentName) {
+    resolvedRange = findDeclRangeByName(contents, file, blocks, componentName);
+  }
+  if (!resolvedRange && declRange) {
+    resolvedRange = declRange;
+  }
+  if (!resolvedRange) return null;
+
   for (const block of templates) {
     if (!block.range) continue;
     const start = block.range.startUtf16Codepoint;
     const end = block.range.endUtf16Codepoint;
-    if (start >= declRange.start && end <= declRange.end) {
+    if (start >= resolvedRange.start && end <= resolvedRange.end) {
       return { content: block.contents, origin: file, kind };
     }
   }
   return null;
+}
+
+// Strip template blocks to whitespace + TS-parse the result. content-tag
+// preserves source positions, so the parsed AST gives ranges in the
+// .gts coordinate system. Find a declaration whose name matches and
+// return its range.
+function findDeclRangeByName(
+  contents: string,
+  file: string,
+  blocks: ReturnType<Preprocessor['parse']>,
+  componentName: string,
+): { start: number; end: number } | null {
+  let buf = contents;
+  for (const block of [...blocks].reverse()) {
+    if (block.tagName !== 'template') continue;
+    if (!block.range) continue;
+    // JS strings are UTF-16-codepoint indexed; content-tag's `startByte`
+    // diverges from `startUtf16Codepoint` on multibyte content. Use the
+    // codepoint offsets for `String.prototype.slice`.
+    const start = block.range.startUtf16Codepoint;
+    const end = block.range.endUtf16Codepoint;
+    buf = buf.slice(0, start) + ' '.repeat(end - start) + buf.slice(end);
+  }
+  let ts: typeof TS;
+  try {
+    ts = localRequire(file, 'typescript') as typeof TS;
+  } catch {
+    return null;
+  }
+  const sf = ts.createSourceFile(file, buf, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  let result: { start: number; end: number } | null = null;
+  function visit(node: TS.Node): void {
+    if (result) return;
+    if (ts.isClassDeclaration(node) && node.name && node.name.text === componentName) {
+      result = { start: node.getStart(), end: node.getEnd() };
+      return;
+    }
+    if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === componentName) {
+          result = { start: node.getStart(), end: node.getEnd() };
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return result;
+}
+
+function localRequire(fromFile: string, moduleName: string): unknown {
+  return createRequire(fromFile)(moduleName);
 }
 
 function readHbs(file: string): TemplateSource | null {
@@ -559,7 +630,9 @@ export function resolveImport(
         if (block.tagName !== 'template') continue;
         const r = block.range;
         if (!r) continue;
-        buf = buf.slice(0, r.startByte) + ' '.repeat(r.endByte - r.startByte) + buf.slice(r.endByte);
+        const start = r.startUtf16Codepoint;
+        const end = r.endUtf16Codepoint;
+        buf = buf.slice(0, start) + ' '.repeat(end - start) + buf.slice(end);
       }
       scriptContents = buf;
     } catch {
