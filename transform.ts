@@ -150,10 +150,7 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
-  imgSplatSrcSet: ReadonlySet<number>,
-  imgSplatAltSet: ReadonlySet<number>,
-  aSplatHrefSet: ReadonlySet<number>,
-  inputSplatTypeMap: ReadonlyMap<number, string | null>,
+  attrInjections: ReadonlyMap<number, ReadonlyArray<{ attr: string; value: string | null }>>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -192,20 +189,16 @@ function makeHooks(
         location,
       );
     }
-    // Inject required attrs synthetically for `<img ...attributes>` or
-    // for component-substituted `<img>` whose addon template binds
-    // `src={{this.src}}` and/or `alt={{this.alt}}`. The blanker records
-    // each attr's offset independently in `imgSplatSrcSet` /
-    // `imgSplatAltSet` so we only inject what's actually guaranteed
-    // at runtime — silently injecting `alt` for a component that
-    // doesn't bind it would mask `wcag/h37` (missing alt) at the
-    // consumer.
-    const isImg = (el as unknown as { tagName?: string }).tagName === 'img';
-    if (
-      isImg &&
-      (imgSplatSrcSet.has(templateRelativeOffset) || imgSplatAltSet.has(templateRelativeOffset))
-    ) {
+    // Apply attribute injections registered by blank.ts. Each entry
+    // names an attr and either a literal value or null (= DynamicValue
+    // placeholder). Attribute-already-present is a no-op so consumer-
+    // written values always win (the blanker's per-attr precision
+    // already gates which attrs get registered, but defensive double-
+    // check guards races where a substitution path didn't propagate).
+    const injections = attrInjections.get(templateRelativeOffset);
+    if (injections && injections.length > 0) {
       const elWithAttrs = el as unknown as {
+        tagName?: string;
         hasAttribute(name: string): boolean;
         setAttribute(
           name: string,
@@ -214,65 +207,10 @@ function makeHooks(
           valueLocation: unknown,
         ): void;
       };
-      if (imgSplatSrcSet.has(templateRelativeOffset) && !elWithAttrs.hasAttribute('src')) {
-        elWithAttrs.setAttribute('src', new DynamicValue(''), location, location);
-      }
-      if (imgSplatAltSet.has(templateRelativeOffset) && !elWithAttrs.hasAttribute('alt')) {
-        elWithAttrs.setAttribute('alt', new DynamicValue(''), location, location);
-      }
-    }
-    // Same shape as the img path, for `<a>` whose `href` came from the
-    // chain but couldn't fit into the consumer's narrow Glimmer-attr
-    // slots. Without this, the substituted `<a target='_blank' >`
-    // lacks `href` and `attribute-misuse` ("target requires href")
-    // FP-fires.
-    const isA = (el as unknown as { tagName?: string }).tagName === 'a';
-    if (isA && aSplatHrefSet.has(templateRelativeOffset)) {
-      const elWithAttrs = el as unknown as {
-        hasAttribute(name: string): boolean;
-        setAttribute(
-          name: string,
-          value: unknown,
-          keyLocation: unknown,
-          valueLocation: unknown,
-        ): void;
-      };
-      if (!elWithAttrs.hasAttribute('href')) {
-        elWithAttrs.setAttribute('href', new DynamicValue(''), location, location);
-      }
-    }
-    // Same shape for `<input>` substitutions where the chain has a
-    // literal `type` (e.g. `<HdsFormCheckboxBase>` whose addon
-    // template writes `<input type="checkbox" ...>`) but the
-    // consumer wrote no Glimmer-attr slot for source-side rewriting
-    // to use. Inject the literal so `attribute-allowed-values` enum-
-    // checks; fall back to DynamicValue when no literal was recorded.
-    //
-    // Same channel handles `<button>` substitutions where the
-    // chain records `type="button"` (canonical addon shape:
-    // `<button type="button" ...attributes>`) but the consumer's
-    // open-tag slots couldn't fit it — typical for self-yield
-    // pattern wrappers (`<HdsRichTooltip><RT.Toggle/></HdsRichTooltip>`)
-    // where the curried child resolves to `<button>` and the
-    // consumer-side Glimmer-attr slots are minimal. Without this,
-    // the substituted `<button>` reaches html-validate type-less
-    // and `no-implicit-button-type` FP-fires.
-    const tagName = (el as unknown as { tagName?: string }).tagName;
-    const isInputOrButton = tagName === 'input' || tagName === 'button';
-    if (isInputOrButton && inputSplatTypeMap.has(templateRelativeOffset)) {
-      const elWithAttrs = el as unknown as {
-        hasAttribute(name: string): boolean;
-        setAttribute(
-          name: string,
-          value: unknown,
-          keyLocation: unknown,
-          valueLocation: unknown,
-        ): void;
-      };
-      if (!elWithAttrs.hasAttribute('type')) {
-        const literal = inputSplatTypeMap.get(templateRelativeOffset);
-        const value = literal !== null && literal !== undefined ? literal : new DynamicValue('');
-        elWithAttrs.setAttribute('type', value, location, location);
+      for (const { attr, value } of injections) {
+        if (elWithAttrs.hasAttribute(attr)) continue;
+        const injected = value === null ? new DynamicValue('') : value;
+        elWithAttrs.setAttribute(attr, injected, location, location);
       }
     }
   };
@@ -345,10 +283,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       originalData,
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
-        new Set(result.imgSplatSrcOffsets ?? []),
-        new Set(result.imgSplatAltOffsets ?? []),
-        new Set(result.aSplatHrefOffsets ?? []),
-        result.inputSplatTypeOffsets ?? new Map(),
+        result.attrInjections ?? new Map(),
         0,
       ),
     };
@@ -475,10 +410,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         originalData,
         hooks: makeHooks(
           new Set(result.dynamicContentOffsets ?? []),
-          new Set(result.imgSplatSrcOffsets ?? []),
-          new Set(result.imgSplatAltOffsets ?? []),
-          new Set(result.aSplatHrefOffsets ?? []),
-          result.inputSplatTypeOffsets ?? new Map(),
+          result.attrInjections ?? new Map(),
           startOffset,
         ),
       };
