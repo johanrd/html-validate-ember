@@ -131,12 +131,16 @@ describe('end-to-end fixtures', () => {
 
   it('const-resolution: top-level consts resolve in attribute positions', async () => {
     const r = await validate('const-resolution.gts', { 'no-implicit-button-type': 'off', 'void-style': 'off' });
-    // Trade-off: html-validate v10.13.1 schema doesn't include popover yet,
-    // so the BAD_POPOVER='bogus' const doesn't fire attribute-allowed-values.
-    // Instead, validate the const did NOT cause spurious errors on the
-    // valid resolutions (POPOVER_MODE='auto', FORM_METHOD='post').
-    const popoverErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
-    expect(popoverErrors).toHaveLength(0);
+    // The fixture has three consts in attribute positions:
+    //   <div popover={{POPOVER_MODE}}>   — 'auto' (valid)
+    //   <div popover={{BAD_POPOVER}}>    — 'bogus' (invalid)
+    //   <form method={{FORM_METHOD}}>    — 'post' (valid)
+    // Confirm exactly one attribute-allowed-values error fires (for the
+    // bogus value) — proves the consts resolved AND that the valid
+    // resolutions don't cause spurious errors.
+    const enumErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
+    expect(enumErrors).toHaveLength(1);
+    expect(enumErrors[0]!.message).toContain('"bogus"');
   });
 
   it('concat-attr: concat-mustache values resolve to DynamicValue (no false matches on partial literal)', async () => {
