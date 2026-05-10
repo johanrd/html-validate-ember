@@ -115,22 +115,6 @@
       "message": "\"aria-labelledby\" cannot be used on this element"
     },
     {
-      "file": "packages/components/src/components/hds/form/label/index.gts",
-      "line": 61,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <label>"
-    },
-    {
-      "file": "packages/components/src/components/hds/form/legend/index.gts",
-      "line": 45,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <legend>"
-    },
-    {
       "file": "packages/components/src/components/hds/modal/index.gts",
       "line": 257,
       "column": 7,
@@ -529,54 +513,6 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 27,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 28,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 39,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 40,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 52,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
-    },
-    {
-      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/not-interactive.gts",
-      "line": 53,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <ul>"
     },
     {
       "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-complex-table.gts",
@@ -1121,22 +1057,6 @@
       "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</li>'"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/text-input/sub-sections/base-element.gts",
-      "line": 29,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "attribute-allowed-values",
-      "message": "Attribute \"type\" has invalid value \"   \""
-    },
-    {
-      "file": "showcase/app/components/page-components/form/text-input/sub-sections/base-element.gts",
-      "line": 32,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "attribute-allowed-values",
-      "message": "Attribute \"type\" has invalid value \"   \""
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
