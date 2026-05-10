@@ -160,6 +160,31 @@ describe('Polymorphic-tag chain trace via Glimmer (element ...) helper', () => {
     ).toEqual({ kind: 'tag', tag: 'li' });
   });
 
+  it('resolves polymorphic chain through compiled .js when addon ships v2-spec-standard (no .gts source)', () => {
+    // Per the v2-addon spec (and emberjs/rfcs#0931 for the new
+    // `template()` API), most addons publish only compiled `.js`
+    // + `.d.ts`. The compiled `.js` carries the template inline
+    // via `precompileTemplate("CONTENT", ...)` (current shape) or
+    // `template("CONTENT", ...)` (RFC-0931 shape). The chain trace
+    // should work for these addons too — not just HDS-style addons
+    // that ship `.gts` source alongside.
+    //
+    // Implementation: `extractTemplateContent` uses TS's parser
+    // to walk the compiled `.js` AST and extract the first arg of
+    // `precompileTemplate(...)`/`template(...)` calls. The class-
+    // getter walk for `this.<prop>` resolution (HdsText pattern)
+    // also uses TS so the multi-line destructuring shape that
+    // compilers emit is handled cleanly (regex parsing was
+    // brittle for the compiled-JS form).
+    const { filename, contents } = readFixture('cross-package-polymorphic-js-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const tags = [...componentTagMap.values()];
+    expect(
+      tags,
+      `expected PolyListItem to resolve to 'li' via polymorphic chain through compiled .js; got: ${JSON.stringify(tags)}`,
+    ).toContain('li');
+  });
+
   it('resolves polymorphic chain through cross-package addon (.d.ts → .gts mapping)', () => {
     // Mirrors the HDS layout: a v2-addon publishes
     // `<pkg>/declarations/X.d.ts` for TS resolution AND
