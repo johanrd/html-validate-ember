@@ -985,6 +985,27 @@ describe('end-to-end fixtures', () => {
     },
   );
 
+  it('multi-level-dotted-yield-options.gts: heuristic suppression silences element-permitted-content for HDS `<HdsForm.Select.Field as |F|><F.Options><option>` shape (Glint mode)', async () => {
+    // Ecosystem regression: this shape is the dominant FP class
+    // when PR21's case-A/B suppression isn't extended to multi-level
+    // dotted-namespace + curried-yield-hash chains.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-level-dotted-yield-options.gts');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire on multi-level dotted yield-hash chain; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('multi-level-yield-chain-options.gts: heuristic suppression silences element-permitted-content for unresolvable wrappers with structural children', async () => {
     // Unresolvable curried sub-component case: `<F.Options>` is
     // `PassThrough` (no specific Element type), wrapped in a

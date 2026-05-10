@@ -6,6 +6,7 @@ import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
+import { resolveTemplate } from '../lib/resolver/walk.js';
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);
@@ -1179,6 +1180,99 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const result = r as BlankResult;
     expect(result.disableForRules).not.toContain('element-permitted-content');
     expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  // Ecosystem regression: when the wrapper resolves to a NATIVE tag
+  // (e.g. <div> via TS-side type leakage from a wrapped HdsFormField)
+  // but contains a transparent dotted curried child whose body has
+  // literal `<option>` elements, the runtime DOM has those options
+  // in their canonical structural parent (<select>) — not in the
+  // wrapper's resolved tag. case-A's recursive descent through
+  // transparent dotted children should fire suppression.
+  it('case (A) suppresses when a NATIVE-resolved wrapper has a transparent dotted child containing literal structural elements (multi-level descent)', () => {
+    // Wrapper resolves to <div> (NOT a structural-content-parent).
+    // Without descent, case-A's wrapper-pinned check would skip
+    // (because <div> accepts <option> indirectly via flow content).
+    // Without case-C (which only fires on structural-content-parent
+    // wrappers), there's no suppression. With the descent, case-A
+    // sees `<option>` literals nested inside the transparent dotted
+    // child and triggers suppression.
+    const content = '<W as |F|>\n  <F.Options>\n    <option>x</option>\n  </F.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'], // <W> resolved to <div>
+      ['2:2', 'transparent'], // <F.Options> transparent dotted
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected suppression on <option> nested inside transparent <F.Options>; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Ecosystem regression: HDS's `<HdsForm.Select.Field as |F|>` shape.
+  // Surfaced as +120ish FPs across HDS when the canonical-resolver
+  // rewrite changed how multi-level yield-hash chains resolve.
+  //
+  // Shape:
+  //   <HdsForm.Select.Field as |F|>
+  //     <F.Options>
+  //       <option>one</option>
+  //       <option>two</option>
+  //     </F.Options>
+  //   </HdsForm.Select.Field>
+  //
+  // The dotted chain (`HdsForm.Select.Field`) crosses multiple
+  // yield-hash hops on the addon side that the static resolver can't
+  // statically follow. F.Options resolves to 'transparent' (we can't
+  // statically pin it to <select>). Without case-A descending into
+  // unresolvable wrappers' children, the literal `<option>` floats
+  // up to whatever native ancestor is at the consumer's call site
+  // (often `<div>`) and FP-fires `element-permitted-content`.
+  it('case (A) suppresses when an unresolvable dotted wrapper has structural-child literals (multi-level yield-chain)', () => {
+    const content = '<HdsForm.Select.Field as |F|>\n  <F.Options>\n    <option>one</option>\n    <option>two</option>\n  </F.Options>\n</HdsForm.Select.Field>\n';
+    // F.Options resolves to 'transparent' (unresolvable curried-yield-hash);
+    // HdsForm.Select.Field is unresolvable (dotted, no entry in tagMap).
+    const tagMap = new Map<string, string>([
+      ['2:2', 'transparent'], // <F.Options>
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected element-permitted-content suppression on <option> under transparent <F.Options> nested in dotted <HdsForm.Select.Field>; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Ecosystem regression: `<HdsInteractive>` (Element: HTMLAnchorElement |
+  // HTMLButtonElement) wraps content. Glint's TS-side picks one branch
+  // arbitrarily; if it picks <button>, then `<HdsBadgeCount>` (which
+  // renders <div>) inside fires `element-permitted-content` ("<div>
+  // not permitted under <button>"). The canonical resolver walks
+  // the template, sees the `{{#if @route}}<LinkTo>{{else if @href}}<a>
+  // {{else}}<button>{{/if}}` conditional with differing branches,
+  // and returns transparent.
+  //
+  // The fix: when the canonical resolver returns 'transparent', it
+  // overrides the TS-side arbitrary union pick. Pinning to one branch
+  // of a polymorphic-on-runtime-condition component cascades FPs.
+  it('canonical resolver transparent overrides TS-side arbitrary union pick', () => {
+    // Pre-existing tagMap from the TS-side resolveComponentElement
+    // arbitrary union pick (HTMLAnchorElement | HTMLButtonElement → 'a').
+    // The canonical resolver SHOULD overwrite this to 'transparent' when
+    // it can't pin a single tag.
+    // Direct test: the resolver returns transparent for a conditional with
+    // differing branches; applyResolution must overwrite.
+    const ifConditionalTpl = '{{#if @route}}<a href={{@href}}>...</a>{{else}}<button>...</button>{{/if}}';
+    const r = resolveTemplate(
+      { content: ifConditionalTpl, origin: '/x.gts', kind: 'gts' },
+    );
+    expect(
+      r.kind,
+      `conditional with differing branches should resolve transparent; got: ${JSON.stringify(r)}`,
+    ).toBe('transparent');
   });
 });
 

@@ -1962,6 +1962,26 @@ function containsContentRestrictedStructuralChild(
           if (childResolved && CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(childResolved)) {
             return true;
           }
+          // (B') Descend through transparent/unresolved dotted children
+          // to find structural-child literals NESTED inside. This catches
+          // the multi-level yield-hash chain where the IMMEDIATE wrapper
+          // resolves to some native tag (e.g. Glint's TS-side propagating
+          // the leaf element type rather than the curried-yield-hash's
+          // own tag) but contains a transparent/unresolved dotted curried
+          // child whose content is literal `<option>`/`<li>`/...
+          //
+          // Example (HDS pattern):
+          //   <HdsFormSelectField as |F|>     // resolves to <div> (or
+          //                                   //   <select> via Element)
+          //     <F.Options>                    // transparent dotted
+          //       <option>...</option>         // structural literal 2 levels deep
+          //     </F.Options>
+          //   </HdsFormSelectField>
+          if (childResolved === 'transparent' || childResolved === undefined) {
+            if (containsLiteralStructuralChild(stmt, branchSelections)) {
+              return true;
+            }
+          }
         }
       } else if (stmt.type === 'BlockStatement') {
         const arm = selectBranch(stmt, branchSelections);
@@ -1971,6 +1991,30 @@ function containsContentRestrictedStructuralChild(
     return false;
   }
   return check(node.children);
+}
+
+// Recursive descent looking for a literal structural-child tag
+// (`<option>`, `<li>`, etc.) anywhere inside `node`. Used to detect
+// when a transparent/unresolved curried dotted child wraps content
+// that the runtime DOM puts in a structural parent, even though our
+// immediate-children check missed it.
+function containsLiteralStructuralChild(
+  node: AST.ElementNode,
+  branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
+): boolean {
+  function walk(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'ElementNode') {
+        if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag)) return true;
+        if (walk(stmt.children)) return true;
+      } else if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm && walk(arm.body)) return true;
+      }
+    }
+    return false;
+  }
+  return walk(node.children);
 }
 
 // HTML elements with restrictive content models — they only accept
