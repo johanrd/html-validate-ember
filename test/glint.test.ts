@@ -522,6 +522,41 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('conditional outer + yield-hash siblings resolve to DIFFERENT native tags (HDS form-layout shape)', () => {
+    // Mirrors HDS's `<HdsForm as |FORM|><FORM.HeaderTitle/><FORM.HeaderDescription/>`
+    // shape used in the form-layout containers showcase:
+    //   - outer is conditional (`<form>` vs `<div>` per `@tag`) → TRANSPARENT
+    //   - yield hash binds two siblings to DIFFERENT native tags:
+    //       HeaderTitle       → <div> (class-getter default through
+    //                                  polymorphic inner via `@tag={{this.X}}`)
+    //       HeaderDescription → <p>   (literal `@tag="p"` through inner)
+    //
+    // Regression guard: the baseline once captured HeaderTitle as <h1>
+    // (Glint TS-side union pick of HTMLHeadingElement when the canonical
+    // resolver bailed on the chain) and missed the <p> resolution for
+    // HeaderDescription entirely. Both resolutions must now land on
+    // their correct native tags simultaneously; surfacing the real
+    // `<div>`-under-<p> HTML5 violation when the consumer puts
+    // <div>-rooted content inside HeaderDescription is the intended
+    // outcome, not an FP.
+    const { filename, contents } = readFixture('yield-hash-cond-form-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const tags = entries.map(([, tag]) => tag);
+    expect(
+      tags,
+      `expected <FORM.HeaderTitle> to resolve to 'div'; got map: ${JSON.stringify(entries)}`,
+    ).toContain('div');
+    expect(
+      tags,
+      `expected <FORM.HeaderDescription> to resolve to 'p'; got map: ${JSON.stringify(entries)}`,
+    ).toContain('p');
+    expect(
+      tags,
+      `must NOT resolve to 'h1' (Glint TS-side union fallback); got map: ${JSON.stringify(entries)}`,
+    ).not.toContain('h1');
+  });
+
   it('polymorphic-tag pattern (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
     // Cross-package barrel (.d.ts) re-exports a component whose class
     // declaration has no template body. The resolver must bridge to the
