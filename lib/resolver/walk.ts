@@ -368,7 +368,7 @@ function resolveThisProp(
   if (!ts) return null;
   const parsed = readClassBody(source.origin, ts);
   if (!parsed) return null;
-  const { classBody, topLevelConsts } = parsed;
+  const { classBody, topLevelConsts, enumsByName } = parsed;
 
   for (const member of classBody) {
     if (!ts.isGetAccessor(member)) continue;
@@ -378,6 +378,7 @@ function resolveThisProp(
       member.body,
       options.consumerArgs ?? new Map(),
       topLevelConsts,
+      enumsByName,
     );
   }
   return null;
@@ -390,6 +391,11 @@ interface ParsedClassFile {
    *  `const { tag = DEFAULT_TAG } = this.args;` where `DEFAULT_TAG`
    *  points to a top-level `const DEFAULT_TAG = 'div';`. */
   topLevelConsts: Map<string, string>;
+  /** Map from enum name → member name → string value. Lets the getter
+   *  walker resolve `EnumName.Member` PropertyAccess inside the body
+   *  (e.g. `return this.args.X ?? EnumName.Member;`) without
+   *  pre-flattening it through a const indirection. */
+  enumsByName: Map<string, Map<string, string>>;
 }
 
 function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
@@ -506,7 +512,7 @@ function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
     ts.forEachChild(node, visit);
   }
   visit(sf);
-  return classBody ? { classBody, topLevelConsts } : null;
+  return classBody ? { classBody, topLevelConsts, enumsByName } : null;
 }
 
 function analyzeGetterBody(
@@ -514,6 +520,7 @@ function analyzeGetterBody(
   body: TS.Block | undefined,
   consumerArgs: ReadonlyMap<string, string>,
   topLevelConsts: ReadonlyMap<string, string>,
+  enumsByName: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): string | null {
   if (!body) return null;
   // Walk for VariableStatement that destructures from `this.args`,
@@ -522,11 +529,23 @@ function analyzeGetterBody(
   const destructureDefaults = new Map<string, string>();
 
   // Resolve an Expression to a string literal value when possible.
-  // Handles StringLiteral, Identifier (via topLevelConsts), and the
-  // common `EnumName.Member` PropertyAccess used by HDS.
+  // Handles StringLiteral, Identifier (via topLevelConsts), and
+  // `EnumName.Member` PropertyAccess (via enumsByName) — the latter
+  // covers HDS dialog-primitive's
+  // `return this.args.X ?? HdsXxxValues.Div;` shape directly,
+  // without requiring the addon to also alias the enum member
+  // through a top-level const.
   function exprToLiteral(expr: TS.Expression): string | null {
     if (ts.isStringLiteral(expr)) return expr.text;
     if (ts.isIdentifier(expr)) return topLevelConsts.get(expr.text) ?? null;
+    if (
+      ts.isPropertyAccessExpression(expr)
+      && ts.isIdentifier(expr.expression)
+      && ts.isIdentifier(expr.name)
+    ) {
+      const members = enumsByName.get(expr.expression.text);
+      if (members) return members.get(expr.name.text) ?? null;
+    }
     return null;
   }
 
