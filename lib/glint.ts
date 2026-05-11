@@ -702,16 +702,17 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
         const elem = node;
         // Args + dotted-binding lookup happen on entry, before pushing
         // any scope this element introduces. Block-params shadow inside
-        // its body, not at the binder itself.
-        if (elem.loc.start) {
+        // its body, not at the binder itself. Skip known HTML5 tags
+        // (`<div>`, `<span>`, …); everything else is a candidate
+        // component invocation (PascalCase, dotted, or a let-element
+        // binding even when lowercase). Mirrors Glimmer's own
+        // `isComponent` predicate at @glimmer/syntax's normalize.ts —
+        // the predicate isn't exported, so we approximate via the
+        // existing HTML-tag whitelist.
+        if (elem.loc.start && !isNativeTag(elem.tag)) {
           const args = collectLiteralArgs(elem);
           const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
           if (elem.tag.includes('.')) {
-            // Dotted invocations apply to ANY tag whose first segment
-            // is a block-param in scope (binder yields a hash) —
-            // including lowercase block-params like `<Form as |f|>
-            // <f.Field>`. The PascalCase gate is for non-dotted
-            // PascalCase invocations only.
             const [paramName, ...tail] = elem.tag.split('.');
             const binding = lookupParam(scopeStack, paramName!);
             if (binding && tail.length === 1) {
@@ -723,9 +724,9 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
                 binderKey: binding.binderKey,
               });
             }
-          } else if (/^[A-Z]/.test(elem.tag)) {
+          } else {
             if (args.size > 0) argsByLoc.set(key, args);
-            // Non-dotted PascalCase — check if it matches a let-element
+            // Non-dotted candidate — check if it matches a let-element
             // binding in scope. If so, the actual tag is the class
             // getter's value, not whatever Glint's TS-side picks from
             // the (element ...) helper's union return type.
@@ -1291,12 +1292,12 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       sourceNode?.type === 'PathExpression' &&
       node.parent?.sourceNode?.type === 'ElementNode' &&
       node.parent.sourceNode.tag &&
-      // PascalCase (component invocation) OR a dotted invocation
-      // through a block-param (which may have a lowercase head, e.g.
-      // `<Outer as |o|><o.Section>`). HTML-element tags are gated out
-      // by both filters.
-      (/^[A-Z]/.test(node.parent.sourceNode.tag) ||
-        node.parent.sourceNode.tag.includes('.')) &&
+      // Component invocation: anything that isn't a known HTML5 tag.
+      // Covers PascalCase (`<HdsButton>`), dotted (`<o.Section>`,
+      // `<X.Y>`), and let-element bindings — and mirrors Glimmer's
+      // internal `isComponent` predicate (which the package doesn't
+      // export).
+      !isNativeTag(node.parent.sourceNode.tag) &&
       node.transformedRange &&
       node.parent.sourceNode.loc?.start
     ) {
