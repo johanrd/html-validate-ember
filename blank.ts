@@ -154,6 +154,26 @@ function isNativeTag(tag: string): boolean {
   return NATIVE_TAGS.has(tag);
 }
 
+// Predicate for "this ElementNode is a Glimmer component invocation
+// the resolver should attempt to handle" — covers PascalCase
+// (`<HdsButton>`), dotted (`<X.Y>`, `<o.Section>`), `<this.X>`, and
+// let-element bindings. Excludes:
+//   - Known HTML5 tags (`<div>`, `<span>`, …) — pure native elements.
+//   - Named-block slots (`<:body>`, `<:header>`) — Glimmer slot syntax
+//     that's a placeholder for yielded content, not a component.
+//   - `@`-prefixed tags (`<@foo>`) — arg-bound invocations; we can't
+//     name-resolve them and Glimmer normalizes them via consumerArgs
+//     flow, not the resolver.
+// Mirrors Glimmer's internal `isComponent` predicate at
+// @glimmer/syntax/lib/v2/normalize.ts:818 (not exported); the
+// ember-eslint-parser carries its own local copy at src/parser/
+// transforms.js:76 for the same reason.
+function isComponentTag(tag: string): boolean {
+  if (!tag) return false;
+  if (tag.startsWith(':') || tag.startsWith('@')) return false;
+  return !isNativeTag(tag);
+}
+
 // ---------------------------------------------------------------------------
 // AST predicates and small utilities.
 // ---------------------------------------------------------------------------
@@ -2602,4 +2622,4 @@ function blankTemplateContentMultipass(
   return results;
 }
 
-export { blankTemplateContent, blankTemplateContentMultipass, isNativeTag };
+export { blankTemplateContent, blankTemplateContentMultipass, isComponentTag, isNativeTag };
