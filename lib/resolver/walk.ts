@@ -429,7 +429,7 @@ function resolveTagSpec(
 //
 //   get componentTag(): T { return 'literal'; }
 // → resolves to 'literal'.
-function resolveThisProp(
+export function resolveThisProp(
   source: TemplateSource,
   propName: string,
   options: ResolveOptions,
