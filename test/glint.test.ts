@@ -457,6 +457,30 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('passes `@tag={{this.X}}` through wrapper recursion to inner polymorphic component', () => {
+    // Mirrors HdsFormHeaderTitle → HdsTextDisplay → HdsText chain:
+    // the wrapper's class getter computes the tag value, the wrapper
+    // forwards it via `@tag={{this.tag}}` to the inner polymorphic
+    // component, and the inner's `(element this.componentTag)` should
+    // honour the forwarded literal — not fall back to its own getter
+    // default.
+    //
+    // Before the fix, `resolvePascalRecursion`'s passedArgs builder
+    // only handled `@arg={{@caller}}` passthrough, so `{{this.tag}}`
+    // dropped on the floor and the inner saw an empty consumerArgs
+    // (resolving to <span>, the inner's own default). The whole chain
+    // then resolved to <span> and downstream `element-permitted-content`
+    // rules FP-fired on legal `<div>`-under-<wrapper>.
+    const { filename, contents } = readFixture('this-prop-passthrough-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const divEntry = entries.find(([, tag]) => tag === 'div');
+    expect(
+      divEntry,
+      `expected ThisPropWrapper (no consumer @tag, getter default 'div') to chain through to <div>; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('HdsCardContainer-shape (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
     // Mirrors the actual HDS layout: consumer imports through a
     // cross-package barrel (`.d.ts`); the class declaration lives in

@@ -366,18 +366,33 @@ function resolveThisProp(
 ): string | null {
   const ts = options.ts;
   if (!ts) return null;
-  const classBody = readClassBody(source.origin, ts);
-  if (!classBody) return null;
+  const parsed = readClassBody(source.origin, ts);
+  if (!parsed) return null;
+  const { classBody, topLevelConsts } = parsed;
 
   for (const member of classBody) {
     if (!ts.isGetAccessor(member)) continue;
     if (!ts.isIdentifier(member.name) || member.name.text !== propName) continue;
-    return analyzeGetterBody(ts, member.body, options.consumerArgs ?? new Map());
+    return analyzeGetterBody(
+      ts,
+      member.body,
+      options.consumerArgs ?? new Map(),
+      topLevelConsts,
+    );
   }
   return null;
 }
 
-function readClassBody(origin: string, ts: typeof TS): TS.NodeArray<TS.ClassElement> | null {
+interface ParsedClassFile {
+  classBody: TS.NodeArray<TS.ClassElement>;
+  /** Map from a file-level `const X = '<literal>';` name to its value.
+   *  Used to resolve identifier-valued destructure defaults like
+   *  `const { tag = DEFAULT_TAG } = this.args;` where `DEFAULT_TAG`
+   *  points to a top-level `const DEFAULT_TAG = 'div';`. */
+  topLevelConsts: Map<string, string>;
+}
+
+function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
   let contents: string;
   try {
     contents = fs.readFileSync(origin, 'utf8');
@@ -398,28 +413,123 @@ function readClassBody(origin: string, ts: typeof TS): TS.NodeArray<TS.ClassElem
     false,
     origin.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
   );
-  let found: TS.NodeArray<TS.ClassElement> | null = null;
+  let classBody: TS.NodeArray<TS.ClassElement> | null = null;
+
+  // Build a map of enum name → member-name → string value. Captures
+  // enums declared in this file. HDS components also import their tag
+  // enums from a sibling `types.ts`; for those we follow the import
+  // path (relative only) and parse the target file's enums.
+  const enumsByName = new Map<string, Map<string, string>>();
+  function captureEnums(file: TS.SourceFile): Map<string, Map<string, string>> {
+    const out = new Map<string, Map<string, string>>();
+    for (const stmt of file.statements) {
+      if (!ts.isEnumDeclaration(stmt)) continue;
+      const members = new Map<string, string>();
+      for (const member of stmt.members) {
+        if (!member.initializer) continue;
+        if (!ts.isStringLiteral(member.initializer)) continue;
+        const memberName = ts.isIdentifier(member.name) ? member.name.text
+          : ts.isStringLiteral(member.name) ? member.name.text : null;
+        if (memberName === null) continue;
+        members.set(memberName, member.initializer.text);
+      }
+      if (members.size > 0) out.set(stmt.name.text, members);
+    }
+    return out;
+  }
+  for (const [name, members] of captureEnums(sf)) enumsByName.set(name, members);
+
+  // Follow relative imports (`./foo.ts`, `./foo`) for enums named in
+  // `import { EnumName } from '...'`. Resolution is shallow — we don't
+  // chain through re-exports.
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt)) continue;
+    if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const spec = stmt.moduleSpecifier.text;
+    if (!spec.startsWith('.')) continue;
+    const importClause = stmt.importClause;
+    if (!importClause?.namedBindings || !ts.isNamedImports(importClause.namedBindings)) continue;
+    const wantedNames = new Set<string>();
+    for (const elem of importClause.namedBindings.elements) {
+      wantedNames.add((elem.propertyName ?? elem.name).text);
+    }
+    // Resolve the relative path, trying common extensions.
+    const dir = path.dirname(origin);
+    const candidates = [spec, spec + '.ts', spec + '.tsx'];
+    let resolvedPath: string | null = null;
+    for (const c of candidates) {
+      const full = path.resolve(dir, c);
+      if (fs.existsSync(full)) { resolvedPath = full; break; }
+    }
+    if (!resolvedPath) continue;
+    let importContents: string;
+    try { importContents = fs.readFileSync(resolvedPath, 'utf8'); } catch { continue; }
+    const importSf = ts.createSourceFile(resolvedPath, importContents, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+    for (const [name, members] of captureEnums(importSf)) {
+      if (wantedNames.has(name) && !enumsByName.has(name)) {
+        enumsByName.set(name, members);
+      }
+    }
+  }
+
+  // Resolve a const initializer expression to a string literal when
+  // possible. Handles StringLiteral and `EnumName.Member` lookups.
+  function resolveConstInit(expr: TS.Expression): string | null {
+    if (ts.isStringLiteral(expr)) return expr.text;
+    if (
+      ts.isPropertyAccessExpression(expr)
+      && ts.isIdentifier(expr.expression)
+      && ts.isIdentifier(expr.name)
+    ) {
+      const members = enumsByName.get(expr.expression.text);
+      if (members) return members.get(expr.name.text) ?? null;
+    }
+    return null;
+  }
+
+  const topLevelConsts = new Map<string, string>();
+  for (const stmt of sf.statements) {
+    if (ts.isVariableStatement(stmt)) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+        const v = resolveConstInit(decl.initializer);
+        if (v !== null) topLevelConsts.set(decl.name.text, v);
+      }
+    }
+  }
   function visit(node: TS.Node): void {
-    if (found) return;
+    if (classBody) return;
     if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
-      found = node.members;
+      classBody = node.members;
       return;
     }
     ts.forEachChild(node, visit);
   }
   visit(sf);
-  return found;
+  return classBody ? { classBody, topLevelConsts } : null;
 }
 
 function analyzeGetterBody(
   ts: typeof TS,
   body: TS.Block | undefined,
   consumerArgs: ReadonlyMap<string, string>,
+  topLevelConsts: ReadonlyMap<string, string>,
 ): string | null {
   if (!body) return null;
   // Walk for VariableStatement that destructures from `this.args`,
-  // followed by `return <varName>`.
+  // followed by `return <varName>`. Also handles
+  // `return this.args.X ?? Default;` directly.
   const destructureDefaults = new Map<string, string>();
+
+  // Resolve an Expression to a string literal value when possible.
+  // Handles StringLiteral, Identifier (via topLevelConsts), and the
+  // common `EnumName.Member` PropertyAccess used by HDS.
+  function exprToLiteral(expr: TS.Expression): string | null {
+    if (ts.isStringLiteral(expr)) return expr.text;
+    if (ts.isIdentifier(expr)) return topLevelConsts.get(expr.text) ?? null;
+    return null;
+  }
+
   for (const stmt of body.statements) {
     if (ts.isVariableStatement(stmt)) {
       for (const decl of stmt.declarationList.declarations) {
@@ -432,8 +542,8 @@ function analyzeGetterBody(
             ? elem.propertyName.text
             : elem.name.text;
           let defaultVal: string | null = null;
-          if (elem.initializer && ts.isStringLiteral(elem.initializer)) {
-            defaultVal = elem.initializer.text;
+          if (elem.initializer) {
+            defaultVal = exprToLiteral(elem.initializer);
           }
           // Track local-binding name → (argName, default).
           destructureDefaults.set(elem.name.text, argName);
@@ -455,6 +565,32 @@ function analyzeGetterBody(
           const def = destructureDefaults.get(`__default_${localName}`);
           if (def !== undefined) return def;
           return null;
+        }
+        // Bare top-level const reference: `return DEFAULT_TAG;`.
+        const directConst = topLevelConsts.get(localName);
+        if (directConst !== undefined) return directConst;
+      }
+      // `return this.args.X ?? Default;` — direct binary form (no
+      // intermediate destructure). Used by HDS dialog-primitive's
+      // `get titleTag() { return this.args.titleTag ?? DEFAULT; }`.
+      if (
+        ts.isBinaryExpression(stmt.expression)
+        && stmt.expression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        const lhs = stmt.expression.left;
+        // `this.args.X`
+        if (
+          ts.isPropertyAccessExpression(lhs)
+          && ts.isPropertyAccessExpression(lhs.expression)
+          && lhs.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+          && ts.isIdentifier(lhs.expression.name)
+          && lhs.expression.name.text === 'args'
+          && ts.isIdentifier(lhs.name)
+        ) {
+          const argName = lhs.name.text;
+          const consumerVal = consumerArgs.get(argName);
+          if (consumerVal !== undefined) return consumerVal;
+          return exprToLiteral(stmt.expression.right);
         }
       }
     }
@@ -494,7 +630,7 @@ function resolvePascalRecursion(
   if (importedFile) {
     const importedSource = findTemplateSource({ declFile: importedFile, ts: options.ts });
     if (importedSource) {
-      return resolvePascalRecursionWith(node, importedSource, options, visited, depth);
+      return resolvePascalRecursionWith(node, source, importedSource, options, visited, depth);
     }
   }
 
@@ -503,16 +639,17 @@ function resolvePascalRecursion(
     componentName: node.tag,
     ts: options.ts,
   });
-  if (byName) return resolvePascalRecursionWith(node, byName, options, visited, depth);
+  if (byName) return resolvePascalRecursionWith(node, source, byName, options, visited, depth);
 
   const sibling = trySiblingProbe(source.origin, node.tag);
-  if (sibling) return resolvePascalRecursionWith(node, sibling, options, visited, depth);
+  if (sibling) return resolvePascalRecursionWith(node, source, sibling, options, visited, depth);
 
   return TRANSPARENT;
 }
 
 function resolvePascalRecursionWith(
   node: AST.ElementNode,
+  outerSource: TemplateSource,
   wrapperSource: TemplateSource,
   options: ResolveOptions,
   visited: Set<string>,
@@ -525,6 +662,9 @@ function resolvePascalRecursionWith(
   // Build the args we pass to the wrapper:
   // for each `@argName="literal"` on `<Outer>`, that's a literal pass.
   // for each `@argName={{@callerArg}}`, that's a passthrough — look up callerArg in our args.
+  // for each `@argName={{this.prop}}`, evaluate prop against the outer
+  // class's getter body — this is how HDS chains class-derived literals
+  // through wrappers like `<HdsTextDisplay @tag={{this.tag}}>`.
   const passedArgs = new Map<string, string>();
   for (const attr of node.attributes) {
     if (!attr.name.startsWith('@')) continue;
@@ -533,10 +673,18 @@ function resolvePascalRecursionWith(
       passedArgs.set(argName, attr.value.chars);
     } else if (attr.value.type === 'MustacheStatement') {
       const expr = attr.value.path;
-      if (expr.type === 'PathExpression' && expr.head?.type === 'AtHead') {
-        const callerArgName = expr.head.name.replace(/^@/, '');
-        const callerVal = options.consumerArgs?.get(callerArgName);
-        if (callerVal !== undefined) passedArgs.set(argName, callerVal);
+      if (expr.type === 'PathExpression') {
+        if (expr.head?.type === 'AtHead') {
+          const callerArgName = expr.head.name.replace(/^@/, '');
+          const callerVal = options.consumerArgs?.get(callerArgName);
+          if (callerVal !== undefined) passedArgs.set(argName, callerVal);
+        } else if (expr.head?.type === 'ThisHead') {
+          const propName = expr.tail[0];
+          if (propName && options.ts) {
+            const val = resolveThisProp(outerSource, propName, options);
+            if (val !== null) passedArgs.set(argName, val);
+          }
+        }
       }
     }
   }
