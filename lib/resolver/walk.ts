@@ -769,62 +769,72 @@ function isConditional(stmt: AST.BlockStatement): boolean {
 }
 
 // Statically evaluate a condition expression against the consumer's
-// @args. Returns `true`/`false` when the condition is determinable,
-// `null` when not.
+// @args (plus class-property indirection through `this.<prop>`).
+// Returns `true`/`false` when the condition is determinable, `null`
+// when not.
 //
 // Supported forms:
 //   - PathExpression with AtHead (`@arg`): truthy if consumerArgs has
-//     a non-empty value for it. Strings are truthy unless empty.
+//     a non-empty value for it. Strings are truthy unless empty/'false'.
+//   - PathExpression with ThisHead (`this.<prop>`): walk the class
+//     getter for the prop and recurse; HDS pattern where a
+//     `componentTag` getter destructures `{ tag = 'div' } = this.args`
+//     and returns `tag`.
 //   - SubExpression `(eq <a> <b>)`: literal equality between operands
-//     where each operand is either a StringLiteral, NumberLiteral, or
-//     resolvable @arg.
+//     where each operand is either a literal, an @arg, or a `this.X`
+//     prop that traces back to an @arg.
 //   - `(not <inner>)`: inverts a determinable inner condition.
 function evaluateConditionAgainstArgs(
   expr: AST.Expression,
-  consumerArgs: ReadonlyMap<string, string> | undefined,
+  source: TemplateSource,
+  options: ResolveOptions,
 ): boolean | null {
-  if (expr.type === 'PathExpression') {
-    if (expr.head?.type === 'AtHead') {
-      const argName = expr.head.name.replace(/^@/, '');
-      const value = consumerArgs?.get(argName);
-      if (value === undefined) return null;
-      return value !== '' && value !== 'false';
-    }
-    return null;
+  const value = readLiteralValue(expr, source, options);
+  if (value !== null) {
+    return value !== '' && value !== 'false';
   }
-  if (expr.type === 'StringLiteral') return expr.value !== '';
-  if (expr.type === 'NumberLiteral') return expr.value !== 0;
   if (expr.type === 'BooleanLiteral') return expr.value;
   if (expr.type === 'NullLiteral' || expr.type === 'UndefinedLiteral') return false;
   if (expr.type === 'SubExpression' && expr.path.type === 'PathExpression') {
     const helper = expr.path.original;
     if (helper === 'eq' && expr.params.length === 2) {
-      const a = readLiteralValue(expr.params[0]!, consumerArgs);
-      const b = readLiteralValue(expr.params[1]!, consumerArgs);
+      const a = readLiteralValue(expr.params[0]!, source, options);
+      const b = readLiteralValue(expr.params[1]!, source, options);
       if (a === null || b === null) return null;
       return a === b;
     }
     if (helper === 'not' && expr.params.length === 1) {
-      const inner = evaluateConditionAgainstArgs(expr.params[0]!, consumerArgs);
+      const inner = evaluateConditionAgainstArgs(expr.params[0]!, source, options);
       return inner === null ? null : !inner;
     }
   }
   return null;
 }
 
-// Resolve an expression to a string/number literal value (for `eq`-style
+// Resolve an expression to a string literal value (for `eq`-style
 // helper evaluation). Returns null when the expression isn't a known
-// literal or arg-resolvable PathExpression.
+// literal or arg/prop-resolvable PathExpression.
 function readLiteralValue(
   expr: AST.Expression,
-  consumerArgs: ReadonlyMap<string, string> | undefined,
+  source: TemplateSource,
+  options: ResolveOptions,
 ): string | null {
   if (expr.type === 'StringLiteral') return expr.value;
   if (expr.type === 'NumberLiteral') return String(expr.value);
   if (expr.type === 'BooleanLiteral') return String(expr.value);
-  if (expr.type === 'PathExpression' && expr.head?.type === 'AtHead') {
-    const argName = expr.head.name.replace(/^@/, '');
-    return consumerArgs?.get(argName) ?? null;
+  if (expr.type === 'PathExpression') {
+    if (expr.head?.type === 'AtHead') {
+      const argName = expr.head.name.replace(/^@/, '');
+      return options.consumerArgs?.get(argName) ?? null;
+    }
+    if (expr.head?.type === 'ThisHead') {
+      const propName = expr.tail[0];
+      if (!propName || !options.ts) return null;
+      // Reuses the same getter-walk used by the (element this.prop)
+      // polymorphic-tag chain trace (HDS pattern where a class getter
+      // destructures `{ tag = 'div' } = this.args` and returns `tag`).
+      return resolveThisProp(source, propName, options);
+    }
   }
   return null;
 }
@@ -844,7 +854,7 @@ function resolveConditional(
   // bails to transparent → cascades FPs at the consumer.
   const isUnless = stmt.path.type === 'PathExpression' && stmt.path.original === 'unless';
   const condValue = stmt.params[0]
-    ? evaluateConditionAgainstArgs(stmt.params[0], options.consumerArgs)
+    ? evaluateConditionAgainstArgs(stmt.params[0], source, options)
     : null;
   if (condValue !== null) {
     const truthy = isUnless ? !condValue : condValue;

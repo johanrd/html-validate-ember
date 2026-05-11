@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import { describe, it, expect } from 'vitest';
 import { preprocess } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
@@ -7,6 +10,9 @@ import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
 import { resolveTemplate } from '../lib/resolver/walk.js';
+import { findTemplateSource } from '../lib/resolver/template-source.js';
+
+const FIXTURES = path.dirname(new URL(import.meta.url).pathname) + '/glint-fixtures';
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);
@@ -1372,6 +1378,46 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
     const r = resolveTemplate({ content: tpl, origin: '/x.gts', kind: 'gts' });
     expect(r.kind).toBe('transparent');
+  });
+
+  it('canonical resolver: evaluates `(eq this.componentTag "div")` against consumer args via class-getter walk', () => {
+    // HDS's HdsCardContainer pattern: condition uses a class getter
+    // (`this.componentTag`) that destructures `{ tag = 'div' } =
+    // this.args` and returns it. With consumer @tag="li" the getter
+    // resolves to 'li', the IF condition is false → resolves to <li>.
+    const filename = path.join(FIXTURES, 'card-container-shape.gts');
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      'class CardContainer extends Component<{ Args: { tag?: string }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): string {',
+      "    const { tag = 'div' } = this.args;",
+      '    return tag;',
+      '  }',
+      '  <template>',
+      "    {{#if (eq this.componentTag 'div')}}",
+      "      <div ...attributes>{{yield}}</div>",
+      '    {{else}}',
+      '      {{#let (element this.componentTag) as |Tag|}}',
+      '        <Tag ...attributes>{{yield}}</Tag>',
+      '      {{/let}}',
+      '    {{/if}}',
+      '  </template>',
+      '}',
+      'export default CardContainer;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof import('typescript');
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, {
+        consumerArgs: new Map([['tag', 'li']]),
+        ts,
+      });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('li');
+    } finally {
+      fs.unlinkSync(filename);
+    }
   });
 
   it('canonical resolver: `(eq @arg "literal")` truthy → IF branch', () => {
