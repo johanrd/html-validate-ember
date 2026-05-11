@@ -35,6 +35,54 @@
       "message": "Stray end tag '</p>'"
     },
     {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 109,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 123,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 125,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 142,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 159,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 178,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
       "file": "apps/repl/app/templates/docs/repl-sdk.gts",
       "line": 130,
       "column": 6,

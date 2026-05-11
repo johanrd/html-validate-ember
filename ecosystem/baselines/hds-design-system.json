@@ -11,14 +11,6 @@
       "message": "Prefer to use the native <button> element"
     },
     {
-      "file": "packages/components/src/components/hds/advanced-table/th-selectable.gts",
-      "line": 131,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
       "file": "packages/components/src/components/hds/advanced-table/th.gts",
       "line": 498,
       "column": 20,
@@ -107,30 +99,6 @@
       "message": "<div> element is not permitted as content under <button>"
     },
     {
-      "file": "packages/components/src/components/hds/flyout/index.gts",
-      "line": 201,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-labelledby\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/modal/index.gts",
-      "line": 257,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-labelledby\" cannot be used on this element"
-    },
-    {
-      "file": "packages/components/src/components/hds/pagination/size-selector/index.gts",
-      "line": 82,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<select> element is not permitted as content under <select>"
-    },
-    {
       "file": "packages/components/src/components/hds/stepper/list/index.gts",
       "line": 57,
       "column": 34,
@@ -163,38 +131,6 @@
       "message": "<div> element is not permitted as content under <button>"
     },
     {
-      "file": "packages/components/src/components/hds/tag/index.gts",
-      "line": 185,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "packages/components/src/components/hds/tag/index.gts",
-      "line": 207,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "packages/components/src/components/hds/tag/index.gts",
-      "line": 224,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "packages/components/src/components/hds/tag/index.gts",
-      "line": 235,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
       "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
       "line": 87,
       "column": 23,
@@ -212,7 +148,7 @@
     },
     {
       "file": "showcase/app/components/mock/app/main/table-complex.gts",
-      "line": 93,
+      "line": 98,
       "column": 10,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -236,43 +172,11 @@
     },
     {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
-      "line": 832,
-      "column": 49,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
-      "line": 885,
-      "column": 36,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
-      "line": 938,
-      "column": 36,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
-      "line": 1120,
+      "line": 1135,
       "column": 16,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/advanced-table/sub-sections/basic.gts",
-      "line": 51,
-      "column": 5,
-      "severity": "error",
-      "ruleId": "attribute-misuse",
-      "message": "\"target\" attribute cannot be used on <a> in this context: requires \"href\" attribute to be present"
     },
     {
       "file": "showcase/app/components/page-components/application-state/sub-sections/container.gts",
@@ -316,14 +220,6 @@
     },
     {
       "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
-      "line": 24,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
       "line": 32,
       "column": 10,
       "severity": "error",
@@ -337,22 +233,6 @@
       "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</li>'"
-    },
-    {
-      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-long-strings.gts",
-      "line": 25,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
-      "line": 28,
-      "column": 24,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
       "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
@@ -372,22 +252,6 @@
     },
     {
       "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
-      "line": 41,
-      "column": 9,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
-      "line": 55,
-      "column": 22,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
       "line": 58,
       "column": 10,
       "severity": "error",
@@ -403,16 +267,8 @@
       "message": "Stray end tag '</li>'"
     },
     {
-      "file": "showcase/app/components/page-components/card/sub-sections/tag.gts",
-      "line": 28,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <ul>"
-    },
-    {
       "file": "showcase/app/components/page-components/copy/button/code-fragments/with-modal.gts",
-      "line": 43,
+      "line": 47,
       "column": 12,
       "severity": "error",
       "ruleId": "wcag/h32",
@@ -516,7 +372,7 @@
     },
     {
       "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-complex-table.gts",
-      "line": 375,
+      "line": 380,
       "column": 12,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -756,99 +612,67 @@
     },
     {
       "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
-      "line": 46,
-      "column": 14,
+      "line": 48,
+      "column": 12,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
     },
     {
       "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
-      "line": 49,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
-      "line": 61,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
-      "line": 64,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
-      "line": 61,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
-      "line": 67,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
-      "line": 93,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/layout/sub-sections/within-containers.gts",
-      "line": 116,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
-      "line": 32,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
-      "line": 33,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
-      "line": 49,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <span>"
-    },
-    {
-      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/base-control.gts",
       "line": 50,
       "column": 12,
       "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 63,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 65,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/code-fragments/with-group-content.gts",
+      "line": 80,
+      "column": 16,
+      "severity": "error",
       "ruleId": "element-permitted-content",
-      "message": "<h1> element is not permitted as content under <span>"
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/code-fragments/with-group-content.gts",
+      "line": 83,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 52,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 58,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
     },
     {
       "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
@@ -908,7 +732,7 @@
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
-      "line": 106,
+      "line": 158,
       "column": 15,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -916,7 +740,7 @@
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
-      "line": 110,
+      "line": 162,
       "column": 16,
       "severity": "error",
       "ruleId": "no-implicit-close",
@@ -924,7 +748,7 @@
     },
     {
       "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
-      "line": 124,
+      "line": 176,
       "column": 16,
       "severity": "error",
       "ruleId": "close-order",
@@ -1092,14 +916,6 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
-      "line": 54,
-      "column": 26,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
       "line": 65,
       "column": 8,
       "severity": "error",
@@ -1116,7 +932,7 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
-      "line": 84,
+      "line": 89,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1124,7 +940,7 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
-      "line": 103,
+      "line": 113,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1132,7 +948,7 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
-      "line": 115,
+      "line": 135,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1148,31 +964,7 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
-      "line": 31,
-      "column": 26,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
-      "line": 48,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "unique-landmark",
-      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
-    },
-    {
-      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
       "line": 52,
-      "column": 26,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
-      "line": 66,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1180,7 +972,7 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
-      "line": 83,
+      "line": 70,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1188,7 +980,15 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
-      "line": 112,
+      "line": 87,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 116,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
@@ -1212,19 +1012,11 @@
     },
     {
       "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
-      "line": 66,
+      "line": 70,
       "column": 8,
       "severity": "error",
       "ruleId": "unique-landmark",
       "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
-    },
-    {
-      "file": "showcase/app/components/page-components/page-header/sub-sections/wrapping.gts",
-      "line": 42,
-      "column": 32,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
       "file": "showcase/app/components/page-components/pagination/code-fragments/with-user-table.gts",
@@ -1236,51 +1028,219 @@
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
-      "line": 330,
+      "line": 114,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 124,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 127,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 137,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 140,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 150,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 159,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 163,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 169,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 178,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 310,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 320,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 343,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
       "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
-      "line": 123,
-      "column": 12,
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 451,
+      "column": 16,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 460,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 465,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 475,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 480,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 490,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
-      "line": 130,
-      "column": 12,
+      "line": 121,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
+      "line": 137,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 62,
-      "column": 12,
+      "line": 60,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 72,
-      "column": 12,
+      "line": 69,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
-      "line": 82,
-      "column": 12,
+      "line": 70,
+      "column": 10,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 79,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 80,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 88,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
@@ -1297,22 +1257,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/example-implementations.gts",
-      "line": 17,
-      "column": 36,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-components/stepper/list/sub-sections/example-implementations.gts",
-      "line": 20,
-      "column": 36,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
       "file": "showcase/app/components/page-components/table/code-fragments/with-cluster-data.gts",
@@ -1596,7 +1540,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 498,
+      "line": 513,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1604,7 +1548,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 543,
+      "line": 558,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1612,7 +1556,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 588,
+      "line": 603,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1660,7 +1604,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 254,
+      "line": 271,
       "column": 8,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1716,15 +1660,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 203,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "aria-label-misuse",
-      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 390,
+      "line": 405,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1732,7 +1668,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 399,
+      "line": 414,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1740,7 +1676,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 415,
+      "line": 430,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1748,7 +1684,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 424,
+      "line": 439,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1756,7 +1692,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 437,
+      "line": 452,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1764,7 +1700,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 446,
+      "line": 461,
       "column": 40,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1772,7 +1708,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 498,
+      "line": 513,
       "column": 28,
       "severity": "error",
       "ruleId": "attribute-boolean-style",
@@ -1780,7 +1716,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 546,
+      "line": 561,
       "column": 25,
       "severity": "error",
       "ruleId": "attribute-boolean-style",
@@ -1788,7 +1724,55 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 855,
+      "line": 795,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 804,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 805,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 814,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 815,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 823,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 889,
       "column": 8,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1796,7 +1780,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 856,
+      "line": 890,
       "column": 10,
       "severity": "error",
       "ruleId": "wcag/h63",
@@ -1804,7 +1788,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 879,
+      "line": 913,
       "column": 16,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1812,7 +1796,7 @@
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 1007,
+      "line": 1041,
       "column": 10,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1820,83 +1804,19 @@
     },
     {
       "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 26,
-      "column": 16,
+      "line": 23,
+      "column": 12,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
     },
     {
       "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 27,
-      "column": 16,
+      "line": 39,
+      "column": 12,
       "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 28,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 29,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 33,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 34,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 35,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
-      "line": 36,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<div> element is not permitted as content under <h1>"
-    },
-    {
-      "file": "showcase/app/templates/page-components/form/frameless/demo-form-basic.gts",
-      "line": 18,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "showcase/app/templates/page-components/form/frameless/demo-form-complex.gts",
-      "line": 105,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
     },
     {
       "file": "website/app/components/doc/cards/deck.gts",

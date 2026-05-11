@@ -359,12 +359,13 @@ function writeBaseline(name: string, baseline: Baseline): void {
 
 function summarizeFindings(findings: Finding[], limit = 20): string {
   if (findings.length === 0) return '  (none)\n';
+  const effectiveLimit = process.env['HVE_FULL_DIFF'] === '1' ? findings.length : limit;
   const out: string[] = [];
-  for (const f of findings.slice(0, limit)) {
+  for (const f of findings.slice(0, effectiveLimit)) {
     out.push(`  ${f.file}:${f.line}:${f.column}  [${f.severity}] ${f.ruleId}\n    ${f.message}\n`);
   }
-  if (findings.length > limit) {
-    out.push(`  … and ${findings.length - limit} more\n`);
+  if (findings.length > effectiveLimit) {
+    out.push(`  … and ${findings.length - effectiveLimit} more\n`);
   }
   return out.join('');
 }
