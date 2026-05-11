@@ -457,6 +457,25 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('descends through pure-yield wrappers (template = `{{yield}}` only) to find the real outer tag', () => {
+    // HDS HdsDropdown shape: its template's OUTER element is
+    // `<HdsPopoverPrimitive>` — a pure-yielder (just `{{yield (hash …)}}`,
+    // no element of its own). The "real" DOM outer is the `<div>` /
+    // `<ul>` inside HdsPopoverPrimitive's body. Without pure-yield
+    // descent, `<HdsDropdown>` resolves to transparent and the
+    // substitution drops its outer wrapper — the inner `<li>` items
+    // (D.Interactive) appear as siblings of the consumer's outer
+    // `<li>` (SF.Item) and FP-fire `no-implicit-close`.
+    const { filename, contents } = readFixture('pure-yield-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const ulEntry = entries.find(([, tag]) => tag === 'ul');
+    expect(
+      ulEntry,
+      `expected <Outer> to descend through pure-yield <PureYieldInner> and resolve to <ul> (the real DOM outer); got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
   it('resolves multi-level dotted invocation `<S.Title>` where `S` itself comes from `<O.Section as |S|>`', () => {
     // HDS form-layout showcase shape:
     //   <HdsForm as |FORM|>
