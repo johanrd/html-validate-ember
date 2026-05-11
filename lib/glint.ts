@@ -20,6 +20,7 @@ import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
+import { STRUCTURAL_CHILD_TAGS } from './element-sets.js';
 import { findTemplateSource } from './resolver/template-source.js';
 import {
   resolveTemplate,
@@ -550,19 +551,6 @@ const GENERIC_BASE_ELEMENT_TYPES: ReadonlySet<string> = new Set([
   'HTMLElement',
   'SVGElement',
   'MathMLElement',
-]);
-
-// Tags whose role on the consumer's parent context is structurally
-// meaningful — they require specific parents (`<li>` requires
-// `<ul>`/`<ol>`/`<menu>`, etc.). When a component's outer wrapper is
-// one of these, KEEP the outer for substitution: dropping it would
-// break the consumer's parent-context validation. For permissive
-// outer wrappers (`<div>`, `<span>`, etc.), prefer the yield-ancestor
-// when it differs — that's where consumer-yielded content actually
-// lands at runtime, and content-model rules hinge on it.
-const STRUCTURAL_CHILD_TAGS: ReadonlySet<string> = new Set([
-  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
-  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
 ]);
 
 // Translate a Resolution from the canonical resolver into the

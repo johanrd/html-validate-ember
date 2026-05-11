@@ -54,6 +54,7 @@ import type { MetaDataTable } from 'html-validate';
 
 import { lookupBuiltinComponent } from './lib/builtin-components.js';
 import type { ComponentAttrs } from './lib/builtin-components.js';
+import { STRUCTURAL_CHILD_TAGS as CONTENT_RESTRICTED_STRUCTURAL_CHILDREN } from './lib/element-sets.js';
 import type { AttrTypeInfo } from './lib/cache.js';
 import { DYNAMIC_VALUE_PLACEHOLDER, isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 
@@ -1848,31 +1849,6 @@ function selectBranch(
 // bare-mustache event names like `{{on @event …}}` could resolve to
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
-
-// CONTENT_RESTRICTED_STRUCTURAL_CHILDREN and STRUCTURAL_CONTENT_PARENTS
-// are *curated* sets, not direct derivations from html-validate's HTML5
-// schema. The pure derivation (any tag named as a child in some
-// `permittedContent`) is too wide for our purpose: it includes flow
-// content like `<div>`/`<p>` (because `<dl>` permits `<div>` and lots
-// of elements permit `<p>`), and `<button>`/`<source>`/`<track>` —
-// suppressing on those would mask real bugs.
-//
-// The narrow criterion the curated list captures: tags whose runtime
-// behavior REQUIRES a specific structural parent OR INTERPOSES a
-// structural child (HdsTabs interposes `<li>` in `<ul>`; fieldset
-// may interpose `<legend>` from a yielded slot; etc.). That's an
-// empirical pattern, not a clean function of `permittedContent`.
-//
-// The curated lists are validated at module load against the live
-// HTML5 schema. If a future html-validate revision stops listing one
-// of these as a named permittedContent entry the boot assertion
-// surfaces it as a build-time error rather than silent suppression
-// breakage.
-
-const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
-  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
-  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
-]);
 
 const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
   'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',

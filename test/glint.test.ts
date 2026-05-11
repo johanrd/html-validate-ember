@@ -556,30 +556,29 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
-  it('HdsCardContainer-shape (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
-    // Mirrors the actual HDS layout: consumer imports through a
-    // cross-package barrel (`.d.ts`); the class declaration lives in
-    // a sibling `.d.ts` with no template body. The resolver must
-    // bridge to the `src/<...>.gts` companion (via the package's
-    // `exports` map fallback), walk the conditional + class-getter +
-    // (element …) helper with consumer @tag="li", and resolve <li>.
+  it('polymorphic-tag pattern (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
+    // Cross-package barrel (.d.ts) re-exports a component whose class
+    // declaration has no template body. The resolver must bridge to the
+    // src/<...>.gts companion (via the package's `exports` map fallback),
+    // walk the conditional + class-getter + (element …) helper with
+    // consumer @tag="li", and resolve <li>.
     //
-    // This is the realistic reproduction of the HDS-cluster FP: the
-    // simpler same-file fixture above already passes, so the bug —
-    // if there is one — must live in the cross-package decl→source
-    // bridge or symbol-alias chain handling.
-    const { filename, contents } = readFixture('hds-card-cross-package-consumer.gts');
+    // Pattern: `{{#if (eq this.componentTag "div")}}<div>{{else}}
+    // {{#let (element this.componentTag) as |Tag|}}<Tag>{{/let}}{{/if}}`
+    // with a getter `const { tag = 'div' } = this.args; return tag;`.
+    // HDS card/container is a real-world instance of this pattern.
+    const { filename, contents } = readFixture('polymorphic-tag-cross-package-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
     const entries = [...componentTagMap.entries()];
     const liEntry = entries.find(([, tag]) => tag === 'li');
     expect(
       liEntry,
-      `expected cross-package HdsCardContainer(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+      `expected cross-package PolymorphicCard(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
   });
 
-  it('HdsCardContainer-shape: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
-    // Mirrors HDS's `HdsCardContainer`:
+  it('polymorphic-tag pattern: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
+    // Polymorphic-tag pattern (e.g. HDS card/container):
     //   {{#if (eq this.componentTag "div")}}
     //     <div>{{yield}}</div>
     //   {{else}}

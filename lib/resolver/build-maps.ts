@@ -9,15 +9,12 @@ import { traverse, type AST } from '@glimmer/syntax';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
+import { BUILTIN_COMPONENTS } from '../builtin-components.js';
 import type { ComponentAttrs } from '../builtin-components.js';
 import { findTemplateSource } from './template-source.js';
 import { resolveTemplate } from './walk.js';
 
-const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set([
-  'Input',
-  'Textarea',
-  'LinkTo',
-]);
+const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set(BUILTIN_COMPONENTS.keys());
 
 let cachedTs: typeof TS | null | undefined;
 function loadTs(): typeof TS | null {
