@@ -257,15 +257,21 @@ function printUsage(): void {
     // Categorization:
     //   - "analyzed" = file went through Glint's rewrite + TS-program
     //     pipeline (`loaded`).
-    //   - "from cache" = no Glint work was needed: either a literal
-    //     disk-cache hit (`cached`), or a `.gts` file with no
-    //     `<template>` block (`skipped` — Glint correctly returns
-    //     empty; we write a tombstone so subsequent runs are literal
-    //     cache hits).
-    // Both categories together always sum to the header total. The
-    // per-reason skip breakdown is still available via `HVE_DEBUG=1`.
+    //   - "from cache" = literal disk-cache hit (`cached`). On the
+    //     FIRST run this is always 0 — nothing has been cached yet, so
+    //     reporting `cached + skipped` as "from cache" would lie about
+    //     the no-template-block files (we only write their tombstones
+    //     after this run finishes).
+    //   - No-template-block `.gts` files (`rewriteEmpty`) are reported
+    //     separately when present. They behave like a plain `.ts`
+    //     file for Glint's purposes and aren't really analyzed; the
+    //     tombstone makes subsequent runs report them as `cached`.
+    //   - Read / rewrite errors are surfaced via `HVE_DEBUG=1` only.
+    const noTemplate = stats.skips.rewriteEmpty.length;
     process.stderr.write(
-      `Glint: ${stats.loaded} analyzed, ${stats.cached + stats.skipped} from cache\n`,
+      `Glint: ${stats.loaded} analyzed, ${stats.cached} from cache` +
+        (noTemplate > 0 ? ` (${noTemplate} .gts file${noTemplate === 1 ? '' : 's'} had no <template>)` : '') +
+        '\n',
     );
     if (stats.skipped > 0 && process.env['HVE_DEBUG']) {
       const labels: Record<keyof PreloadStats['skips'], string> = {
