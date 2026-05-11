@@ -118,9 +118,12 @@ function expandTargets(args: string[]): string[] {
 
 function printUsage(): void {
   process.stderr.write(
-    'usage: validate-gts [--glint] [--quiet] [--max-conditional-branches=N] <file-or-dir>...\n' +
+    'usage: validate-gts [--no-glint] [--quiet] [--max-conditional-branches=N] <file-or-dir>...\n' +
       '\n' +
-      '  --glint                         enable Glint type extraction (.gts/.gjs only; requires @glint/ember-tsc in the host project).\n' +
+      '  --no-glint                      disable Glint type extraction (.gts/.gjs only). Default: on when\n' +
+      '                                  `@glint/ember-tsc` is resolvable; missing/disabled falls back to the\n' +
+      '                                  canonical resolver alone (still substitutes PascalCase components).\n' +
+      '  --glint                         (deprecated alias — Glint is on by default) keep for back-compat.\n' +
       '  --quiet                         suppress per-file diagnostics; print only the summary.\n' +
       '  --max-conditional-branches=N    cap multipass enumeration at N conditional branches per template\n' +
       '                                  (default 10; up to 2^N combinations, often fewer thanks to tree-aware enumeration).\n' +
@@ -128,7 +131,7 @@ function printUsage(): void {
       '                                  A "conditional branch" here is any `{{#if}}` / `{{#unless}}` / `{{#each}}` block with an `{{else}}` clause.\n' +
       '\n' +
       '  Environment:\n' +
-      '    HVE_GLINT=1                      same as --glint (also honored when invoking html-validate directly).\n' +
+      '    HVE_GLINT=0                      disable Glint type extraction (same as --no-glint; default: on).\n' +
       '    HVE_NO_CACHE=1                   bypass the on-disk Glint extraction cache.\n' +
       '    HVE_DEBUG=1                      on Glint preload, print per-file skip reasons (non-gts/gjs, read error, rewrite empty/error).\n' +
       '    HVE_MAX_CONDITIONAL_BRANCHES=N   cap multipass enumeration at N conditional branches per template\n' +
@@ -172,7 +175,12 @@ function printUsage(): void {
     }
     return undefined;
   };
+  // --glint is the historical opt-in flag; kept as a no-op now that
+  // Glint extraction is on by default. --no-glint disables it for
+  // projects without `@glint/ember-tsc` installed (or anywhere the
+  // type-aware pass isn't worth the TS-program build cost).
   if (flags.has('--glint')) process.env['HVE_GLINT'] = '1';
+  if (flags.has('--no-glint')) process.env['HVE_GLINT'] = '0';
   if (flags.has('--max-conditional-branches')) {
     const mcb = flagValue('--max-conditional-branches');
     if (mcb === undefined) {
@@ -219,9 +227,10 @@ function printUsage(): void {
   // target list are filtered out — Glint doesn't apply to classic
   // templates, and counting them would inflate the "analyzing N
   // templates" header with files Glint will never touch.
-  const glintFiles = process.env['HVE_GLINT']
-    ? files.filter((f) => f.endsWith('.gts') || f.endsWith('.gjs'))
-    : [];
+  const glintFiles =
+    process.env['HVE_GLINT'] !== '0'
+      ? files.filter((f) => f.endsWith('.gts') || f.endsWith('.gjs'))
+      : [];
   if (glintFiles.length > 1) {
     const isTTY = Boolean(process.stderr.isTTY);
     process.stderr.write(`Glint: analyzing ${glintFiles.length} templates for type-aware linting…\n`);
