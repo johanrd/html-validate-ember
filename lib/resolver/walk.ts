@@ -834,6 +834,32 @@ function resolveBinding(
   parentSource: TemplateSource,
   options: ResolveOptions,
 ): Resolution {
+  // `Title=(component HdsFormHeaderTitle size="300")` — the hash
+  // entry is a curried `(component …)` call rather than a bare
+  // identifier. Extract the wrapped component reference, merge the
+  // curried `@arg="literal"` pairs into the parentArgs (so the
+  // inner's destructure defaults respect them), and recurse.
+  if (expr.type === 'SubExpression') {
+    if (expr.path.type !== 'PathExpression') return TRANSPARENT;
+    if (expr.path.original !== 'component') return TRANSPARENT;
+    const componentRef = expr.params[0];
+    if (!componentRef) return TRANSPARENT;
+    // Collect `@arg="literal"` curried args from the `(component …)`
+    // hash pairs. Only string-literal values are taken — dynamic
+    // values can't be statically pinned and would just shadow a
+    // potentially-correct caller value.
+    const curriedArgs = new Map<string, string>(options.consumerArgs ?? new Map());
+    for (const pair of expr.hash.pairs) {
+      if (pair.value.type === 'StringLiteral') {
+        curriedArgs.set(pair.key, pair.value.value);
+      }
+    }
+    return resolveBinding(componentRef, parentSource, {
+      ...options,
+      consumerArgs: curriedArgs,
+    });
+  }
+
   if (expr.type !== 'PathExpression') return TRANSPARENT;
   if (!expr.head) return TRANSPARENT;
 

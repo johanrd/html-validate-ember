@@ -457,6 +457,34 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('resolves dotted invocation through `(component Inner …)` curried yield-hash', () => {
+    // HDS HdsFormSectionHeader yields `Title=(component
+    // HdsFormHeaderTitle size="300")` — a curried component
+    // reference inside the hash. Without curried-binding support,
+    // `<FSH.Title>` resolves to transparent in the canonical resolver,
+    // then Glint's TS-side picks the first union element type (often
+    // <h1> for HTMLHeadingElement) and FP-fires
+    // element-permitted-content on legal `<div>` content underneath.
+    //
+    // The curry binds `size` but NOT `tag`, so the inner's getter
+    // default ('div') should win at the dotted invocation.
+    const { filename, contents } = readFixture('curry-component-yield-hash-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const titleEntry = entries.find(([, tag]) => tag === 'div');
+    expect(
+      titleEntry,
+      `expected <P.Title> via curried (component CurryInner size="300") to resolve to 'div' (inner's getter default); got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+    // And critically: must NOT be <h1>, which is what Glint's TS-side
+    // union pick produces when the resolver bails to transparent.
+    const h1Entry = entries.find(([, tag]) => tag === 'h1');
+    expect(
+      h1Entry,
+      `expected NO <h1> resolution (TS-side union fallback); got: ${JSON.stringify(entries)}`,
+    ).toBeUndefined();
+  });
+
   it('passes `@tag={{this.X}}` through wrapper recursion to inner polymorphic component', () => {
     // Mirrors HdsFormHeaderTitle → HdsTextDisplay → HdsText chain:
     // the wrapper's class getter computes the tag value, the wrapper
