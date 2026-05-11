@@ -150,14 +150,14 @@ function findFromImport(
       if (!next) continue;
       // Recurse: resolve the chain. For named imports we use the
       // inner name; for `export { default as Y } from './path'` we
-      // still propagate the barrel-side alias (`componentName`) into
-      // findFromDecl so `readGts` can disambiguate multi-`<template>`
-      // target files when the inner declaration happens to share that
-      // name (the common case for HDS-style barrel re-exports).
-      const target = innerName === 'default' ? null : innerName;
-      const result = target
-        ? findFromImport(next, target, ts, depth + 1)
-        : findFromDecl(next, ts, null, componentName);
+      // propagate the barrel-side alias (`componentName`). In both
+      // cases the recursion goes back through `findFromImport` so
+      // multi-level barrel chains (HDS-style nested re-exports)
+      // continue to walk — `findFromImport`'s first step (`findFromDecl`)
+      // handles the leaf `.gts`/`.gjs`/`.d.ts` case, and its barrel-
+      // walk loop handles the chained-barrel case.
+      const target = innerName === 'default' ? componentName : innerName;
+      const result = findFromImport(next, target, ts, depth + 1);
       if (result) return result;
     }
   }
