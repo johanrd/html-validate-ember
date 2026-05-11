@@ -24,10 +24,12 @@ import { STRUCTURAL_CHILD_TAGS } from './element-sets.js';
 import { findTemplateSource } from './resolver/template-source.js';
 import {
   resolveTemplate,
+  resolveThisProp,
   resolveYieldHashBinding,
   resolveYieldHashBindingSource,
   type Resolution,
 } from './resolver/walk.js';
+import type { TemplateSource } from './resolver/template-source.js';
 
 const consumerPreprocessor = new Preprocessor();
 
@@ -640,16 +642,23 @@ interface DottedBinding {
 interface ConsumerInfo {
   argsByLoc: Map<string, Map<string, string>>;
   dottedBindings: Map<string, DottedBinding>;
+  // line:col → `this.<propName>` reference for PascalCase elements
+  // whose tag is bound by `{{#let (element this.X) as |T|}}` in the
+  // consumer's OWN template. Used to override Glint's TS-side union
+  // pick (typically <h1> from HTMLHeadingElement) with the class
+  // getter's actual default (typically 'div').
+  ownLetElementByLoc: Map<string, string>;
 }
 
 function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
   const argsByLoc = new Map<string, Map<string, string>>();
   const dottedBindings = new Map<string, DottedBinding>();
+  const ownLetElementByLoc = new Map<string, string>();
   let blocks: Array<{ contents: string; tagName: string }>;
   try {
     blocks = consumerPreprocessor.parse(contents, { filename });
   } catch {
-    return { argsByLoc, dottedBindings };
+    return { argsByLoc, dottedBindings, ownLetElementByLoc };
   }
   const templates = blocks.filter((b) => b.tagName === 'template');
 
@@ -661,6 +670,16 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
     binderTag: string;
     binderArgs: Map<string, string>;
     binderKey: string;
+  }
+
+  // Scope for `{{#let (element this.X) as |T|}}` bindings — the
+  // PascalCase `T` shadows any imported component of the same name
+  // inside the block body. Tracked as a stack alongside dotted-binding
+  // scopes so nested `{{#let}}` blocks resolve `T` to the innermost
+  // binding.
+  interface LetElementScope {
+    paramName: string;
+    propName: string;
   }
 
   for (const block of templates) {
@@ -677,6 +696,7 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
       continue;
     }
     const scopeStack: Scope[] = [];
+    const letElementStack: LetElementScope[] = [];
     function walk(node: AST.Node): void {
       if (node.type === 'ElementNode') {
         const elem = node;
@@ -697,6 +717,15 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
                 binderArgs: binding.binderArgs,
                 binderKey: binding.binderKey,
               });
+            }
+          } else {
+            // Non-dotted PascalCase — check if it matches a let-element
+            // binding in scope. If so, the actual tag is the class
+            // getter's value, not whatever Glint's TS-side picks from
+            // the (element ...) helper's union return type.
+            const letBinding = lookupLetElement(letElementStack, elem.tag);
+            if (letBinding) {
+              ownLetElementByLoc.set(key, letBinding.propName);
             }
           }
         }
@@ -719,7 +748,10 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
         return;
       }
       if (node.type === 'BlockStatement') {
+        const letElementBinding = matchLetElementHelper(node);
+        if (letElementBinding) letElementStack.push(letElementBinding);
         for (const child of node.program.body) walk(child);
+        if (letElementBinding) letElementStack.pop();
         if (node.inverse) for (const child of node.inverse.body) walk(child);
         return;
       }
@@ -729,7 +761,40 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
     }
     walk(ast);
   }
-  return { argsByLoc, dottedBindings };
+  return { argsByLoc, dottedBindings, ownLetElementByLoc };
+}
+
+// Match `{{#let (element this.<propName>) as |<paramName>|}}` and
+// return its (paramName, propName) binding. Returns null for any
+// other block shape (regular `{{#let}}` with a non-helper expression,
+// `(element @arg)` — at the OWN-template level @arg can't be
+// resolved without a calling consumer; let canonical paths handle
+// those via consumerArgs propagation).
+function matchLetElementHelper(node: AST.BlockStatement): { paramName: string; propName: string } | null {
+  if (node.path.type !== 'PathExpression') return null;
+  if (node.path.original !== 'let') return null;
+  const first = node.params[0];
+  if (!first || first.type !== 'SubExpression') return null;
+  if (first.path.type !== 'PathExpression') return null;
+  if (first.path.original !== 'element') return null;
+  const inner = first.params[0];
+  if (!inner || inner.type !== 'PathExpression') return null;
+  if (inner.head?.type !== 'ThisHead') return null;
+  const propName = inner.tail[0];
+  if (!propName) return null;
+  const paramName = node.program.blockParams[0];
+  if (!paramName) return null;
+  return { paramName, propName };
+}
+
+function lookupLetElement(
+  stack: ReadonlyArray<{ paramName: string; propName: string }>,
+  name: string,
+): { paramName: string; propName: string } | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i]!.paramName === name) return stack[i]!;
+  }
+  return null;
 }
 
 function collectLiteralArgs(node: AST.ElementNode): Map<string, string> {
@@ -1165,7 +1230,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   // Per-invocation consumer-side info: @args (for arg propagation) and
   // dotted-binding context (for `<S.Step>` curried-via-yield-hash
   // resolution).
-  const { argsByLoc: consumerArgsByLoc, dottedBindings } = buildConsumerInfo(
+  const { argsByLoc: consumerArgsByLoc, dottedBindings, ownLetElementByLoc } = buildConsumerInfo(
     filename,
     contents,
   );
@@ -1338,6 +1403,35 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   for (const span of transformed.correlatedSpans) {
     if (span.glimmerAstMapping) {
       walkMapping(span.glimmerAstMapping, span.transformedStart);
+    }
+  }
+
+  // Override Glint's TS-side fallback for `<T>` elements bound by
+  // `{{#let (element this.X) as |T|}}` in the consumer's OWN template.
+  // For these, Glint's TS-side picks the first matching union member
+  // from `(element …)`'s return type (typically <h1> from
+  // HTMLHeadingElement) — but the actual runtime tag is the class
+  // getter's value (typically 'div' from a `?? DEFAULT_TAG` default).
+  // resolveThisProp walks the consumer file's class body to find the
+  // getter's return literal.
+  if (ownLetElementByLoc.size > 0) {
+    const ownSource: TemplateSource = {
+      origin: filename,
+      content: '',
+      kind: filename.endsWith('.gjs') ? 'gjs' : 'gts',
+    };
+    for (const [key, propName] of ownLetElementByLoc) {
+      const literal = resolveThisProp(ownSource, propName, { ts });
+      if (!literal || !isNativeTag(literal)) continue;
+      componentTagMap.set(key, literal);
+      componentAttrMap.set(key, {
+        tag: literal,
+        attrs: {},
+        // `<T ...attributes>` is the canonical shape for this pattern;
+        // attribute injection / aria-strip can operate on the splatted
+        // tag like any other resolved component.
+        hasSplat: true,
+      });
     }
   }
 

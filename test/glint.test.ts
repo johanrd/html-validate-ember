@@ -522,6 +522,35 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves `{{#let (element this.X) as |Tag|}}` in the component\'s OWN template via class-getter default', () => {
+    // Real-world FP source: HdsDialogPrimitiveHeader's own template:
+    //   {{#let (element this.titleTag) as |Tag|}}<Tag>…</Tag>{{/let}}
+    // with `get titleTag() { return this.args.titleTag ?? DEFAULT_TAG; }`.
+    // When extractAttrTypeMap runs against the HDS file ITSELF (i.e.
+    // the component is its own consumer), `<Tag>` is a let-block-param
+    // declared in the same template — the canonical resolver bails
+    // (declFile not top-level), and Glint's TS-side picks the first
+    // matching member from the (element …) helper's return-type union
+    // (typically <h1> for HTMLHeadingElement when the union includes
+    // heading tags). Downstream `element-permitted-content` FP-fires
+    // on legal `<div>` content under what html-validate now thinks
+    // is an <h1>.
+    const { filename, contents } = readFixture('own-template-let-element.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const tags = entries.map(([, tag]) => tag);
+    // The class getter returns `args.titleTag ?? 'div'`; with no
+    // consumer @titleTag in the own template the default 'div' wins.
+    expect(
+      tags,
+      `expected <Tag> to resolve to 'div' (class-getter default); got map: ${JSON.stringify(entries)}`,
+    ).toContain('div');
+    expect(
+      tags,
+      `must NOT fall back to 'h1' (Glint TS-side union pick); got map: ${JSON.stringify(entries)}`,
+    ).not.toContain('h1');
+  });
+
   it('conditional outer + yield-hash siblings resolve to DIFFERENT native tags (HDS form-layout shape)', () => {
     // Mirrors HDS's `<HdsForm as |FORM|><FORM.HeaderTitle/><FORM.HeaderDescription/>`
     // shape used in the form-layout containers showcase:
