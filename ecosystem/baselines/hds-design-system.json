@@ -172,7 +172,7 @@
     },
     {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
-      "line": 1135,
+      "line": 1120,
       "column": 16,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -1540,7 +1540,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 513,
+      "line": 498,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1548,7 +1548,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 558,
+      "line": 543,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1556,7 +1556,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 603,
+      "line": 588,
       "column": 14,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1588,7 +1588,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 191,
+      "line": 186,
       "column": 8,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1596,7 +1596,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 212,
+      "line": 207,
       "column": 8,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1604,7 +1604,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 271,
+      "line": 266,
       "column": 8,
       "severity": "error",
       "ruleId": "prefer-tbody",
@@ -1644,7 +1644,7 @@
     },
     {
       "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
-      "line": 305,
+      "line": 300,
       "column": 10,
       "severity": "error",
       "ruleId": "prefer-tbody",
