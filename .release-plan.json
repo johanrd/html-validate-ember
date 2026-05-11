@@ -1,18 +1,18 @@
 {
   "solution": {
     "html-validate-ember": {
-      "impact": "patch",
-      "oldVersion": "0.4.1",
-      "newVersion": "0.4.2",
+      "impact": "minor",
+      "oldVersion": "0.4.2",
+      "newVersion": "0.5.0",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "patch",
-          "reason": "Appears in changelog section :bug: Bug Fix"
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-11)\n\n* html-validate-ember 0.4.2 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#21](https://github.com/johanrd/html-validate-ember/pull/21) Canonical resolver rewrite + cluster fixes for ecosystem-CI FPs ([@johanrd](https://github.com/johanrd))\n  * [#18](https://github.com/johanrd/html-validate-ember/pull/18) Resolve `Element` for block-param-yielded curried sub-components ([@johanrd](https://github.com/johanrd))\n  * [#19](https://github.com/johanrd/html-validate-ember/pull/19) Resolve `Element` for classic Ember addon `.hbs` components (`<EsCard>`-style) ([@johanrd](https://github.com/johanrd))\n  * [#15](https://github.com/johanrd/html-validate-ember/pull/15) Record arg-bound component attrs as `DynamicValue` placeholders ([@johanrd](https://github.com/johanrd))\n  * [#16](https://github.com/johanrd/html-validate-ember/pull/16) Resolve `Element` for TOC components (`satisfies TOC<S>` and `: TOC<S>` forms) ([@johanrd](https://github.com/johanrd))\n  * [#17](https://github.com/johanrd/html-validate-ember/pull/17) Suppress `wcag/h32` / `wcag/h71` on yield-bearing `<form>`/`<fieldset>` ([@johanrd](https://github.com/johanrd))\n  * [#14](https://github.com/johanrd/html-validate-ember/pull/14) Erase `as |…|` block-param clause when Glint substitutes a block-form component ([@johanrd](https://github.com/johanrd))\n  * [#13](https://github.com/johanrd/html-validate-ember/pull/13) Inject placeholder `src`/`alt` on `<img ...attributes>` ([@johanrd](https://github.com/johanrd))\n  * [#12](https://github.com/johanrd/html-validate-ember/pull/12) Don't resolve generic `HTMLElement` / `MathMLElement` to a phantom tag ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-11)\n\n* html-validate-ember 0.5.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#22](https://github.com/johanrd/html-validate-ember/pull/22) Fix VS Code regressions in 0.4.2: LSP shutdown errors + enable `--glint` by default ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }

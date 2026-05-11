@@ -2,6 +2,17 @@
 
 ## Release (2026-05-11)
 
+* html-validate-ember 0.5.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#22](https://github.com/johanrd/html-validate-ember/pull/22) Fix VS Code regressions in 0.4.2: LSP shutdown errors + enable `--glint` by default ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
+## Release (2026-05-11)
+
 * html-validate-ember 0.4.2 (patch)
 
 #### :bug: Bug Fix
