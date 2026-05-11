@@ -1,6 +1,7 @@
 // Disk cache: write/read roundtrip, staleness detection, and the
 // path-keyed invariant (one entry per file path; edits overwrite).
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -134,8 +135,7 @@ describe('cache: staleness detection', () => {
     // we rewrite the stored file to simulate the symmetric case (the
     // process holds a NEW sha but the file on disk holds an old one).
     const sha256 = (input: string): string =>
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('node:crypto').createHash('sha256').update(input).digest('hex');
+      crypto.createHash('sha256').update(input).digest('hex');
     const entryDir = cacheDir();
     const [entryFile] = fs.readdirSync(entryDir);
     const entryPath = path.join(entryDir, entryFile!);
