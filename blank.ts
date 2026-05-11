@@ -1053,11 +1053,12 @@ function tryInjectComponentAttrs(
   // Hook-time fallback for `<a>`: when the chain records `href` but the
   // consumer's narrow Glimmer-attr slots couldn't fit it, the substituted
   // `<a target='_blank' >` lacks `href` — html-validate then fires
-  // `attribute-misuse` ("target requires href"). Mirrors the
-  // imgSplatSrc/imgSplatAlt path: register the element offset so the
-  // `processElement` hook calls setAttribute('href', DynamicValue) at
-  // parse time. Scoped to `<a>` because that's where the observed FP
-  // class lives; extend if other element/attr pairs surface.
+  // `attribute-misuse` ("target requires href"). Register via the
+  // unified `attrInjections` registry so the `processElement` hook
+  // calls setAttribute('href', DynamicValue) at parse time (the same
+  // mechanism the `<img>` src/alt and `<button>` type fallbacks use).
+  // Scoped to `<a>` because that's where the observed FP class lives;
+  // extend if other element/attr pairs surface.
   if (resolvedTag === 'a' && unfitted.has('href') && !existingNonGlimmer.has('href')) {
     addAttrInjection(ctx.attrInjections, startOffset(node), 'href', null);
   }
