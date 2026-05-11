@@ -456,4 +456,50 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       `expected <S.Step> to resolve to 'li' via yield-hash chain; got: ${JSON.stringify(entries)}`,
     ).toBeGreaterThan(0);
   });
+
+  it('HdsCardContainer-shape (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
+    // Mirrors the actual HDS layout: consumer imports through a
+    // cross-package barrel (`.d.ts`); the class declaration lives in
+    // a sibling `.d.ts` with no template body. The resolver must
+    // bridge to the `src/<...>.gts` companion (via the package's
+    // `exports` map fallback), walk the conditional + class-getter +
+    // (element …) helper with consumer @tag="li", and resolve <li>.
+    //
+    // This is the realistic reproduction of the HDS-cluster FP: the
+    // simpler same-file fixture above already passes, so the bug —
+    // if there is one — must live in the cross-package decl→source
+    // bridge or symbol-alias chain handling.
+    const { filename, contents } = readFixture('hds-card-cross-package-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected cross-package HdsCardContainer(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it('HdsCardContainer-shape: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
+    // Mirrors HDS's `HdsCardContainer`:
+    //   {{#if (eq this.componentTag "div")}}
+    //     <div>{{yield}}</div>
+    //   {{else}}
+    //     {{#let (element this.componentTag) as |Tag|}}<Tag>{{yield}}</Tag>{{/let}}
+    //   {{/if}}
+    // with `get componentTag() { const { tag = 'div' } = this.args; return tag; }`.
+    // Consumer passes `@tag="li"` so the IF condition is false → the
+    // else branch's `(element this.componentTag)` resolves to 'li'.
+    //
+    // Regression guard: extractAttrTypeMap must reach the canonical
+    // resolver path for this shape (the if-else branch selection in
+    // glint.ts), not fall into a fallback that yields 'transparent'.
+    const { filename, contents } = readFixture('conditional-element-helper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected ConditionalElementHelper(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
 });

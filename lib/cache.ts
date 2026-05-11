@@ -3,9 +3,15 @@
 // The Glint pipeline (`extractAttrTypeMap`) is the dominant cost when
 // `--glint` is on — TS program rebuilds + per-file `rewriteModule` +
 // `getTypeChecker().getTypeAtLocation` calls. The result is a pure
-// function of (file content + tsconfig content + plugin version), so we
-// can cache it on disk and skip the work on repeat runs (CI,
-// pre-commit hooks, IDE re-validation).
+// function of (file content + tsconfig content + plugin version +
+// plugin source content), so we can cache it on disk and skip the work
+// on repeat runs (CI, pre-commit hooks, IDE re-validation).
+//
+// Why plugin source content (not just version)? On release the package
+// version bumps and the cache invalidates cleanly. During local plugin
+// development the version stays fixed but `lib/` changes between every
+// `npm run build` — without hashing the source, every iteration hits
+// stale cache entries and silently runs the OLD resolver logic.
 //
 // Cache layout:
 //   <projectRoot>/node_modules/.cache/html-validate-ember/glint/
@@ -52,6 +58,55 @@ function findPluginVersion(): string {
 }
 const PLUGIN_VERSION = findPluginVersion();
 
+// SHA over the plugin's own library code (the directory this module
+// lives in). The cache entries are produced by these files; if the
+// files change between runs, the stored entries can be wrong even
+// though the source-under-validation and tsconfig haven't moved.
+// Bumping the package version on release covers consumers of the
+// published package, but during local plugin development the version
+// stays fixed and stale entries silently mask fixes — so include the
+// source content too.
+//
+// Computed once at module load: it's the same for every cache call in
+// a process. Costs ~50ms on first import, then cached.
+function computePluginSourceSha(): string {
+  const start = path.dirname(fileURLToPath(import.meta.url));
+  const files: string[] = [];
+  function walk(dir: string): void {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && /\.(?:js|ts|cjs|mjs|hbs|gjs|gts|json)$/.test(entry.name)) {
+        // Skip `.d.ts` and source maps — they don't drive behaviour.
+        if (entry.name.endsWith('.d.ts') || entry.name.endsWith('.map')) continue;
+        files.push(full);
+      }
+    }
+  }
+  walk(start);
+  files.sort();
+  const hash = crypto.createHash('sha256');
+  for (const f of files) {
+    hash.update(path.relative(start, f));
+    hash.update('\0');
+    try {
+      hash.update(fs.readFileSync(f));
+    } catch {
+      // unreadable file — skip
+    }
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+const PLUGIN_SOURCE_SHA = computePluginSourceSha();
+
 const CACHE_DISABLED = process.env['HVE_NO_CACHE'] === '1';
 
 /** Type info for a mustache at a `"line:column"` key (template-relative). */
@@ -69,6 +124,7 @@ export interface ExtractionResult {
 
 interface CacheEntry {
   pluginVersion: string;
+  pluginSourceSha: string;
   tsconfigSha: string;
   fileSha: string;
   attrTypeMap: Array<[string, AttrTypeInfo]>;
@@ -157,6 +213,7 @@ export function readCache(
   const tsconfigSha = getTsconfigSha(tsconfigPath);
   if (
     parsed.pluginVersion !== PLUGIN_VERSION ||
+    parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
     parsed.tsconfigSha !== tsconfigSha ||
     parsed.fileSha !== fileSha
   ) {
@@ -185,6 +242,7 @@ export function writeCache(
     fs.mkdirSync(cacheDir, { recursive: true });
     const payload: CacheEntry = {
       pluginVersion: PLUGIN_VERSION,
+      pluginSourceSha: PLUGIN_SOURCE_SHA,
       tsconfigSha: getTsconfigSha(tsconfigPath),
       fileSha: sha256(contents),
       attrTypeMap: serializeMap(result.attrTypeMap),
