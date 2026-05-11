@@ -522,6 +522,72 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves dotted invocations through lowercase block-params (`<Outer as |o|><o.Section>`)', () => {
+    // Glimmer permits lowercase block-param dotted invocations:
+    //   `<Outer as |o|><o.Section>` parses to ElementNode tag='o.Section'.
+    // Ember's convention is PascalCase for block params that point to
+    // component hashes, but the parser doesn't enforce that. Regression
+    // guard: buildConsumerInfo previously skipped dotted bindings whose
+    // first segment was lowercase, leaving the dottedBindings map empty
+    // for these consumers and breaking yield-hash resolution. The gate
+    // now applies based on `.includes('.')` regardless of casing.
+    const { filename, contents } = readFixture('lowercase-block-param-dotted-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    // Mirrors the curry-multi-level test: deepest dotted invocation
+    // `<s.Title>` (template-relative line 4 col 6) must reach the
+    // inner CurryInner getter's 'div' default.
+    const sTitle = entries.find(([k]) => k === '4:6');
+    expect(
+      sTitle?.[1],
+      `expected lowercase-rooted dotted chain to resolve to 'div'; got: ${JSON.stringify(entries)}`,
+    ).toBe('div');
+  });
+
+  it('propagates `@tag="li"` from the dotted-invocation call site through yield-hash resolution', () => {
+    // Regression: previously only the binder's args
+    // (`<HdsStepperList @x="y" as |S|>`) flowed into the inner's
+    // resolution. Args on the dotted call itself (`<S.Step @tag="li">`)
+    // were silently dropped, so the inner polymorphic's getter default
+    // won instead of the consumer-provided literal — surface symptom:
+    // legal `<li>` content rendered as the getter's default `<div>` and
+    // downstream `element-permitted-content` FPs.
+    //
+    // The curry-component-yield-hash-consumer fixture's parent yields
+    // `Title=(component CurryInner size="300")`; CurryInner's getter
+    // default is 'div'. With `<P.Title @tag="li">` on the invocation,
+    // the merged args (binder + curried + invocation) must produce
+    // 'li' (invocation wins against the curry's 'size' which doesn't
+    // collide).
+    const src = `
+import { hash } from '@ember/helper';
+import Outer from './curry-component-yield-hash-parent.gts';
+
+<template>
+  <Outer as |P|>
+    <P.Title @tag="li">title</P.Title>
+  </Outer>
+</template>
+`.trimStart();
+    const filename = path.join(fixturesDir, '__inline-tag-prop-dotted.gts');
+    fs.writeFileSync(filename, src);
+    try {
+      const { componentTagMap } = extractAttrTypeMap(filename, src)!;
+      const entries = [...componentTagMap.entries()];
+      // Look up specifically the `<P.Title @tag="li">` position
+      // (template-relative line 3, column 4). The outer `<Outer>` at
+      // line 2 also resolves to `<div>` per its own template — that's
+      // separate and correct, so we don't blanket-assert on tags.
+      const pTitle = entries.find(([k]) => k === '3:4');
+      expect(
+        pTitle?.[1],
+        `expected <P.Title @tag="li"> to resolve to 'li' via merged dotted-invocation args; got map: ${JSON.stringify(entries)}`,
+      ).toBe('li');
+    } finally {
+      fs.unlinkSync(filename);
+    }
+  });
+
   it('resolves `{{#let (element this.X) as |Tag|}}` in the component\'s OWN template via class-getter default', () => {
     // Real-world FP source: HdsDialogPrimitiveHeader's own template:
     //   {{#let (element this.titleTag) as |Tag|}}<Tag>…</Tag>{{/let}}

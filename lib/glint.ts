@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
 import { Preprocessor } from 'content-tag';
-import { preprocess as glimmerPreprocess, traverse, type AST } from '@glimmer/syntax';
+import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
 import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
@@ -703,14 +703,19 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
         // Args + dotted-binding lookup happen on entry, before pushing
         // any scope this element introduces. Block-params shadow inside
         // its body, not at the binder itself.
-        if (/^[A-Z]/.test(elem.tag) && elem.loc.start) {
+        if (elem.loc.start) {
           const args = collectLiteralArgs(elem);
           const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
-          if (args.size > 0) argsByLoc.set(key, args);
           if (elem.tag.includes('.')) {
+            // Dotted invocations apply to ANY tag whose first segment
+            // is a block-param in scope (binder yields a hash) —
+            // including lowercase block-params like `<Form as |f|>
+            // <f.Field>`. The PascalCase gate is for non-dotted
+            // PascalCase invocations only.
             const [paramName, ...tail] = elem.tag.split('.');
             const binding = lookupParam(scopeStack, paramName!);
             if (binding && tail.length === 1) {
+              if (args.size > 0) argsByLoc.set(key, args);
               dottedBindings.set(key, {
                 binderTag: binding.binderTag,
                 hashKey: tail[0]!,
@@ -718,7 +723,8 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
                 binderKey: binding.binderKey,
               });
             }
-          } else {
+          } else if (/^[A-Z]/.test(elem.tag)) {
+            if (args.size > 0) argsByLoc.set(key, args);
             // Non-dotted PascalCase — check if it matches a let-element
             // binding in scope. If so, the actual tag is the class
             // getter's value, not whatever Glint's TS-side picks from
@@ -1239,7 +1245,16 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   // child resolution reach binders defined in the consumer file
   // itself (no import to follow). Initialized lazy: only created if
   // the consumer has any dotted invocations needing it.
-  const binderSourceByKey = new Map<string, ReturnType<typeof findTemplateSource>>();
+  // For each dotted-binding chain hop we cache the parent's TemplateSource
+  // AND any curried args picked up at that hop (e.g.
+  // `Title=(component Inner size="300")` contributes `size="300"`).
+  // Without persisting curriedArgs across hops, multi-level dotted
+  // chains lose the curry's literals and the inner's destructure
+  // defaults win instead.
+  const binderSourceByKey = new Map<
+    string,
+    { source: ReturnType<typeof findTemplateSource>; curriedArgs: Map<string, string> }
+  >();
   if (!ctx.elementTypeToTag) {
     ctx.elementTypeToTag = buildElementTypeToTag(ts, program);
   }
@@ -1276,7 +1291,12 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       sourceNode?.type === 'PathExpression' &&
       node.parent?.sourceNode?.type === 'ElementNode' &&
       node.parent.sourceNode.tag &&
-      /^[A-Z]/.test(node.parent.sourceNode.tag) &&
+      // PascalCase (component invocation) OR a dotted invocation
+      // through a block-param (which may have a lowercase head, e.g.
+      // `<Outer as |o|><o.Section>`). HTML-element tags are gated out
+      // by both filters.
+      (/^[A-Z]/.test(node.parent.sourceNode.tag) ||
+        node.parent.sourceNode.tag.includes('.')) &&
       node.transformedRange &&
       node.parent.sourceNode.loc?.start
     ) {
@@ -1325,7 +1345,9 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         // the parent's TemplateSource directly.
         const dottedBinding = dottedBindings.get(key);
         if (dottedBinding) {
-          let binderSource = binderSourceByKey.get(dottedBinding.binderKey) ?? null;
+          const cached = binderSourceByKey.get(dottedBinding.binderKey);
+          let binderSource = cached?.source ?? null;
+          const cachedCurriedArgs = cached?.curriedArgs ?? new Map<string, string>();
           if (!binderSource) {
             binderSource = findTemplateSource({
               consumerFile: filename,
@@ -1334,10 +1356,25 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             });
           }
           if (binderSource) {
+            // Args available at this hop, in increasing-priority order:
+            //   1. binderArgs (`<Binder @x="y" as |S|>` → consumer's
+            //      args on the outermost binder)
+            //   2. cachedCurriedArgs (curry literals collected at any
+            //      earlier hop, e.g. `(component Inner size="300")`)
+            //   3. invocation args on the dotted call itself
+            //      (`<S.Step @tag="li">`) — these should win against
+            //      curry/binder defaults since the consumer set them
+            //      most directly.
+            const invocationArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const mergedArgs = new Map<string, string>([
+              ...dottedBinding.binderArgs,
+              ...cachedCurriedArgs,
+              ...invocationArgs,
+            ]);
             const resolution = resolveYieldHashBinding({
               parentSource: binderSource,
               hashKey: dottedBinding.hashKey,
-              parentArgs: dottedBinding.binderArgs,
+              parentArgs: mergedArgs,
               ts,
             });
             applyResolution(componentTagMap, componentAttrMap, key, resolution);
@@ -1345,15 +1382,21 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
             // so children whose binder is this dotted invocation
             // (`<FS.Header>` whose binder is `<FORM.Section>`) can
             // chain through to the next level without re-walking
-            // from the importable root.
+            // from the importable root. Also persist curriedArgs so
+            // the next-level hop can incorporate `(component Inner
+            // size="300")` literals into its mergedArgs.
             const nextSource = resolveYieldHashBindingSource({
               parentSource: binderSource,
               hashKey: dottedBinding.hashKey,
-              parentArgs: dottedBinding.binderArgs,
+              parentArgs: mergedArgs,
               ts,
             });
             if (nextSource) {
-              binderSourceByKey.set(key, nextSource.source);
+              const accumulatedCurried = new Map([
+                ...cachedCurriedArgs,
+                ...nextSource.curriedArgs,
+              ]);
+              binderSourceByKey.set(key, { source: nextSource.source, curriedArgs: accumulatedCurried });
             }
           }
         } else if (declFile && isTopLevel) {
@@ -1370,8 +1413,10 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
           });
           // Cache for any dotted-children that name this invocation as
           // their binder. Accept null too — a transparent binder result
-          // still belongs to this invocation, no point re-querying.
-          binderSourceByKey.set(key, source);
+          // still belongs to this invocation, no point re-querying. No
+          // curried args at this level: this is a direct (non-dotted)
+          // invocation whose binder is its own template.
+          binderSourceByKey.set(key, { source, curriedArgs: new Map() });
           if (source) {
             const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
             const resolution = resolveTemplate(source, { consumerArgs, ts });
