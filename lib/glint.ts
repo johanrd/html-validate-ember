@@ -584,6 +584,7 @@ function applyResolution(
   let chosenTag = resolution.tag;
   let chosenAttrs: Map<string, string> = resolution.attrs;
   let hasSplat = resolution.hasSplat;
+  let fromYieldAncestor = false;
   const yieldTag = resolution.yieldAncestorTag;
   if (
     yieldTag &&
@@ -603,6 +604,7 @@ function applyResolution(
     chosenTag = yieldTag;
     chosenAttrs = resolution.yieldAncestorAttrs ?? new Map();
     hasSplat = true;
+    fromYieldAncestor = true;
   }
 
   componentTagMap.set(key, chosenTag);
@@ -610,6 +612,7 @@ function applyResolution(
     tag: chosenTag,
     attrs: Object.fromEntries(chosenAttrs),
     hasSplat,
+    fromYieldAncestor,
   });
 }
 

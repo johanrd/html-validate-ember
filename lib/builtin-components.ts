@@ -24,6 +24,14 @@ export interface ComponentAttrs {
   tag: string;
   attrs: Record<string, string>;
   hasSplat: boolean;
+  // True when the resolved tag was chosen from a yield-ancestor
+  // (e.g. `<nav><ol>{{yield}}</ol></nav>` resolved as `<ol>` instead
+  // of `<nav>`). Consumer attributes that splat onto the outer
+  // wrapper (`...attributes`) land on the outer at runtime, not on
+  // the yield-ancestor — so the blanker must strip ARIA attributes
+  // from the substituted open tag to avoid html-validate firing
+  // aria-label-misuse / aria-labelledby-misuse on the wrong element.
+  fromYieldAncestor?: boolean;
   // Source byte offsets of the `<template>` block this root was
   // extracted from. Matches the `.gts` original-source coordinate
   // system that content-tag's preprocessor reports AND that

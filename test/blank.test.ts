@@ -660,6 +660,59 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toMatch(/<ul\s+/);
   });
 
+  it('block-form: strips aria-* from the substituted tag when yield-ancestor preference was applied', () => {
+    // Real-world FP: `<HdsBreadcrumb aria-label="X">…</HdsBreadcrumb>`.
+    // HdsBreadcrumb's template is `<nav class={{…}} aria-label={{…}}
+    // ...attributes><ol>{{yield}}</ol></nav>`. The resolver applies
+    // yield-ancestor preference and reports the substituted tag as
+    // `<ol>` so yielded `<li>` children land under the correct
+    // structural parent. But the consumer's `aria-label="X"` lands on
+    // `<nav>` at runtime via `...attributes`, NOT on `<ol>`. Without
+    // this guard the in-place rename leaves `<ol aria-label='X'>` in
+    // the blanked output, firing `aria-label-misuse` ("allowed but not
+    // recommended on <ol>") against an element that doesn't carry the
+    // attribute at runtime.
+    const src = '<HdsBreadcrumb aria-label="breadcrumb">item</HdsBreadcrumb>';
+    const tagMap = new Map([[locKey(src, 'HdsBreadcrumb'), 'ol']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsBreadcrumb'),
+        { tag: 'ol', attrs: {}, hasSplat: true, fromYieldAncestor: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toMatch(/<ol\s+/);
+    expect(
+      r.content,
+      `aria-label must be stripped when yield-ancestor preference fires; got: ${JSON.stringify(r.content)}`,
+    ).not.toContain('aria-label');
+  });
+
+  it('block-form: KEEPS aria-* when yield-ancestor preference was NOT applied', () => {
+    // Companion of the previous test: when the resolver picked the
+    // outer tag directly (no yield-ancestor preference), consumer
+    // `aria-*` attrs DO land on the substituted element at runtime,
+    // so the blanker must preserve them. Guards against the aria-strip
+    // regressing into all yield-bearing substitutions.
+    const src = '<HdsNavigation aria-label="primary">item</HdsNavigation>';
+    const tagMap = new Map([[locKey(src, 'HdsNavigation'), 'nav']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsNavigation'),
+        { tag: 'nav', attrs: {}, hasSplat: true, fromYieldAncestor: false },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toMatch(/<nav\s+/);
+    expect(
+      r.content,
+      `aria-label must be preserved when the outer tag was chosen directly; got: ${JSON.stringify(r.content)}`,
+    ).toContain("aria-label=\"primary\"");
+  });
+
   it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
     // Naive first-fit walking attrs in declaration order would let
     // `a='x'` (5 chars) consume the wide @veryLongFirstAttr slot and

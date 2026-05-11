@@ -700,6 +700,25 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
       }
     }
   }
+  // Yield-ancestor substitution: the chosen tag is an inner element of
+  // the wrapper's own template (e.g. `<nav><ol>{{yield}}</ol></nav>`
+  // resolved as `<ol>` to put yielded `<li>` children under the correct
+  // structural parent). At runtime, the consumer's attributes splat onto
+  // the outer wrapper via `...attributes`, NOT onto the inner — so the
+  // in-place tag rename produces `<ol aria-label='X'>` even though
+  // `aria-label='X'` lands on `<nav>` at runtime. Strip `aria-*` from
+  // the substituted open tag so html-validate doesn't fire
+  // aria-label-misuse / aria-labelledby-misuse against the wrong tag.
+  // Scoped to `aria-*` because that's where the observed FP class lives
+  // (ARIA-in-HTML rules differ per host element); other consumer attrs
+  // (id, class, data-*, role) generally validate the same against
+  // either tag.
+  if (attrCtx?.fromYieldAncestor) {
+    for (const attr of node.attributes ?? []) {
+      if (!attr.name.startsWith('aria-')) continue;
+      ctx.blankRanges.push([startOffset(attr), endOffset(attr)]);
+    }
+  }
   // Inject the resolved component's static attrs into Glimmer-attr blank
   // regions in the open tag (mirrors the self-closing input-type
   // injection). Without this, e.g. <LinkTo>...</LinkTo> resolves to a
