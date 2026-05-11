@@ -690,6 +690,33 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     ).not.toContain('aria-label');
   });
 
+  it('block-form: strips aria-* with ConcatStatement value (multi-line + mustache interpolation)', () => {
+    // The aria-strip must mark the attribute as fully blanked so the
+    // downstream `emitAttribute` loop doesn't re-emit `"…"` quotes from
+    // its ConcatStatement value-rewrite path back into the blanked
+    // region. Otherwise the substituted open tag tokenizes as
+    // `<ol  …  "  …  "  …>` which html-validate parses as a stray
+    // attribute and a parser-error cascades. Regression guard against
+    // the in-place fix that handled bare-string aria-* values but not
+    // interpolated ones (`aria-label="prefix {{maybe}} suffix"`).
+    const src = '<HdsBreadcrumb aria-label="bc {{if @h \'icons\'}} ex">x</HdsBreadcrumb>';
+    const tagMap = new Map([[locKey(src, 'HdsBreadcrumb'), 'ol']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsBreadcrumb'),
+        { tag: 'ol', attrs: {}, hasSplat: true, fromYieldAncestor: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).not.toContain('aria-label');
+    expect(
+      r.content,
+      `must not leave stray quote chars inside the blanked aria-* range; got: ${JSON.stringify(r.content)}`,
+    ).not.toMatch(/<ol[^>]*"/);
+  });
+
   it('block-form: KEEPS aria-* when yield-ancestor preference was NOT applied', () => {
     // Companion of the previous test: when the resolver picked the
     // outer tag directly (no yield-ancestor preference), consumer

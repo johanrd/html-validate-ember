@@ -716,7 +716,12 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
   if (attrCtx?.fromYieldAncestor) {
     for (const attr of node.attributes ?? []) {
       if (!attr.name.startsWith('aria-')) continue;
-      ctx.blankRanges.push([startOffset(attr), endOffset(attr)]);
+      const r: [number, number] = [startOffset(attr), endOffset(attr)];
+      ctx.blankRanges.push(r);
+      // Mark fully blanked so the later `emitAttribute` loop skips this
+      // attribute. Without this, ConcatStatement/MustacheStatement value
+      // rewrites would inject `"` quotes back into the blanked region.
+      ctx.fullyBlankedRanges.push(r);
     }
   }
   // Inject the resolved component's static attrs into Glimmer-attr blank
@@ -1248,6 +1253,15 @@ function substituteSelfClosingComponent(
 //     blanked to DynamicValue (or presence-only for boolean attrs).
 function emitAttribute(attr: AST.AttrNode, ctx: Context, effectiveTag: string): void {
   const { blankRanges, fullyBlankedRanges, renames, scope, glintTypeMap } = ctx;
+
+  // Skip attributes whose source range was already fully blanked by an
+  // earlier path (e.g. aria-* strip on yield-ancestor-substituted tag).
+  // Without this guard, `emitAttribute`'s ConcatStatement/MustacheStatement
+  // value-rewriting would re-emit stray `"` quotes into the blanked
+  // region, producing un-tokenizable open tags.
+  if (ctx.inFullyBlankedRange(startOffset(attr))) {
+    return;
+  }
 
   if (isGlimmerOnlyAttr(attr.name)) {
     const r = rangeOf(attr);
