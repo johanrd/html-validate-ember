@@ -384,6 +384,13 @@ function readClassBody(origin: string, ts: typeof TS): TS.NodeArray<TS.ClassElem
   } catch {
     return null;
   }
+  // .gts / .gjs files have `<template>...</template>` blocks that TS's
+  // parser interprets as JSX and fails on (`<template>` looks like a
+  // JSX element open). Strip the blocks to whitespace before parsing
+  // so the class declaration around them parses cleanly.
+  if (origin.endsWith('.gts') || origin.endsWith('.gjs')) {
+    contents = stripTemplateBlocks(contents, origin);
+  }
   const sf = ts.createSourceFile(
     origin,
     contents,
