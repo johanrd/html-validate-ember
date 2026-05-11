@@ -269,40 +269,6 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
-  it.skip('[REWRITE-TODO] conditional-leaf-href chain-attr collection (internal contract, replaced by transparent + end-to-end FP-prevention)', () => {
-    // Mirrors the real-world `<HdsButton>` → `<HdsInteractive>` pattern:
-    // an outer wrapper invokes a component whose template is a top-
-    // level `{{#if @href}}<a href={{@href}}>{{else}}<button>{{/if}}`.
-    // The walker descends through the BlockStatement to find the
-    // first reachable native (`<a href={{@href}}>`), and the chain-
-    // attr collection unions:
-    //   - the outer wrapper level's attrs (`aria-label={{@label}}`)
-    //   - the leaf's attrs (`href={{@href}}`)
-    // — resulting in `componentAttrMap` recording BOTH. Without this,
-    // a consumer-side substitution to `<a aria-label='   '>` (without
-    // href) would FP-fire `aria-label-misuse` (anchor without href is
-    // non-interactive, can't carry aria-label).
-    //
-    // (Note: this asserts the AST-level chain-attr collection. The
-    // consumer-side source-substitution may still fail to fit `href`
-    // into a too-narrow Glimmer-attr slot — that's a separate
-    // concern, addressable via a hook-time fallback similar to PR #13's
-    // `imgSplatSrcOffsets` / `imgSplatAltOffsets`.)
-    const { filename, contents } = readFixture('conditional-leaf-href-consumer.gts');
-    const { componentAttrMap } = extractAttrTypeMap(filename, contents)!;
-    const entries = [...componentAttrMap.values()];
-    const wrapperEntry = entries.find((e) => e.tag === 'a');
-    expect(wrapperEntry, `expected <OuterButton> to resolve to 'a' (leaf type)`).toBeDefined();
-    expect(
-      'href' in wrapperEntry!.attrs,
-      `expected chain-attr to include 'href' from the leaf <a> in ConditionalLeaf's template; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
-    ).toBe(true);
-    expect(
-      'aria-label' in wrapperEntry!.attrs,
-      `expected chain-attr to include 'aria-label' from OuterButton's wrapping <ConditionalLeaf>; got: ${JSON.stringify(wrapperEntry!.attrs)}`,
-    ).toBe(true);
-  });
-
   it('cross-package-barrel-consumer.gts: import-based fallback resolves through barrel re-exports', () => {
     // Mirrors design-system-style component packages: the consumer
     // imports `<ListLink>` through `list-link-addon/components`
@@ -556,30 +522,64 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
-  it('HdsCardContainer-shape (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
-    // Mirrors the actual HDS layout: consumer imports through a
-    // cross-package barrel (`.d.ts`); the class declaration lives in
-    // a sibling `.d.ts` with no template body. The resolver must
-    // bridge to the `src/<...>.gts` companion (via the package's
-    // `exports` map fallback), walk the conditional + class-getter +
-    // (element …) helper with consumer @tag="li", and resolve <li>.
+  it('conditional outer + yield-hash siblings resolve to DIFFERENT native tags (HDS form-layout shape)', () => {
+    // Mirrors HDS's `<HdsForm as |FORM|><FORM.HeaderTitle/><FORM.HeaderDescription/>`
+    // shape used in the form-layout containers showcase:
+    //   - outer is conditional (`<form>` vs `<div>` per `@tag`) → TRANSPARENT
+    //   - yield hash binds two siblings to DIFFERENT native tags:
+    //       HeaderTitle       → <div> (class-getter default through
+    //                                  polymorphic inner via `@tag={{this.X}}`)
+    //       HeaderDescription → <p>   (literal `@tag="p"` through inner)
     //
-    // This is the realistic reproduction of the HDS-cluster FP: the
-    // simpler same-file fixture above already passes, so the bug —
-    // if there is one — must live in the cross-package decl→source
-    // bridge or symbol-alias chain handling.
-    const { filename, contents } = readFixture('hds-card-cross-package-consumer.gts');
+    // Regression guard: the baseline once captured HeaderTitle as <h1>
+    // (Glint TS-side union pick of HTMLHeadingElement when the canonical
+    // resolver bailed on the chain) and missed the <p> resolution for
+    // HeaderDescription entirely. Both resolutions must now land on
+    // their correct native tags simultaneously; surfacing the real
+    // `<div>`-under-<p> HTML5 violation when the consumer puts
+    // <div>-rooted content inside HeaderDescription is the intended
+    // outcome, not an FP.
+    const { filename, contents } = readFixture('yield-hash-cond-form-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const tags = entries.map(([, tag]) => tag);
+    expect(
+      tags,
+      `expected <FORM.HeaderTitle> to resolve to 'div'; got map: ${JSON.stringify(entries)}`,
+    ).toContain('div');
+    expect(
+      tags,
+      `expected <FORM.HeaderDescription> to resolve to 'p'; got map: ${JSON.stringify(entries)}`,
+    ).toContain('p');
+    expect(
+      tags,
+      `must NOT resolve to 'h1' (Glint TS-side union fallback); got map: ${JSON.stringify(entries)}`,
+    ).not.toContain('h1');
+  });
+
+  it('polymorphic-tag pattern (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
+    // Cross-package barrel (.d.ts) re-exports a component whose class
+    // declaration has no template body. The resolver must bridge to the
+    // src/<...>.gts companion (via the package's `exports` map fallback),
+    // walk the conditional + class-getter + (element …) helper with
+    // consumer @tag="li", and resolve <li>.
+    //
+    // Pattern: `{{#if (eq this.componentTag "div")}}<div>{{else}}
+    // {{#let (element this.componentTag) as |Tag|}}<Tag>{{/let}}{{/if}}`
+    // with a getter `const { tag = 'div' } = this.args; return tag;`.
+    // HDS card/container is a real-world instance of this pattern.
+    const { filename, contents } = readFixture('polymorphic-tag-cross-package-consumer.gts');
     const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
     const entries = [...componentTagMap.entries()];
     const liEntry = entries.find(([, tag]) => tag === 'li');
     expect(
       liEntry,
-      `expected cross-package HdsCardContainer(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+      `expected cross-package PolymorphicCard(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
   });
 
-  it('HdsCardContainer-shape: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
-    // Mirrors HDS's `HdsCardContainer`:
+  it('polymorphic-tag pattern: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
+    // Polymorphic-tag pattern (e.g. HDS card/container):
     //   {{#if (eq this.componentTag "div")}}
     //     <div>{{yield}}</div>
     //   {{else}}

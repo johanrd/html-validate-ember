@@ -54,6 +54,7 @@ import type { MetaDataTable } from 'html-validate';
 
 import { lookupBuiltinComponent } from './lib/builtin-components.js';
 import type { ComponentAttrs } from './lib/builtin-components.js';
+import { STRUCTURAL_CHILD_TAGS as CONTENT_RESTRICTED_STRUCTURAL_CHILDREN } from './lib/element-sets.js';
 import type { AttrTypeInfo } from './lib/cache.js';
 import { DYNAMIC_VALUE_PLACEHOLDER, isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 
@@ -699,6 +700,25 @@ function handleGlintSubstitution(node: AST.ElementNode, ctx: Context): string | 
       }
     }
   }
+  // Yield-ancestor substitution: the chosen tag is an inner element of
+  // the wrapper's own template (e.g. `<nav><ol>{{yield}}</ol></nav>`
+  // resolved as `<ol>` to put yielded `<li>` children under the correct
+  // structural parent). At runtime, the consumer's attributes splat onto
+  // the outer wrapper via `...attributes`, NOT onto the inner — so the
+  // in-place tag rename produces `<ol aria-label='X'>` even though
+  // `aria-label='X'` lands on `<nav>` at runtime. Strip `aria-*` from
+  // the substituted open tag so html-validate doesn't fire
+  // aria-label-misuse / aria-labelledby-misuse against the wrong tag.
+  // Scoped to `aria-*` because that's where the observed FP class lives
+  // (ARIA-in-HTML rules differ per host element); other consumer attrs
+  // (id, class, data-*, role) generally validate the same against
+  // either tag.
+  if (attrCtx?.fromYieldAncestor) {
+    for (const attr of node.attributes ?? []) {
+      if (!attr.name.startsWith('aria-')) continue;
+      ctx.blankRanges.push([startOffset(attr), endOffset(attr)]);
+    }
+  }
   // Inject the resolved component's static attrs into Glimmer-attr blank
   // regions in the open tag (mirrors the self-closing input-type
   // injection). Without this, e.g. <LinkTo>...</LinkTo> resolves to a
@@ -1052,11 +1072,12 @@ function tryInjectComponentAttrs(
   // Hook-time fallback for `<a>`: when the chain records `href` but the
   // consumer's narrow Glimmer-attr slots couldn't fit it, the substituted
   // `<a target='_blank' >` lacks `href` — html-validate then fires
-  // `attribute-misuse` ("target requires href"). Mirrors the
-  // imgSplatSrc/imgSplatAlt path: register the element offset so the
-  // `processElement` hook calls setAttribute('href', DynamicValue) at
-  // parse time. Scoped to `<a>` because that's where the observed FP
-  // class lives; extend if other element/attr pairs surface.
+  // `attribute-misuse` ("target requires href"). Register via the
+  // unified `attrInjections` registry so the `processElement` hook
+  // calls setAttribute('href', DynamicValue) at parse time (the same
+  // mechanism the `<img>` src/alt and `<button>` type fallbacks use).
+  // Scoped to `<a>` because that's where the observed FP class lives;
+  // extend if other element/attr pairs surface.
   if (resolvedTag === 'a' && unfitted.has('href') && !existingNonGlimmer.has('href')) {
     addAttrInjection(ctx.attrInjections, startOffset(node), 'href', null);
   }
@@ -1848,31 +1869,6 @@ function selectBranch(
 // bare-mustache event names like `{{on @event …}}` could resolve to
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
-
-// CONTENT_RESTRICTED_STRUCTURAL_CHILDREN and STRUCTURAL_CONTENT_PARENTS
-// are *curated* sets, not direct derivations from html-validate's HTML5
-// schema. The pure derivation (any tag named as a child in some
-// `permittedContent`) is too wide for our purpose: it includes flow
-// content like `<div>`/`<p>` (because `<dl>` permits `<div>` and lots
-// of elements permit `<p>`), and `<button>`/`<source>`/`<track>` —
-// suppressing on those would mask real bugs.
-//
-// The narrow criterion the curated list captures: tags whose runtime
-// behavior REQUIRES a specific structural parent OR INTERPOSES a
-// structural child (HdsTabs interposes `<li>` in `<ul>`; fieldset
-// may interpose `<legend>` from a yielded slot; etc.). That's an
-// empirical pattern, not a clean function of `permittedContent`.
-//
-// The curated lists are validated at module load against the live
-// HTML5 schema. If a future html-validate revision stops listing one
-// of these as a named permittedContent entry the boot assertion
-// surfaces it as a build-time error rather than silent suppression
-// breakage.
-
-const CONTENT_RESTRICTED_STRUCTURAL_CHILDREN: ReadonlySet<string> = new Set([
-  'option', 'optgroup', 'th', 'td', 'tr', 'thead', 'tbody', 'tfoot',
-  'caption', 'colgroup', 'col', 'li', 'legend', 'summary',
-]);
 
 const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
   'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',

@@ -66,17 +66,20 @@ export function findTemplateSource(opts: FindOptions): TemplateSource | null {
   const { declFile, declRange, componentName, consumerFile, ts } = opts;
 
   if (declFile) {
-    // Range-bearing or name-bearing lookups bypass the cache (cache
-    // key would need to include them, and multi-template files are
-    // uncommon enough that caching them as a separate path isn't
-    // worth the complexity).
-    if (declRange || componentName) {
-      const result = findFromDecl(declFile, ts ?? null, declRange ?? null, componentName ?? null);
-      if (result) return result;
+    // Cache key folds in componentName + declRange so repeated
+    // invocations of the same component in one extraction run reuse
+    // the parsed template instead of re-reading + re-parsing the file
+    // each time. Multi-template targets need name/range to pick the
+    // right `<template>` block, so those hints must distinguish cache
+    // entries that point at the same file but resolve to different
+    // blocks.
+    const rangeKey = declRange ? `${declRange.start},${declRange.end}` : '';
+    const cacheKey = `decl:${declFile}\0${componentName ?? ''}\0${rangeKey}`;
+    if (cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey)!;
+      if (cached) return cached;
     } else {
-      const cacheKey = `decl:${declFile}`;
-      if (cache.has(cacheKey)) return cache.get(cacheKey)!;
-      const result = findFromDecl(declFile, ts ?? null, null, null);
+      const result = findFromDecl(declFile, ts ?? null, declRange ?? null, componentName ?? null);
       cache.set(cacheKey, result);
       if (result) return result;
     }
@@ -145,13 +148,16 @@ function findFromImport(
       const innerName = elem.propertyName?.text ?? elem.name.text;
       const next = resolveModuleSpec(resolvedFile, stmt.moduleSpecifier.text);
       if (!next) continue;
-      // Recurse: resolve the chain. For default-import the inner name
-      // doesn't matter for `findFromImport` (we're looking up the file
-      // itself); for named imports we'd recurse with `innerName`.
+      // Recurse: resolve the chain. For named imports we use the
+      // inner name; for `export { default as Y } from './path'` we
+      // still propagate the barrel-side alias (`componentName`) into
+      // findFromDecl so `readGts` can disambiguate multi-`<template>`
+      // target files when the inner declaration happens to share that
+      // name (the common case for HDS-style barrel re-exports).
       const target = innerName === 'default' ? null : innerName;
       const result = target
         ? findFromImport(next, target, ts, depth + 1)
-        : findFromDecl(next, ts, null, null);
+        : findFromDecl(next, ts, null, componentName);
       if (result) return result;
     }
   }
