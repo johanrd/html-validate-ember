@@ -456,4 +456,130 @@ describe('Glint integration: cross-file .gts type resolution', () => {
       `expected <S.Step> to resolve to 'li' via yield-hash chain; got: ${JSON.stringify(entries)}`,
     ).toBeGreaterThan(0);
   });
+
+  it('resolves multi-level dotted invocation `<S.Title>` where `S` itself comes from `<O.Section as |S|>`', () => {
+    // HDS form-layout showcase shape:
+    //   <HdsForm as |FORM|>
+    //     <FORM.Section as |FS|>
+    //       <FS.Header as |FSH|>
+    //         <FSH.Title>…</FSH.Title>
+    // Multi-level dotted binder chain. Without recursive binder
+    // lookup, `<FSH.Title>` has binderTag='FS.Header' (dotted) →
+    // `findTemplateSource` can't resolve a dotted name → the
+    // canonical resolver bails and TS-side picks the first union
+    // element-type member ('h1' from HTMLHeadingElement). Real-world
+    // FP: <FSH.Title> renders as <div> at runtime but html-validate
+    // sees <h1> and FP-fires element-permitted-content on legal
+    // `<div>` children underneath.
+    const { filename, contents } = readFixture('curry-multi-level-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    // The deepest dotted invocation `<S.Title>` (at template-relative
+    // line 6, column 10 in the consumer) must resolve to <div> — not
+    // transparent (which would mean we couldn't pin the tag) and
+    // not <h1> (Glint TS-side union fallback).
+    const sTitle = entries.find(([k]) => k === '6:10');
+    expect(
+      sTitle?.[1],
+      `expected <S.Title> resolution at 6:10 to be 'div' through full 2-level dotted chain; got map: ${JSON.stringify(entries)}`,
+    ).toBe('div');
+  });
+
+  it('resolves dotted invocation through `(component Inner …)` curried yield-hash', () => {
+    // HDS HdsFormSectionHeader yields `Title=(component
+    // HdsFormHeaderTitle size="300")` — a curried component
+    // reference inside the hash. Without curried-binding support,
+    // `<FSH.Title>` resolves to transparent in the canonical resolver,
+    // then Glint's TS-side picks the first union element type (often
+    // <h1> for HTMLHeadingElement) and FP-fires
+    // element-permitted-content on legal `<div>` content underneath.
+    //
+    // The curry binds `size` but NOT `tag`, so the inner's getter
+    // default ('div') should win at the dotted invocation.
+    const { filename, contents } = readFixture('curry-component-yield-hash-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const titleEntry = entries.find(([, tag]) => tag === 'div');
+    expect(
+      titleEntry,
+      `expected <P.Title> via curried (component CurryInner size="300") to resolve to 'div' (inner's getter default); got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+    // And critically: must NOT be <h1>, which is what Glint's TS-side
+    // union pick produces when the resolver bails to transparent.
+    const h1Entry = entries.find(([, tag]) => tag === 'h1');
+    expect(
+      h1Entry,
+      `expected NO <h1> resolution (TS-side union fallback); got: ${JSON.stringify(entries)}`,
+    ).toBeUndefined();
+  });
+
+  it('passes `@tag={{this.X}}` through wrapper recursion to inner polymorphic component', () => {
+    // Mirrors HdsFormHeaderTitle → HdsTextDisplay → HdsText chain:
+    // the wrapper's class getter computes the tag value, the wrapper
+    // forwards it via `@tag={{this.tag}}` to the inner polymorphic
+    // component, and the inner's `(element this.componentTag)` should
+    // honour the forwarded literal — not fall back to its own getter
+    // default.
+    //
+    // Before the fix, `resolvePascalRecursion`'s passedArgs builder
+    // only handled `@arg={{@caller}}` passthrough, so `{{this.tag}}`
+    // dropped on the floor and the inner saw an empty consumerArgs
+    // (resolving to <span>, the inner's own default). The whole chain
+    // then resolved to <span> and downstream `element-permitted-content`
+    // rules FP-fired on legal `<div>`-under-<wrapper>.
+    const { filename, contents } = readFixture('this-prop-passthrough-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const divEntry = entries.find(([, tag]) => tag === 'div');
+    expect(
+      divEntry,
+      `expected ThisPropWrapper (no consumer @tag, getter default 'div') to chain through to <div>; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it('HdsCardContainer-shape (cross-package): .d.ts → .gts companion + conditional + class-getter resolves to @tag="li"', () => {
+    // Mirrors the actual HDS layout: consumer imports through a
+    // cross-package barrel (`.d.ts`); the class declaration lives in
+    // a sibling `.d.ts` with no template body. The resolver must
+    // bridge to the `src/<...>.gts` companion (via the package's
+    // `exports` map fallback), walk the conditional + class-getter +
+    // (element …) helper with consumer @tag="li", and resolve <li>.
+    //
+    // This is the realistic reproduction of the HDS-cluster FP: the
+    // simpler same-file fixture above already passes, so the bug —
+    // if there is one — must live in the cross-package decl→source
+    // bridge or symbol-alias chain handling.
+    const { filename, contents } = readFixture('hds-card-cross-package-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected cross-package HdsCardContainer(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
+
+  it('HdsCardContainer-shape: conditional + `(element this.componentTag)` + class-getter resolves to consumer @tag literal', () => {
+    // Mirrors HDS's `HdsCardContainer`:
+    //   {{#if (eq this.componentTag "div")}}
+    //     <div>{{yield}}</div>
+    //   {{else}}
+    //     {{#let (element this.componentTag) as |Tag|}}<Tag>{{yield}}</Tag>{{/let}}
+    //   {{/if}}
+    // with `get componentTag() { const { tag = 'div' } = this.args; return tag; }`.
+    // Consumer passes `@tag="li"` so the IF condition is false → the
+    // else branch's `(element this.componentTag)` resolves to 'li'.
+    //
+    // Regression guard: extractAttrTypeMap must reach the canonical
+    // resolver path for this shape (the if-else branch selection in
+    // glint.ts), not fall into a fallback that yields 'transparent'.
+    const { filename, contents } = readFixture('conditional-element-helper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const liEntry = entries.find(([, tag]) => tag === 'li');
+    expect(
+      liEntry,
+      `expected ConditionalElementHelper(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
+    ).toBeDefined();
+  });
 });

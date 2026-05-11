@@ -3,18 +3,15 @@
 // The Glint pipeline (`extractAttrTypeMap`) is the dominant cost when
 // `--glint` is on — TS program rebuilds + per-file `rewriteModule` +
 // `getTypeChecker().getTypeAtLocation` calls. The result is a pure
-// function of (file content + tsconfig content + plugin source), so we
-// can cache it on disk and skip the work on repeat runs (CI,
-// pre-commit hooks, IDE re-validation).
+// function of (file content + tsconfig content + plugin version +
+// plugin source content), so we can cache it on disk and skip the work
+// on repeat runs (CI, pre-commit hooks, IDE re-validation).
 //
-// "Plugin source" is keyed two ways:
-//   - `package.json` `version` field — invalidates between releases.
-//   - SHA of the plugin's core source files (lib/, blank.ts, etc.) —
-//     invalidates across in-development changes that don't bump the
-//     `version` field. Without this, a dev who modifies the plugin
-//     between local ecosystem-check runs gets stale cached results
-//     because both `version` and consumer-file content stayed the
-//     same.
+// Why plugin source content (not just version)? On release the package
+// version bumps and the cache invalidates cleanly. During local plugin
+// development the version stays fixed but `lib/` changes between every
+// `npm run build` — without hashing the source, every iteration hits
+// stale cache entries and silently runs the OLD resolver logic.
 //
 // Cache layout:
 //   <projectRoot>/node_modules/.cache/html-validate-ember/glint/
@@ -40,79 +37,75 @@ import { fileURLToPath } from 'node:url';
 
 import type { ComponentAttrs } from './builtin-components.js';
 
-// Walk up from this module looking for the nearest `package.json`. Used
-// for both reading the published version (cache invalidation between
-// release versions) AND as the anchor for hashing core source files
-// (cache invalidation across in-development plugin changes).
-function findPluginRoot(): string | null {
+// Walk up from this module looking for the nearest `package.json` so the
+// version is found regardless of whether we're running from source
+// (vitest: `lib/cache.ts`) or the built layout (`dist/lib/cache.js`).
+function findPluginVersion(): string {
   let dir = path.dirname(fileURLToPath(import.meta.url));
   while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, 'package.json'))) return dir;
+    const candidate = path.join(dir, 'package.json');
+    if (fs.existsSync(candidate)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8')) as { version?: string };
+        if (pkg.version) return pkg.version;
+      } catch {
+        // fall through to parent directory
+      }
+    }
     dir = path.dirname(dir);
-  }
-  return null;
-}
-
-function findPluginVersion(root: string | null): string {
-  if (!root) return '0.0.0';
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
-      version?: string;
-    };
-    if (pkg.version) return pkg.version;
-  } catch {
-    // fall through
   }
   return '0.0.0';
 }
+const PLUGIN_VERSION = findPluginVersion();
 
-// Hash core plugin source files at module load. This is the cache key
-// component that catches in-development plugin changes — the
-// `package.json` `version` field rarely changes between commits, so a
-// version-only cache key reuses stale extraction results across
-// plugin code changes (e.g., a new bug-fix branch is merged but the
-// previous cache entry is still considered valid).
+// SHA over the plugin's own library code (the directory this module
+// lives in). The cache entries are produced by these files; if the
+// files change between runs, the stored entries can be wrong even
+// though the source-under-validation and tsconfig haven't moved.
+// Bumping the package version on release covers consumers of the
+// published package, but during local plugin development the version
+// stays fixed and stale entries silently mask fixes — so include the
+// source content too.
 //
-// We hash a fixed list of the core extraction-affecting files. Both
-// `.ts` (source / dev) and `.js` (built / shipped) are tried; missing
-// files are silently skipped. A hash mismatch on read invalidates the
-// entry just like a fileSha or tsconfigSha mismatch.
-function findPluginSourceSha(root: string | null): string {
-  if (!root) return 'no-root';
-  // Files whose content meaningfully affects the extraction result:
-  // the transformer, blanker, Glint integration, and shared helpers.
-  // Test files and triage docs are excluded — they don't change the
-  // extraction logic.
-  const candidates = [
-    'index.ts', 'index.js',
-    'blank.ts', 'blank.js',
-    'transform.ts', 'transform.js',
-    'lib/glint.ts', 'lib/glint.js',
-    'lib/component-attrs.ts', 'lib/component-attrs.js',
-    'lib/dynamic-value.ts', 'lib/dynamic-value.js',
-    'lib/builtin-components.ts', 'lib/builtin-components.js',
-    'lib/cache.ts', 'lib/cache.js',
-    'lib/multipass-dedupe.ts', 'lib/multipass-dedupe.js',
-    'lib/scope.ts', 'lib/scope.js',
-  ];
-  const hash = crypto.createHash('sha256');
-  for (const rel of candidates) {
+// Computed once at module load: it's the same for every cache call in
+// a process. Costs ~50ms on first import, then cached.
+function computePluginSourceSha(): string {
+  const start = path.dirname(fileURLToPath(import.meta.url));
+  const files: string[] = [];
+  function walk(dir: string): void {
+    let entries: fs.Dirent[];
     try {
-      const content = fs.readFileSync(path.join(root, rel), 'utf8');
-      hash.update(`${rel}:${content}\n`);
+      entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
-      // missing — `.ts` not present in shipped layout, `.js` not
-      // present in source layout; skip silently.
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && /\.(?:js|ts|cjs|mjs|hbs|gjs|gts|json)$/.test(entry.name)) {
+        // Skip `.d.ts` and source maps — they don't drive behaviour.
+        if (entry.name.endsWith('.d.ts') || entry.name.endsWith('.map')) continue;
+        files.push(full);
+      }
     }
   }
-  // 16 hex chars is plenty for cache-key collision avoidance and keeps
-  // the stored entry compact.
-  return hash.digest('hex').slice(0, 16);
+  walk(start);
+  files.sort();
+  const hash = crypto.createHash('sha256');
+  for (const f of files) {
+    hash.update(path.relative(start, f));
+    hash.update('\0');
+    try {
+      hash.update(fs.readFileSync(f));
+    } catch {
+      // unreadable file — skip
+    }
+    hash.update('\0');
+  }
+  return hash.digest('hex');
 }
-
-const PLUGIN_ROOT = findPluginRoot();
-const PLUGIN_VERSION = findPluginVersion(PLUGIN_ROOT);
-const PLUGIN_SOURCE_SHA = findPluginSourceSha(PLUGIN_ROOT);
+const PLUGIN_SOURCE_SHA = computePluginSourceSha();
 
 const CACHE_DISABLED = process.env['HVE_NO_CACHE'] === '1';
 
@@ -131,9 +124,6 @@ export interface ExtractionResult {
 
 interface CacheEntry {
   pluginVersion: string;
-  // Hash of the plugin's core source files. Catches cache invalidation
-  // across in-development plugin changes that don't bump
-  // `package.json` version (the typical case during fix-branch work).
   pluginSourceSha: string;
   tsconfigSha: string;
   fileSha: string;

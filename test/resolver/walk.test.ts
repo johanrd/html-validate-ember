@@ -202,3 +202,36 @@ describe('resolveTemplate', () => {
     });
   });
 });
+
+describe('resolveYieldHashBinding', () => {
+  test('hash entry is `(component Inner …)` curried call: resolves through Inner', async () => {
+    // HDS HdsFormSectionHeader's pattern:
+    //   <template>
+    //     <div>{{yield (hash Title=(component HdsFormHeaderTitle size="300"))}}</div>
+    //   </template>
+    // The hash value is a SubExpression `(component …)`, not a bare
+    // PathExpression. Without curried-binding support, `resolveBinding`
+    // bails to TRANSPARENT, and Glint's TS-side union pick (the first
+    // member of `Element: HTMLSpanElement | HTMLHeadingElement | …`)
+    // overrides — landing on `<h1>` and FP-firing
+    // element-permitted-content for legal `<div>` content underneath.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const innerOrigin = path.join(FIXTURES, 'curry-component-yield-hash-inner.gts');
+    const parentContent = `<div ...attributes>{{yield (hash Title=(component CurryInner size="300"))}}</div>`;
+    const parentSource = {
+      content: parentContent,
+      // Origin matters: resolveImport walks the file's imports to
+      // find `CurryInner`. Point at the actual fixture parent.
+      origin: path.join(FIXTURES, 'curry-component-yield-hash-parent.gts'),
+      kind: 'gts' as const,
+    };
+    const r = resolveYieldHashBinding({
+      parentSource,
+      hashKey: 'Title',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('div');
+  });
+});

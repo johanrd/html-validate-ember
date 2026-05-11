@@ -9,6 +9,8 @@ import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
+import type * as TS from 'typescript';
+
 import { resolveTemplate } from '../lib/resolver/walk.js';
 import { findTemplateSource } from '../lib/resolver/template-source.js';
 
@@ -1406,7 +1408,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       'export default CardContainer;',
     ].join('\n'));
     try {
-      const ts = createRequire(import.meta.url)('typescript') as typeof import('typescript');
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
       const source = findTemplateSource({ declFile: filename, ts });
       expect(source).not.toBeNull();
       const r = resolveTemplate(source!, {
@@ -1429,6 +1431,116 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     );
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('div');
+  });
+
+  it('canonical resolver: destructure default = imported enum member resolves to literal', () => {
+    // HDS-style: `const DEFAULT_TAG = HdsXxxValues.Div;` where the enum
+    // is imported from a sibling `types.ts`. The getter destructures
+    // `const { tag = DEFAULT_TAG } = this.args;` and returns `tag`.
+    // With no consumer @tag, the default chain must resolve to 'div'.
+    const filename = path.join(FIXTURES, 'enum-default-shape.gts');
+    const typesFile = path.join(FIXTURES, 'enum-default-types.ts');
+    fs.writeFileSync(typesFile, [
+      'export enum MyTagValues { Div = "div", Span = "span" }',
+      'export type MyTags = `${MyTagValues}`;',
+    ].join('\n'));
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "import { MyTagValues } from './enum-default-types.ts';",
+      "import type { MyTags } from './enum-default-types.ts';",
+      'export const DEFAULT_TAG = MyTagValues.Div;',
+      'class EnumDefault extends Component<{ Args: { tag?: MyTags }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): MyTags {',
+      '    const { tag = DEFAULT_TAG } = this.args;',
+      '    return tag;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.componentTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default EnumDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('div');
+    } finally {
+      fs.unlinkSync(filename);
+      fs.unlinkSync(typesFile);
+    }
+  });
+
+  it('canonical resolver: `return this.args.X ?? EnumName.Member;` (imported enum) resolves to enum literal', () => {
+    // HDS dialog-primitive's pattern: getter returns
+    // `this.args.titleTag ?? HdsXxxValues.Div;` where the enum is
+    // imported from a sibling `types.ts`. The RHS of `??` is a
+    // PropertyAccess, not a StringLiteral or Identifier — without the
+    // EnumName.Member lookup, the chain breaks and the resolver falls
+    // back to the type union's first member (e.g. <h1>).
+    const filename = path.join(FIXTURES, 'nullish-enum-default-shape.gts');
+    const typesFile = path.join(FIXTURES, 'nullish-enum-default-types.ts');
+    fs.writeFileSync(typesFile, [
+      'export enum TitleTagValues { Div = "div", H1 = "h1", H2 = "h2" }',
+      'export type TitleTags = `${TitleTagValues}`;',
+    ].join('\n'));
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "import { TitleTagValues } from './nullish-enum-default-types.ts';",
+      "import type { TitleTags } from './nullish-enum-default-types.ts';",
+      'class NullishEnumDefault extends Component<{ Args: { titleTag?: TitleTags }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get titleTag(): TitleTags {',
+      '    return this.args.titleTag ?? TitleTagValues.Div;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.titleTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default NullishEnumDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('div');
+    } finally {
+      fs.unlinkSync(filename);
+      fs.unlinkSync(typesFile);
+    }
+  });
+
+  it('canonical resolver: `return this.args.X ?? DEFAULT;` (no destructure) resolves via top-level const', () => {
+    // HDS dialog-primitive's pattern: getter returns `this.args.X ??
+    // DEFAULT` directly. With no consumer @X, fall back to DEFAULT's
+    // literal value.
+    const filename = path.join(FIXTURES, 'nullish-default-shape.gts');
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "export const DEFAULT_TAG = 'p';",
+      'class NullishDefault extends Component<{ Args: { tag?: string }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): string {',
+      '    return this.args.tag ?? DEFAULT_TAG;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.componentTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default NullishDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('p');
+    } finally {
+      fs.unlinkSync(filename);
+    }
   });
 });
 
