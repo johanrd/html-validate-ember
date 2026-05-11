@@ -163,12 +163,77 @@ function resolveElement(
 
   // PascalCase wrapper → recurse.
   if (/^[A-Z]/.test(node.tag) && !node.tag.includes('.') && !node.tag.startsWith(':')) {
-    return resolvePascalRecursion(node, source, options);
+    const resolution = resolvePascalRecursion(node, source, options);
+    if (resolution.kind !== 'transparent') return resolution;
+    // Pure-yield wrappers (template body is `{{yield (...)}}` only,
+    // no element of their own — HDS HdsPopoverPrimitive shape) emit
+    // the consumer's CHILDREN directly into the rendered DOM. The
+    // invocation's body in THIS template is what actually wraps; walk
+    // it for a real outer tag. Without this, HdsDropdown (whose
+    // template's outer is `<HdsPopoverPrimitive as |PP|>{<div>…
+    // <ul>{{yield (hash Interactive=…)}}</ul>…</div>}</HdsPopoverPrimitive>`)
+    // resolves to transparent, the substitution drops its `<div>`
+    // wrapper, and the yielded `<li>` items appear as siblings of
+    // the consumer's outer `<li>`.
+    const wrapperSource = findPascalWrapperSource(node, source, options);
+    if (wrapperSource && isPureYieldWrapper(wrapperSource)) {
+      const descended = resolveBody(node.children, source, options);
+      if (descended.kind !== 'transparent') return descended;
+    }
+    return resolution;
   }
 
   // Dotted (`<This.Foo>`, `<F.Item>`) — yield-binding or curried path.
   // We don't statically resolve these; transparent is the safe answer.
   return TRANSPARENT;
+}
+
+// Locate the TemplateSource for a PascalCase wrapper. Mirrors the
+// import/by-name/sibling probe order in `resolvePascalRecursion` so
+// `resolveElement`'s pure-yield descent has access to the same
+// resolved source without re-walking through `resolvePascalRecursion`.
+function findPascalWrapperSource(
+  node: AST.ElementNode,
+  source: TemplateSource,
+  options: ResolveOptions,
+): TemplateSource | null {
+  const importedFile = resolveImport(source.origin, node.tag, options.ts ?? null);
+  if (importedFile) {
+    const importedSource = findTemplateSource({ declFile: importedFile, ts: options.ts });
+    if (importedSource) return importedSource;
+  }
+  const byName = findTemplateSource({
+    consumerFile: source.origin,
+    componentName: node.tag,
+    ts: options.ts,
+  });
+  if (byName) return byName;
+  return trySiblingProbe(source.origin, node.tag);
+}
+
+// A wrapper is "pure-yield" when its template body has no element-
+// producers of its own — just `{{yield (...)}}` statements (and
+// whitespace / mustache comments). The consumer's children fully
+// describe the rendered DOM in that case.
+function isPureYieldWrapper(wrapperSource: TemplateSource): boolean {
+  let ast: AST.Template;
+  try {
+    ast = parseTemplate(wrapperSource.content);
+  } catch {
+    return false;
+  }
+  let hasYield = false;
+  for (const node of ast.body) {
+    if (isElementProducer(node)) return false;
+    if (
+      node.type === 'MustacheStatement'
+      && node.path.type === 'PathExpression'
+      && node.path.original === 'yield'
+    ) {
+      hasYield = true;
+    }
+  }
+  return hasYield;
 }
 
 function makeNativeResolution(
