@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { preprocess } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
@@ -14,7 +15,7 @@ import type * as TS from 'typescript';
 import { resolveTemplate } from '../lib/resolver/walk.js';
 import { findTemplateSource } from '../lib/resolver/template-source.js';
 
-const FIXTURES = path.dirname(new URL(import.meta.url).pathname) + '/glint-fixtures';
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'glint-fixtures');
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);

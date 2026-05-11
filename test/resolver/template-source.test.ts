@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type * as TS from 'typescript';
 
 import {
@@ -8,7 +9,7 @@ import {
   _clearCache,
 } from '../../lib/resolver/template-source.js';
 
-const FIXTURES = new URL('../glint-fixtures/', import.meta.url).pathname;
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'glint-fixtures');
 const ts = createRequire(import.meta.url)('typescript') as typeof TS;
 
 afterEach(() => {
