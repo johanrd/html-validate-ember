@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { preprocess } from '@glimmer/syntax';
 import type { AST } from '@glimmer/syntax';
@@ -6,6 +10,12 @@ import { blankTemplateContent, blankTemplateContentMultipass, isNativeTag } from
 import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
+import type * as TS from 'typescript';
+
+import { resolveTemplate } from '../lib/resolver/walk.js';
+import { findTemplateSource } from '../lib/resolver/template-source.js';
+
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'glint-fixtures');
 
 function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResult {
   const result = blankTemplateContent(content, scope);
@@ -111,10 +121,7 @@ describe('mustache blanking', () => {
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('...attributes');
-    expect(
-      out.imgSplatOffsets,
-      `expected the <img ...attributes> offset to be recorded for hook-time injection`,
-    ).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['src', 'alt']));
   });
 
   it('records the offset even when there are multiple Glimmer-only slots', () => {
@@ -124,30 +131,39 @@ describe('mustache blanking', () => {
     const src = '<img @loading="lazy" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    expect(out.imgSplatOffsets).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['src', 'alt']));
   });
 
   it('does not record offset when the consumer wrote both src and alt explicitly', () => {
     // When src AND alt are both already on the element, no injection is
-    // needed — leave the offset out of the set so the hook skips it.
+    // needed — leave the offset out of the registry so the hook skips it.
     const src = '<img src="/foo.png" alt="bar" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
-    // Original literal values survive.
     expect(out.content).toContain('src="/foo.png"');
     expect(out.content).toContain('alt="bar"');
-    expect(out.imgSplatOffsets).toEqual([]);
+    expect(out.attrInjections!.has(0)).toBe(false);
   });
 
-  it('records offset when only ONE of src/alt is consumer-written (other still synthesized)', () => {
+  it('records offset only for the missing attr when only one is consumer-written', () => {
     // When the consumer wrote only `src=` but not `alt=`, alt still needs
-    // synthesis — record the offset; the hook checks per-attr presence
-    // and synthesizes only the missing one.
+    // synthesis (record `alt`) but src does NOT (already there).
+    // Per-attr precision: synthesizing both for any registered offset
+    // would silence wcag/h37 (missing alt) when the component only
+    // guarantees src.
     const src = '<img src="/foo.png" {{on "load" this.h}} ...attributes>';
     const out = blank(src);
-    expect(out.imgSplatOffsets).toEqual([0]);
+    expect(injectedAttrsAt(out, 0)).toEqual(new Set(['alt']));
   });
 });
+
+// Helper: which attrs are registered for hook-injection at this offset.
+function injectedAttrsAt(
+  out: { attrInjections?: Map<number, Array<{ attr: string; value: string | null }>> },
+  offset: number,
+): Set<string> {
+  return new Set((out.attrInjections?.get(offset) ?? []).map((i) => i.attr));
+}
 
 describe('component substitution (transparent fallback)', () => {
   // Without Glint resolution, component invocations have their open and
@@ -644,6 +660,86 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).toMatch(/<ul\s+/);
   });
 
+  it('block-form: strips aria-* from the substituted tag when yield-ancestor preference was applied', () => {
+    // Real-world FP: `<HdsBreadcrumb aria-label="X">…</HdsBreadcrumb>`.
+    // HdsBreadcrumb's template is `<nav class={{…}} aria-label={{…}}
+    // ...attributes><ol>{{yield}}</ol></nav>`. The resolver applies
+    // yield-ancestor preference and reports the substituted tag as
+    // `<ol>` so yielded `<li>` children land under the correct
+    // structural parent. But the consumer's `aria-label="X"` lands on
+    // `<nav>` at runtime via `...attributes`, NOT on `<ol>`. Without
+    // this guard the in-place rename leaves `<ol aria-label='X'>` in
+    // the blanked output, firing `aria-label-misuse` ("allowed but not
+    // recommended on <ol>") against an element that doesn't carry the
+    // attribute at runtime.
+    const src = '<HdsBreadcrumb aria-label="breadcrumb">item</HdsBreadcrumb>';
+    const tagMap = new Map([[locKey(src, 'HdsBreadcrumb'), 'ol']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsBreadcrumb'),
+        { tag: 'ol', attrs: {}, hasSplat: true, fromYieldAncestor: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).toMatch(/<ol\s+/);
+    expect(
+      r.content,
+      `aria-label must be stripped when yield-ancestor preference fires; got: ${JSON.stringify(r.content)}`,
+    ).not.toContain('aria-label');
+  });
+
+  it('block-form: strips aria-* with ConcatStatement value (multi-line + mustache interpolation)', () => {
+    // The aria-strip must mark the attribute as fully blanked so the
+    // downstream `emitAttribute` loop doesn't re-emit `"…"` quotes from
+    // its ConcatStatement value-rewrite path back into the blanked
+    // region. Otherwise the substituted open tag tokenizes as
+    // `<ol  …  "  …  "  …>` which html-validate parses as a stray
+    // attribute and a parser-error cascades. Regression guard against
+    // the in-place fix that handled bare-string aria-* values but not
+    // interpolated ones (`aria-label="prefix {{maybe}} suffix"`).
+    const src = '<HdsBreadcrumb aria-label="bc {{if @h \'icons\'}} ex">x</HdsBreadcrumb>';
+    const tagMap = new Map([[locKey(src, 'HdsBreadcrumb'), 'ol']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsBreadcrumb'),
+        { tag: 'ol', attrs: {}, hasSplat: true, fromYieldAncestor: true },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toHaveLength(src.length);
+    expect(r.content).not.toContain('aria-label');
+    expect(
+      r.content,
+      `must not leave stray quote chars inside the blanked aria-* range; got: ${JSON.stringify(r.content)}`,
+    ).not.toMatch(/<ol[^>]*"/);
+  });
+
+  it('block-form: KEEPS aria-* when yield-ancestor preference was NOT applied', () => {
+    // Companion of the previous test: when the resolver picked the
+    // outer tag directly (no yield-ancestor preference), consumer
+    // `aria-*` attrs DO land on the substituted element at runtime,
+    // so the blanker must preserve them. Guards against the aria-strip
+    // regressing into all yield-bearing substitutions.
+    const src = '<HdsNavigation aria-label="primary">item</HdsNavigation>';
+    const tagMap = new Map([[locKey(src, 'HdsNavigation'), 'nav']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'HdsNavigation'),
+        { tag: 'nav', attrs: {}, hasSplat: true, fromYieldAncestor: false },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toMatch(/<nav\s+/);
+    expect(
+      r.content,
+      `aria-label must be preserved when the outer tag was chosen directly; got: ${JSON.stringify(r.content)}`,
+    ).toContain("aria-label=\"primary\"");
+  });
+
   it('block-form: injects multiple literal attrs, longer ones first to avoid starvation', () => {
     // Naive first-fit walking attrs in declaration order would let
     // `a='x'` (5 chars) consume the wide @veryLongFirstAttr slot and
@@ -709,13 +805,19 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     expect(r.content).not.toContain("disabled=");
   });
 
-  it('block-form: empty-string literal on a non-boolean attr falls back to placeholder', () => {
-    // Bare emission would be wrong for non-boolean attrs: the AST
-    // can't distinguish `<div aria-label ...attributes>` from
-    // `<div aria-label='' ...attributes>` (both produce empty TextNode
-    // chars). Treat empty-string literal as bare only when the attr
-    // is a known HTML boolean; otherwise emit the 3-space placeholder
-    // so processAttribute converts to DynamicValue.
+  it('block-form: aria-* attrs are NOT injected when role is absent (avoids aria-label-misuse FPs)', () => {
+    // The chain-attr injection used to land `aria-label='   '` on
+    // any substituted element regardless of role context. On plain
+    // `<div>` (no role), html-validate's `aria-label-misuse` then
+    // FP-fires ("aria-label cannot be used on this element").
+    //
+    // With anchor-aware injection: aria-* is only emitted when the
+    // anchoring `role` is also recorded AND fits in the consumer's
+    // Glimmer-attr slots. When role isn't present in the chain, all
+    // aria-* attrs are dropped from the substitution. Drift-proof:
+    // gates on the `aria-*` PREFIX, not an enumerated list, so new
+    // role-dependent aria-* attrs added to html-validate won't slip
+    // through.
     const src = "<MyDiv @veryLongFirstAttr={{val}}>x</MyDiv>";
     const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
     const attrMap = new Map<string, ComponentAttrs>([
@@ -727,6 +829,29 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
     expect(r.error).toBeNull();
     expect(r.content).toHaveLength(src.length);
+    expect(r.content).not.toContain('aria-label');
+  });
+
+  it('block-form: aria-* attrs ARE injected when role anchors them', () => {
+    // When the chain has `role` alongside aria-*, both fit, so the
+    // anchored injection is emitted. The substituted output reads
+    // `<div role='   ' aria-label='   '>`, which html-validate
+    // accepts because the dynamic role authorizes aria-label.
+    const src = "<MyDiv @veryLongFirstArg={{val}} @veryLongSecondArg={{val}}>x</MyDiv>";
+    const tagMap = new Map([[locKey(src, 'MyDiv'), 'div']]);
+    const attrMap = new Map<string, ComponentAttrs>([
+      [
+        locKey(src, 'MyDiv'),
+        {
+          tag: 'div',
+          attrs: { role: 'dialog', 'aria-label': '' },
+          hasSplat: true,
+        },
+      ],
+    ]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap, attrMap);
+    expect(r.error).toBeNull();
+    expect(r.content).toContain("role='dialog'");
     expect(r.content).toContain(`aria-label='${DYNAMIC_VALUE_PLACEHOLDER}'`);
   });
 
@@ -1009,6 +1134,494 @@ describe('Form-submit-in-else (FP fix): single-branch emission prefers branch wi
     // Default landmark behavior preserved: only program branch emitted.
     expect(r.content).toContain('A');
     expect(r.content).not.toContain('B');
+  });
+});
+
+describe('block-form `<button>` substitution registers inputSplatTypeOffsets', () => {
+  // Regression for 76901ba: when a curried/hash-yielded component
+  // resolves to `<button>` and is invoked block-form, the in-place
+  // tag rename produces `<button   ...>` without a `type=` attr.
+  // `tryInjectComponentAttrs` doesn't run for such cases because the
+  // chain `attrCtx` is undefined for hash-yielded curries — so we
+  // register a `type` injection in `attrInjections` and processElement
+  // sets it at parse time. Without this, `no-implicit-button-type`
+  // FP-fires.
+  it('records the offset for block-form <button> substitution when consumer has no `type=`', () => {
+    const src = '<RT.Toggle>click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    const typeInjections = [...result.attrInjections.values()].flat().filter((i) => i.attr === 'type');
+    expect(typeInjections).toHaveLength(1);
+    // Value is null (DynamicValue) since no chain attrs were
+    // provided — the hook will inject DV at parse time.
+    expect(typeInjections[0]!.value).toBeNull();
+  });
+
+  it('does NOT register the offset when the consumer wrote type= already', () => {
+    const src = '<RT.Toggle type="submit">click</RT.Toggle>';
+    const tagMap = new Map([['1:0', 'button']]);
+    const r = blankTemplateContent(src, undefined, undefined, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    const typeInjections = [...result.attrInjections.values()].flat().filter((i) => i.attr === 'type');
+    expect(typeInjections).toHaveLength(0);
+  });
+});
+
+describe('curried-yield-hash structural-parent suppression (case C)', () => {
+  // Mirrors HDS's `<HdsStepperList as |S|><S.Step>...</S.Step>`
+  // pattern: wrapper resolves to a structural-content-restrictive
+  // parent (`<ol>`); a dotted curried direct child (`<S.Step>`)
+  // resolves to 'transparent' on the consumer side because Glint's
+  // hash-yielded curried-component chain doesn't statically tie
+  // back to the addon-side source. The static blanker has no way to
+  // see that `<S.Step>` renders `<li>` at runtime, so any block-
+  // level content INSIDE `<S.Step>` ends up looking like a direct
+  // child of the wrapper's `<ol>` and FP-fires
+  // `element-permitted-content` ("<div> not permitted under <ol>").
+  //
+  // Suppression heuristic gated on BOTH conditions: the wrapper
+  // resolves to a structural-restrictive parent (per the
+  // STRUCTURAL_CONTENT_PARENTS set) AND the wrapper has a
+  // transparent dotted direct child. Same per-Source trade-off as
+  // case (B).
+  it('emits element-permitted-content / -parent in disableForRules when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
+    const content = '<W as |S|>\n  <S.Step>\n    <div>step content</div>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'], // <W>
+      ['2:2', 'transparent'], // <S.Step>
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).toContain('element-permitted-content');
+    expect(result.disableForRules).toContain('element-permitted-parent');
+  });
+
+  it('does NOT suppress when wrapper resolves to a permissive parent (e.g. <div>)', () => {
+    const content = '<W as |S|>\n  <S.Step>\n    <span>x</span>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'], // permissive — `<div>` accepts <span> directly
+      ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  it('case (B) ALSO suppresses when dotted child resolves to a structural tag (li/option/etc)', () => {
+    // Case (B) — pre-existing — already handles this: the dotted
+    // child resolves to a CONTENT_RESTRICTED_STRUCTURAL_CHILDREN
+    // tag, so the runtime parent might be a different ancestor than
+    // the static blanker sees. Documents the overlap with case (C):
+    // both fire for this shape; either one alone would suffice.
+    const content = '<W as |S|>\n  <S.Step>\n    <div>x</div>\n  </S.Step>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'],
+      ['2:2', 'li'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).toContain('element-permitted-content');
+    expect(result.disableForRules).toContain('element-permitted-parent');
+  });
+
+  it('does NOT suppress when the direct child is non-dotted (suggests wrapper IS runtime parent)', () => {
+    const content = '<W>\n  <ChildComponent>\n    <div>x</div>\n  </ChildComponent>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'ol'],
+      ['2:2', 'transparent'],
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  // Regression for 9ef0b73 (Copilot round 6): case (B) was over-
+  // broad — it suppressed for ANY child resolving to a structural
+  // tag, even non-dotted ones. The Copilot reviewer flagged that a
+  // non-dotted child like `<HdsListItem>` resolved to `<li>` is the
+  // runtime DOM directly under its wrapper, so the wrapper IS the
+  // runtime parent and suppressing would mask real
+  // `<div><HdsListItem>` violations. The fix narrows case (B) to
+  // dotted invocations only (hash-yielded curried components are
+  // always dotted on the consumer side).
+  it('case (B) does NOT suppress when a non-dotted child resolves to a structural tag (wrapper IS runtime parent)', () => {
+    const content =
+      '<NonNativeWrapper>\n  <ListItem>\n    <span>x</span>\n  </ListItem>\n</NonNativeWrapper>\n';
+    const tagMap = new Map<string, string>([
+      // Wrapper is unresolved (no entry); falls into the
+      // !isNativeTag && !lookupBuiltinComponent branch where case
+      // (B) runs. Pre-fix: child `<ListItem>` resolved to `<li>`
+      // would have triggered case (B). Post-fix: only DOTTED
+      // children trigger.
+      ['2:2', 'li'], // <ListItem> → <li> (concrete, non-dotted)
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(result.disableForRules).not.toContain('element-permitted-content');
+    expect(result.disableForRules).not.toContain('element-permitted-parent');
+  });
+
+  // Ecosystem regression: when the wrapper resolves to a NATIVE tag
+  // (e.g. <div> via TS-side type leakage from a wrapped HdsFormField)
+  // but contains a transparent dotted curried child whose body has
+  // literal `<option>` elements, the runtime DOM has those options
+  // in their canonical structural parent (<select>) — not in the
+  // wrapper's resolved tag. case-A's recursive descent through
+  // transparent dotted children should fire suppression.
+  // Ecosystem regression: HDS's `<HdsFormSelectField as |F|>
+  // <F.Options><option>` shape where F.Options resolves to <div>
+  // (Glint's chain narrowing on TemplateOnlyComponent<Sig> with a
+  // wrapping outer element bleeds the wrapper's element type into
+  // the curried-yield-hash sub-component's resolution).
+  //
+  // Descent should fire when the dotted child's resolved tag is NOT
+  // a structural-content-parent — in that case we don't trust the
+  // resolution to be the runtime parent of the structural literals
+  // inside.
+  it('case (A) descent: fires when dotted child resolves to a non-structural-parent native (e.g. <div>) but contains literal structural children', () => {
+    const content = '<W as |F|>\n  <F.Options>\n    <option>x</option>\n  </F.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'],     // <W> resolved to <div>
+      ['2:2', 'div'],     // <F.Options> resolved to <div> (Glint chain narrowing)
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected suppression when F.Options resolves to non-structural-parent <div> with <option> inside; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Counter-test: when the dotted child resolves to a structural-
+  // content-parent (e.g. <select>), TRUST the resolution. Structural-
+  // literal mismatches there are real bugs (e.g. <th> under <select>)
+  // and should fire `element-permitted-content` rather than be
+  // suppressed.
+  it('case (A) descent: does NOT fire when dotted child resolves to a structural-content-parent (trust Glint resolution)', () => {
+    const content = '<W as |C|>\n  <C.Options>\n    <th>real bug</th>\n  </C.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'],     // <W>
+      ['2:2', 'select'],  // <C.Options> pinned to <select> by Glint
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `must not suppress when dotted child is Glint-resolved to structural parent (real <th>-under-<select> bug); got: ${JSON.stringify(result.disableForRules)}`,
+    ).not.toContain('element-permitted-content');
+  });
+
+  it('case (A) suppresses when a NATIVE-resolved wrapper has a transparent dotted child containing literal structural elements (multi-level descent)', () => {
+    // Wrapper resolves to <div> (NOT a structural-content-parent).
+    // Without descent, case-A's wrapper-pinned check would skip
+    // (because <div> accepts <option> indirectly via flow content).
+    // Without case-C (which only fires on structural-content-parent
+    // wrappers), there's no suppression. With the descent, case-A
+    // sees `<option>` literals nested inside the transparent dotted
+    // child and triggers suppression.
+    const content = '<W as |F|>\n  <F.Options>\n    <option>x</option>\n  </F.Options>\n</W>\n';
+    const tagMap = new Map<string, string>([
+      ['1:0', 'div'], // <W> resolved to <div>
+      ['2:2', 'transparent'], // <F.Options> transparent dotted
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected suppression on <option> nested inside transparent <F.Options>; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Ecosystem regression: HDS's `<HdsForm.Select.Field as |F|>` shape.
+  // Surfaced as +120ish FPs across HDS when the canonical-resolver
+  // rewrite changed how multi-level yield-hash chains resolve.
+  //
+  // Shape:
+  //   <HdsForm.Select.Field as |F|>
+  //     <F.Options>
+  //       <option>one</option>
+  //       <option>two</option>
+  //     </F.Options>
+  //   </HdsForm.Select.Field>
+  //
+  // The dotted chain (`HdsForm.Select.Field`) crosses multiple
+  // yield-hash hops on the addon side that the static resolver can't
+  // statically follow. F.Options resolves to 'transparent' (we can't
+  // statically pin it to <select>). Without case-A descending into
+  // unresolvable wrappers' children, the literal `<option>` floats
+  // up to whatever native ancestor is at the consumer's call site
+  // (often `<div>`) and FP-fires `element-permitted-content`.
+  it('case (A) suppresses when an unresolvable dotted wrapper has structural-child literals (multi-level yield-chain)', () => {
+    const content = '<HdsForm.Select.Field as |F|>\n  <F.Options>\n    <option>one</option>\n    <option>two</option>\n  </F.Options>\n</HdsForm.Select.Field>\n';
+    // F.Options resolves to 'transparent' (unresolvable curried-yield-hash);
+    // HdsForm.Select.Field is unresolvable (dotted, no entry in tagMap).
+    const tagMap = new Map<string, string>([
+      ['2:2', 'transparent'], // <F.Options>
+    ]);
+    const r = blankTemplateContent(content, undefined, null, tagMap);
+    if (r.error) throw r.error;
+    const result = r as BlankResult;
+    expect(
+      result.disableForRules,
+      `expected element-permitted-content suppression on <option> under transparent <F.Options> nested in dotted <HdsForm.Select.Field>; got: ${JSON.stringify(result.disableForRules)}`,
+    ).toContain('element-permitted-content');
+  });
+
+  // Ecosystem regression: `<HdsInteractive>` (Element: HTMLAnchorElement |
+  // HTMLButtonElement) wraps content. Glint's TS-side picks one branch
+  // arbitrarily; if it picks <button>, then `<HdsBadgeCount>` (which
+  // renders <div>) inside fires `element-permitted-content` ("<div>
+  // not permitted under <button>"). The canonical resolver walks
+  // the template, sees the `{{#if @route}}<LinkTo>{{else if @href}}<a>
+  // {{else}}<button>{{/if}}` conditional with differing branches,
+  // and returns transparent.
+  //
+  // The fix: when the canonical resolver returns 'transparent', it
+  // overrides the TS-side arbitrary union pick. Pinning to one branch
+  // of a polymorphic-on-runtime-condition component cascades FPs.
+  it('canonical resolver transparent overrides TS-side arbitrary union pick', () => {
+    // Direct test: the resolver returns transparent for a conditional with
+    // differing branches; applyResolution then overwrites the TS-side
+    // arbitrary first-match pick (e.g. `<a>` from
+    // `HTMLAnchorElement | HTMLButtonElement`).
+    const ifConditionalTpl = '{{#if @route}}<a href={{@href}}>...</a>{{else}}<button>...</button>{{/if}}';
+    const r = resolveTemplate(
+      { content: ifConditionalTpl, origin: '/x.gts', kind: 'gts' },
+    );
+    expect(
+      r.kind,
+      `conditional with differing branches should resolve transparent; got: ${JSON.stringify(r)}`,
+    ).toBe('transparent');
+  });
+
+  // Ecosystem regression: HDS's `<HdsInteractive>` (Element:
+  // HTMLAnchorElement | HTMLButtonElement) wrapping a `<div>`. Glint's
+  // TS-side picks one branch arbitrarily; if it picks `<button>`,
+  // children like `<HdsBadgeCount>` (which renders `<div>`) FP-fire
+  // `element-permitted-content` ("<div> not permitted under <button>").
+  //
+  // The canonical resolver walks the conditional template:
+  //   {{#if @route}}<LinkTo>{{else if @href}}<a>{{else}}<button>{{/if}}
+  // Sees differing branches, returns transparent. applyResolution
+  // overrides componentTagMap with 'transparent' so the consumer-side
+  // substitution doesn't cascade FPs from the arbitrary pick.
+  it('canonical resolver transparent overrides TS-side first-match for polymorphic-condition templates (no FPs in consumer-side substitution)', () => {
+    // The fixture mirrors HdsInteractive's shape: a TOC component with
+    // a conditional template where each branch renders a different tag.
+    // Resolution should return transparent (children float to actual
+    // parent), not arbitrarily pick one branch's tag.
+    const polyConditional = '{{#if @route}}<a href={{@href}}>{{yield}}</a>{{else}}<button type="button">{{yield}}</button>{{/if}}';
+    const r = resolveTemplate({
+      content: polyConditional,
+      origin: '/x.gts',
+      kind: 'gts',
+    });
+    expect(r.kind).toBe('transparent');
+  });
+
+  // Ecosystem regression: HDS's `<HdsCardContainer @tag="li">` shape.
+  // Outer template is a `{{#if (eq this.componentTag "div")}}<div>
+  // {{else}}<Tag>{{/if}}` polymorphic conditional. With the consumer
+  // passing `@tag="li"`, the IF condition evaluates to false at
+  // runtime → the runtime DOM is `<li>`. My resolveConditional walks
+  // both branches, sees they pin to different tags (`<div>` vs `<li>`),
+  // returns transparent. In a `<ul><HdsCardContainer @tag="li">`
+  // consumer, transparent cascades FPs (the `<div>` inside floats to
+  // `<ul>` because the wrapper blanks transparent).
+  //
+  // Fix: when an `{{#if}}` condition is `(eq <getter-or-arg> "literal")`
+  // AND the consumer's args pin the comparison's value, pick the
+  // matching branch instead of bailing to transparent.
+  it('canonical resolver: evaluates `(eq @arg "literal")` if-conditions against consumer args to pick a branch', () => {
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate(
+      { content: tpl, origin: '/x.gts', kind: 'gts' },
+      { consumerArgs: new Map([['tag', 'li']]) },
+    );
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('li');
+  });
+
+  it('canonical resolver: bails on `(eq @arg "literal")` when consumer @arg is unknown', () => {
+    // Without consumerArgs, the condition is undeterminable — fall back
+    // to walking both branches and converging (or transparent).
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate({ content: tpl, origin: '/x.gts', kind: 'gts' });
+    expect(r.kind).toBe('transparent');
+  });
+
+  it('canonical resolver: evaluates `(eq this.componentTag "div")` against consumer args via class-getter walk', () => {
+    // HDS's HdsCardContainer pattern: condition uses a class getter
+    // (`this.componentTag`) that destructures `{ tag = 'div' } =
+    // this.args` and returns it. With consumer @tag="li" the getter
+    // resolves to 'li', the IF condition is false → resolves to <li>.
+    const filename = path.join(FIXTURES, 'card-container-shape.gts');
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      'class CardContainer extends Component<{ Args: { tag?: string }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): string {',
+      "    const { tag = 'div' } = this.args;",
+      '    return tag;',
+      '  }',
+      '  <template>',
+      "    {{#if (eq this.componentTag 'div')}}",
+      "      <div ...attributes>{{yield}}</div>",
+      '    {{else}}',
+      '      {{#let (element this.componentTag) as |Tag|}}',
+      '        <Tag ...attributes>{{yield}}</Tag>',
+      '      {{/let}}',
+      '    {{/if}}',
+      '  </template>',
+      '}',
+      'export default CardContainer;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, {
+        consumerArgs: new Map([['tag', 'li']]),
+        ts,
+      });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('li');
+    } finally {
+      fs.unlinkSync(filename);
+    }
+  });
+
+  it('canonical resolver: `(eq @arg "literal")` truthy → IF branch', () => {
+    // consumer @tag="div": IF condition true → IF branch <div>.
+    const tpl = '{{#if (eq @tag "div")}}<div>{{yield}}</div>{{else}}<li>{{yield}}</li>{{/if}}';
+    const r = resolveTemplate(
+      { content: tpl, origin: '/x.gts', kind: 'gts' },
+      { consumerArgs: new Map([['tag', 'div']]) },
+    );
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('div');
+  });
+
+  it('canonical resolver: destructure default = imported enum member resolves to literal', () => {
+    // HDS-style: `const DEFAULT_TAG = HdsXxxValues.Div;` where the enum
+    // is imported from a sibling `types.ts`. The getter destructures
+    // `const { tag = DEFAULT_TAG } = this.args;` and returns `tag`.
+    // With no consumer @tag, the default chain must resolve to 'div'.
+    const filename = path.join(FIXTURES, 'enum-default-shape.gts');
+    const typesFile = path.join(FIXTURES, 'enum-default-types.ts');
+    fs.writeFileSync(typesFile, [
+      'export enum MyTagValues { Div = "div", Span = "span" }',
+      'export type MyTags = `${MyTagValues}`;',
+    ].join('\n'));
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "import { MyTagValues } from './enum-default-types.ts';",
+      "import type { MyTags } from './enum-default-types.ts';",
+      'export const DEFAULT_TAG = MyTagValues.Div;',
+      'class EnumDefault extends Component<{ Args: { tag?: MyTags }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): MyTags {',
+      '    const { tag = DEFAULT_TAG } = this.args;',
+      '    return tag;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.componentTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default EnumDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('div');
+    } finally {
+      fs.unlinkSync(filename);
+      fs.unlinkSync(typesFile);
+    }
+  });
+
+  it('canonical resolver: `return this.args.X ?? EnumName.Member;` (imported enum) resolves to enum literal', () => {
+    // HDS dialog-primitive's pattern: getter returns
+    // `this.args.titleTag ?? HdsXxxValues.Div;` where the enum is
+    // imported from a sibling `types.ts`. The RHS of `??` is a
+    // PropertyAccess, not a StringLiteral or Identifier — without the
+    // EnumName.Member lookup, the chain breaks and the resolver falls
+    // back to the type union's first member (e.g. <h1>).
+    const filename = path.join(FIXTURES, 'nullish-enum-default-shape.gts');
+    const typesFile = path.join(FIXTURES, 'nullish-enum-default-types.ts');
+    fs.writeFileSync(typesFile, [
+      'export enum TitleTagValues { Div = "div", H1 = "h1", H2 = "h2" }',
+      'export type TitleTags = `${TitleTagValues}`;',
+    ].join('\n'));
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "import { TitleTagValues } from './nullish-enum-default-types.ts';",
+      "import type { TitleTags } from './nullish-enum-default-types.ts';",
+      'class NullishEnumDefault extends Component<{ Args: { titleTag?: TitleTags }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get titleTag(): TitleTags {',
+      '    return this.args.titleTag ?? TitleTagValues.Div;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.titleTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default NullishEnumDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('div');
+    } finally {
+      fs.unlinkSync(filename);
+      fs.unlinkSync(typesFile);
+    }
+  });
+
+  it('canonical resolver: `return this.args.X ?? DEFAULT;` (no destructure) resolves via top-level const', () => {
+    // HDS dialog-primitive's pattern: getter returns `this.args.X ??
+    // DEFAULT` directly. With no consumer @X, fall back to DEFAULT's
+    // literal value.
+    const filename = path.join(FIXTURES, 'nullish-default-shape.gts');
+    fs.writeFileSync(filename, [
+      "import Component from '@glimmer/component';",
+      "export const DEFAULT_TAG = 'p';",
+      'class NullishDefault extends Component<{ Args: { tag?: string }; Blocks: { default: [] }; Element: HTMLElement }> {',
+      '  get componentTag(): string {',
+      '    return this.args.tag ?? DEFAULT_TAG;',
+      '  }',
+      '  <template>',
+      '    {{#let (element this.componentTag) as |Tag|}}<Tag ...attributes>{{yield}}</Tag>{{/let}}',
+      '  </template>',
+      '}',
+      'export default NullishDefault;',
+    ].join('\n'));
+    try {
+      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const source = findTemplateSource({ declFile: filename, ts });
+      expect(source).not.toBeNull();
+      const r = resolveTemplate(source!, { ts });
+      expect(r.kind).toBe('tag');
+      expect((r as { tag: string }).tag).toBe('p');
+    } finally {
+      fs.unlinkSync(filename);
+    }
   });
 });
 

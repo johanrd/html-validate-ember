@@ -131,12 +131,16 @@ describe('end-to-end fixtures', () => {
 
   it('const-resolution: top-level consts resolve in attribute positions', async () => {
     const r = await validate('const-resolution.gts', { 'no-implicit-button-type': 'off', 'void-style': 'off' });
-    // Trade-off: html-validate v10.13.1 schema doesn't include popover yet,
-    // so the BAD_POPOVER='bogus' const doesn't fire attribute-allowed-values.
-    // Instead, validate the const did NOT cause spurious errors on the
-    // valid resolutions (POPOVER_MODE='auto', FORM_METHOD='post').
-    const popoverErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
-    expect(popoverErrors).toHaveLength(0);
+    // The fixture has three consts in attribute positions:
+    //   <div popover={{POPOVER_MODE}}>   — 'auto' (valid)
+    //   <div popover={{BAD_POPOVER}}>    — 'bogus' (invalid)
+    //   <form method={{FORM_METHOD}}>    — 'post' (valid)
+    // Confirm exactly one attribute-allowed-values error fires (for the
+    // bogus value) — proves the consts resolved AND that the valid
+    // resolutions don't cause spurious errors.
+    const enumErrors = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
+    expect(enumErrors).toHaveLength(1);
+    expect(enumErrors[0]!.message).toContain('"bogus"');
   });
 
   it('concat-attr: concat-mustache values resolve to DynamicValue (no false matches on partial literal)', async () => {
@@ -195,6 +199,206 @@ describe('end-to-end fixtures', () => {
       offenders,
       `wcag/h37 / element-required-attributes must not fire on <img ...attributes>; got: ${JSON.stringify(r.messages)}`,
     ).toHaveLength(0);
+  });
+
+  it('anchor-target-href-consumer: substituted <a> with target/rel from chain does not FP-fire attribute-misuse when href could not fit a narrow Glimmer-attr slot', async () => {
+    // Mirrors `<HdsLinkInline @href='#' @color='primary'>` external-link
+    // branch: addon template `<a target='_blank' rel='noopener noreferrer'
+    // ...attributes href={{@href}}>{{yield}}</a>`. Chain-attr collection
+    // records target+rel+href; consumer-side narrow slots fit target
+    // (16 chars in `@color='primary'`) but not href (10 chars in
+    // `@href='#'` = 9 chars). Hook-time setAttribute('href',
+    // DynamicValue) compensates so `attribute-misuse` ("target requires
+    // href") doesn't fire.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('anchor-target-href-consumer.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'attribute-misuse');
+      expect(
+        offenders,
+        `attribute-misuse must not fire on substituted <a> after hook-time href injection; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('input-type-no-glimmer-slot-consumer: void <input> substitution with NO Glimmer-attr slots still gets `type` from the chain', async () => {
+    // Mirrors HDS `<HdsFormCheckboxBase aria-label="…" />`: addon
+    // template has `<input type="checkbox" ...attributes />` (literal
+    // type), but the consumer writes only non-Glimmer attrs. Source-
+    // side `tryInjectInputType` has no `@arg=`/modifier candidate
+    // range, so the substituted `<input>` reaches html-validate
+    // type-less and FP-fires `no-implicit-input-type`. The fix:
+    // hook-time setAttribute('type', literal) when source-side
+    // injection bails and the chain has a literal type.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('input-type-no-glimmer-slot-consumer.gts', { 'void-style': 'off' });
+      const offenders = r.messages.filter((m) => m.rule === 'no-implicit-input-type');
+      expect(
+        offenders,
+        `no-implicit-input-type must not fire on substituted <input> when chain has literal type; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('multi-yield-table-consumer: wrapper with multi-yield template (different ancestors per named block) substitutes to outer wrapper, not first yield-ancestor', async () => {
+    // Mirrors HDS `<HdsTable>` shape — its template yields to BOTH
+    // `to="head"` (inside `<thead>`) and `to="body"` (inside
+    // `<tbody>`). The outer-wrapper-resolver's yield-nearest-
+    // ancestor walk picks the first yield it sees, surfacing
+    // `<thead>` as the yield-ancestor. Dual-tag substitution then
+    // prefers `<thead>` over the actual outer wrapper `<table>`,
+    // and a consumer like `<div><MultiYieldTable /></div>` becomes
+    // `<div><thead></div>` after blanking — FP-firing
+    // `element-permitted-content` ("<thead> not permitted under
+    // <div>"). Real DOM is `<div><table>...</table></div>`, valid.
+    //
+    // Fix: when a template has yields in multiple distinct native
+    // ancestors, return null (no single yield-ancestor) so dual-tag
+    // falls back to the outer wrapper. Loses the named-block-
+    // specific child-validation power, but eliminates the wrong-
+    // ancestor FP class.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-yield-table-consumer.gts');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire when wrapper has multi-yield template; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('multi-template-file-consumer: a component in a multi-template file does NOT get tagged with the first template block\'s root element', async () => {
+    // Mirrors limber's `apps/repl/app/templates/docs/support/api.gts`
+    // pattern: a file with multiple top-level `<template>` blocks
+    // (TOC `<Live>` first → `<span>`, class `<Wrapper>` second →
+    // `<div>...<p>{{yield}}</p>`). The leaf-fallback resolution
+    // path picks `roots[0]` (Live's `<span>`) for ANY component
+    // declared in the file — wrong tag for Wrapper. Downstream:
+    // `<ul><Wrapper>...</Wrapper></ul>` becomes `<ul><span>...
+    // </span></ul>`, FP-firing `element-permitted-content`
+    // ("<span> not permitted under <ul>" — `<ul>` requires
+    // `<li>`).
+    //
+    // Fix: when the declaring file has >1 `<template>` block,
+    // skip the leaf-fallback (declaration→template matching is
+    // deferred). The component stays at its underlying Glint
+    // Element type (typically 'transparent' for declarations
+    // without a Signature).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-template-file-consumer.gts');
+      const offenders = r.messages.filter(
+        (m) =>
+          m.rule === 'element-permitted-content' &&
+          /span/.test(m.message ?? '') &&
+          /ul/.test(m.message ?? ''),
+      );
+      expect(
+        offenders,
+        `<span> not permitted under <ul> (FP from leaf-fallback picking the wrong template's root) must not fire; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('input-type-dynamic-consumer: substituted <input> with DYNAMIC `type` (mustache-bound) does NOT trip `attribute-allowed-values`', async () => {
+    // The chain-attr extractor records `type={{this.computedType}}`
+    // as the 3-space DynamicValue placeholder. Consumer has only
+    // non-Glimmer attrs, so source-side `tryInjectInputType` finds
+    // no slot and falls through to the hook-time setAttribute
+    // path. Pre-fix, the placeholder slipped through
+    // `isLiteralSafeForAttr` (whitespace passed the no-HTML-
+    // altering-chars regex), got stored as a "safe literal", and
+    // the hook injected the literal whitespace value
+    // (`type="   "`) — html-validate's `attribute-allowed-values`
+    // then FP-fired with "invalid value '   '" because `   ` isn't
+    // in `<input type>`'s enum.
+    //
+    // Post-fix, `isLiteralSafeForAttr` rejects the DynamicValue
+    // placeholder; the hook injects a real DynamicValue and
+    // `attribute-allowed-values` correctly skips the enum check.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('input-type-dynamic-consumer.gts', { 'void-style': 'off' });
+      const offenders = r.messages.filter((m) => m.rule === 'attribute-allowed-values');
+      expect(
+        offenders,
+        `attribute-allowed-values must not fire when chain has dynamic type; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('glint-resolved-form-consumer: wcag/h32 suppression fires when wrapper is Glint-resolved to <form>', async () => {
+    // Regression for fd7fb2a: the `wcag/h32` heuristic in
+    // `detectStructuralYieldRules` was checking `stmt.tag === 'form'`
+    // (only LITERAL `<form>`). Components like HDS's `<HdsForm>` that
+    // resolve to `<form>` via Glint were missed — substituted
+    // output had `<form>` but `disableForRules` didn't include
+    // wcag/h32, FP-firing on what's a yield-bearing form.
+    //
+    // Post-fix: the heuristic uses `stmtResolved` (Glint-resolved
+    // tag OR literal native tag). Both consumer-side `<form>` and
+    // `<MyForm>` substituted to `<form>` get wcag/h32 added to
+    // `disableForRules`.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('glint-resolved-form-consumer.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+      expect(
+        offenders,
+        `wcag/h32 must not fire on Glint-resolved-to-<form> wrapper that yields without inline submit; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('details-with-curried-component.gts: element-required-content does not fire on self-closing component that resolves to <details>', async () => {
+    // Ecosystem regression (proapi-webapp `punch-card.gts`):
+    // a self-closing component invocation that resolves to <details>
+    // gets substituted to `<details>...</details>` (paired tags around
+    // empty body) — the addon's `<summary>` lives inside its template,
+    // not in the consumer's call site, so the blanker can't see it.
+    // html-validate fires `element-required-content` ("<details>
+    // requires <summary>") on the substituted shape.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('details-with-curried-component.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-required-content');
+      expect(
+        offenders,
+        `element-required-content must not fire on substituted <details> from a self-closing component invocation; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
   });
 
   it('linkto-aria-label: aria-label on <LinkTo> does not fire aria-label-misuse', async () => {
@@ -673,6 +877,222 @@ describe('end-to-end fixtures', () => {
       empty,
       `expected no empty-content errors on dynamic-heading.gts; got: ${JSON.stringify(empty)}`,
     ).toHaveLength(0);
+  });
+
+  it('classic-resolver-mustache-bound-attrs.hbs: classic-resolved <img> with addon-side `src={{this.src}}` does not FP-fire element-required-attributes', async () => {
+    // Regression for the by-name resolver's mustache-bound-attr projection.
+    // Addon's template binds `src={{this.src}}` (mustache, not literal).
+    // Without hook-time injection the source-side blank slots in the
+    // consumer (`@src="…"`, `@width={{100}}`) are too narrow to fit the
+    // projected `src='   '` placeholder, and `element-required-attributes`
+    // FP-fires on the substituted <img>.
+    //
+    // The fix: when the resolved tag is <img> and the addon records
+    // `src` (or `alt`) in `attrCtx.attrs` — including the
+    // DYNAMIC_VALUE_PLACEHOLDER for mustache-bound values — push the
+    // consumer's offset to `imgSplatSrcOffsets` / `imgSplatAltOffsets`
+    // per-attr, the same hook the `<img ...attributes>` narrow-slot
+    // fix uses (PR #13). Per-attr precision sidesteps the FN risk of
+    // injecting an unintended attr.
+    //
+    // Mirrors ember-website's `<ResponsiveImage @src="…" alt="" />`
+    // pattern: addon binds `src={{this.src}}`, runtime <img> always
+    // gets a src.
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'classic-resolver-mustache-bound-attrs.hbs');
+    const rawReport = await v.validateFile(fp);
+    const messages = rawReport.results.flatMap((r) =>
+      r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+    );
+    const offenders = messages.filter(
+      (m) => m.rule === 'element-required-attributes' || m.rule === 'wcag/h37',
+    );
+    expect(
+      offenders,
+      `element-required-attributes / wcag/h37 must not fire — addon-side src/alt are mustache-bound but exist; got: ${JSON.stringify(messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('classic-resolver-no-import.hbs: PascalCase tag in `.hbs` resolves via container-style by-name lookup', async () => {
+    // Classic Ember `.hbs` templates resolve PascalCase components
+    // through the container resolver (kebab-case name → installed
+    // addon's component template). No JS `import` is involved.
+    //
+    // Mirrors the ember-website `<EsCard>` pattern: in node_modules,
+    // `classic-card-addon/addon/components/classic-card.hbs` renders
+    // `<li class="..." ...attributes>{{yield}}</li>`. The consumer
+    // wraps an inner `<ul>` in `<ClassicCard>` while inside an outer
+    // `<ul>`. Without by-name resolution the wrapper transparent-blanks
+    // and the inner `<ul>` floats to the outer `<ul>` →
+    // `element-permitted-content` FP-fires.
+    //
+    // With by-name resolution, the plugin substitutes `<ClassicCard>`
+    // to `<li>`, so the inner `<ul>` is correctly nested under `<li>`
+    // (legal) under the outer `<ul>`.
+    //
+    // Validated from `test/glint-fixtures/` instead of `examples/` so
+    // the resolver's node_modules walk finds the fake
+    // `classic-card-addon` (the `examples/` dir doesn't have a sibling
+    // node_modules of fixture addons; glint-fixtures does).
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'classic-resolver-no-import.hbs');
+    const rawReport = await v.validateFile(fp);
+    const messages = rawReport.results.flatMap((r) =>
+      r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+    );
+    const offenders = messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders,
+      `element-permitted-content must not fire — by-name resolution should map <ClassicCard> to <li>; got: ${JSON.stringify(messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('form-with-unresolved-component-submit.gts: wcag/h32 suppressed when form contains an unresolved component (may render submit)', async () => {
+    // A `<form>` whose submit button is provided by an unresolved
+    // PascalCase component (no Glint Element annotation, not in
+    // node_modules, not a builtin) FP-fired wcag/h32 because the
+    // static blanker couldn't see a submit candidate. Heuristic
+    // extension in `elementYieldsAndLacksSubmit`: a form that lacks
+    // a static submit BUT contains any unresolved component
+    // invocation is treated as "may render submit" and gets the
+    // rule suppressed. Same per-Source-suppression trade-off as
+    // PR #17's yield-bearing-form case.
+    const r = await validate('form-with-unresolved-component-submit.gts');
+    const wcagH32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      wcagH32,
+      `wcag/h32 must not fire — form contains an unresolved component child that may render submit; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('namespaced-classic-resolver.hbs: wcag/h32 suppressed via the unresolved-component-child heuristic', async () => {
+    // Originally a `.fails()` test asserting future-intent: namespaced
+    // `<Forms::TextInput>` isn't resolved by the classic-by-name
+    // resolver (it only handles single-segment kebab names). The
+    // wrapper transparent-blanks, leaving an empty `<form>` which
+    // fires wcag/h32.
+    //
+    // Now passes naturally: the unresolved-component-child heuristic
+    // in `elementYieldsAndLacksSubmit` recognizes `<Forms::TextInput>`
+    // as a component our static analysis can't pin and treats it as
+    // "may contain submit" — the form's wcag/h32 is suppressed for
+    // the Source. (This is the same FP class that affects ANY form
+    // whose submit comes from an unresolved component invocation —
+    // a button-style component whose source isn't reachable.)
+    //
+    // Namespaced classic-resolver support is still missing as a
+    // feature; this test is now passing for a different reason than
+    // originally intended.
+    const v = makeValidator();
+    const fp = path.join(__dirname, 'glint-fixtures', 'namespaced-classic-resolver.hbs');
+    const r = await v.validateFile(fp);
+    const wcagH32 = r.results
+      .flatMap((rr) => rr.messages)
+      .filter((m) => m.ruleId === 'wcag/h32');
+    expect(wcagH32).toHaveLength(0);
+  });
+
+  it.fails(
+    'heuristic-masks-real-bug.gts: per-Source element-permitted-content suppression DOES mask real bugs elsewhere (documented trade-off)',
+    async () => {
+      // Documents the per-Source suppression trade-off: when a template
+      // also contains an unresolvable curried-yield-hash shape (which
+      // triggers case-B/C suppression), real bugs in the same Source
+      // get masked too. Marked .fails — when the resolver eventually
+      // pins all curried-yield-hash patterns precisely, suppression
+      // narrows or disappears, this test starts to pass, and vitest
+      // signals "remove .fails".
+      const r = await validate('heuristic-masks-real-bug.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(offenders.length).toBeGreaterThan(0);
+    },
+  );
+
+  it('multi-level-dotted-yield-options.gts: heuristic suppression silences element-permitted-content for HDS `<HdsForm.Select.Field as |F|><F.Options><option>` shape (Glint mode)', async () => {
+    // Ecosystem regression: this shape is the dominant FP class
+    // when PR21's case-A/B suppression isn't extended to multi-level
+    // dotted-namespace + curried-yield-hash chains.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-level-dotted-yield-options.gts');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire on multi-level dotted yield-hash chain; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('multi-level-yield-chain-options.gts: heuristic suppression silences element-permitted-content for unresolvable wrappers with structural children', async () => {
+    // Unresolvable curried sub-component case: `<F.Options>` is
+    // `PassThrough` (no specific Element type), wrapped in a
+    // `<FormSelectField>` whose outer Element is bare HTMLElement
+    // (PR #12 → 'transparent'). Without the heuristic, `<option>`
+    // floats to outer `<div>` → FP-fires
+    // `element-permitted-content`. Cross-file yield-chain analysis
+    // would resolve this precisely but is ~250+ lines and deferred.
+    //
+    // The heuristic instead recognizes the pattern: an unresolvable
+    // PascalCase wrapper containing `<option>`/`<th>`/`<li>` children
+    // is presumed to render the structurally-correct parent
+    // (`<select>`/`<thead>`/`<ul>`) at runtime via yield chain.
+    // Suppress `element-permitted-content` for the Source so the FP
+    // doesn't surface.
+    //
+    // Same per-Source-suppression trade-off as Thread B's
+    // wcag/h32 fix: real bugs at OTHER locations in the same template
+    // get suppressed too. Acceptable given the volume of these FPs
+    // in real-world Ember code (HDS's 172 entries, ember-website's
+    // 99 entries).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('multi-level-yield-chain-options.gts');
+      const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(
+        offenders,
+        `element-permitted-content must not fire — heuristic suppression should kick in; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('glint-resolved-no-suppression.gts: heuristic must NOT suppress when Glint resolved the wrapper to a precise native tag', async () => {
+    // Regression for the gating in `containsContentRestrictedStructuralChild`:
+    // when Glint resolves `<C.Options>` to `<select>` (via PR #18), the
+    // heuristic must defer to Glint and let `element-permitted-content`
+    // fire on a real `<th>`-under-`<select>` violation. Earlier
+    // implementations risked over-suppressing because the wrapper's tag
+    // looked unresolvable (PascalCase/dotted) at the AST level.
+    //
+    // Lives under `test/glint-fixtures/` (not `examples/`) so the local
+    // tsconfig.json wires up Glint type extraction for the fixture.
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const v = makeValidator();
+      const fp = path.join(__dirname, 'glint-fixtures', 'glint-resolved-no-suppression.gts');
+      const rawReport = await v.validateFile(fp);
+      const messages = rawReport.results.flatMap((r) =>
+        r.messages.map((m) => ({ rule: m.ruleId, line: m.line, column: m.column, message: m.message })),
+      );
+      const offenders = messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(
+        offenders.length,
+        `element-permitted-content MUST fire (Glint resolved <C.Options> to <select> and <th> is illegal there); got: ${JSON.stringify(messages)}`,
+      ).toBeGreaterThan(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
   });
 
   it('builtins.hbs: <Input>/<Textarea>/<LinkTo> substitute to native tags', async () => {

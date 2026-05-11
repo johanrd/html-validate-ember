@@ -1,6 +1,7 @@
 // Disk cache: write/read roundtrip, staleness detection, and the
 // path-keyed invariant (one entry per file path; edits overwrite).
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -87,6 +88,32 @@ describe('cache: staleness detection', () => {
     const altTsconfig = path.join(projectRoot, 'tsconfig.alt.json');
     fs.writeFileSync(altTsconfig, '{"compilerOptions":{"target":"es5"}}');
     expect(readCache(file, 'x', altTsconfig)).toBeNull();
+  });
+
+  it('treats a pluginSourceSha mismatch as a miss', () => {
+    // Regression: stored entries from a previous build of the plugin
+    // must not be re-used after `lib/` source changes — otherwise local
+    // resolver fixes silently fail to take effect (the package version
+    // doesn't bump between every dev iteration).
+    const file = path.join(templatesDir, 'plugin-changed.gts');
+    fs.writeFileSync(file, 'x');
+    writeCache(file, 'x', tsconfigPath, makeResult());
+
+    // Tamper with the stored entry's pluginSourceSha as if the plugin's
+    // source had changed between writeCache and readCache. We can't
+    // actually mutate this process's PLUGIN_SOURCE_SHA at runtime, so
+    // we rewrite the stored file to simulate the symmetric case (the
+    // process holds a NEW sha but the file on disk holds an old one).
+    const sha256 = (input: string): string =>
+      crypto.createHash('sha256').update(input).digest('hex');
+    const entryDir = cacheDir();
+    const [entryFile] = fs.readdirSync(entryDir);
+    const entryPath = path.join(entryDir, entryFile!);
+    const stored = JSON.parse(fs.readFileSync(entryPath, 'utf8')) as Record<string, unknown>;
+    stored['pluginSourceSha'] = sha256('different-build');
+    fs.writeFileSync(entryPath, JSON.stringify(stored));
+
+    expect(readCache(file, 'x', tsconfigPath)).toBeNull();
   });
 });
 

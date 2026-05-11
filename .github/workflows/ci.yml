@@ -14,14 +14,15 @@ jobs:
         node-version: ['22', '24']
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: npm run typecheck:tests
-      - run: npm test
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run typecheck:tests
+      - run: pnpm test
       - name: Smoke-test CLI on shipped fixtures
         run: |
           # Each fixture is exercised by the integration suite; this just

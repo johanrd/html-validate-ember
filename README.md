@@ -423,6 +423,11 @@ The bundled `validate-gts` CLI dedupes identical messages by `(line, column, rul
 ## Known limitations
 
 - **Static-string scope.** `{{NAME}}` resolves against same-file `const NAME = '...'` declarations and one-level-deep `import { NAME } from './sibling'` (relative paths only — package and path-aliased imports are skipped). `{{this.field}}` resolves against same-file class-field initializers (`field = '...'` or `field: T = '...'`). What's not resolved: transitive re-exports (`export { X } from './...'` chains), default imports, namespace imports, and getters returning literals — Glint narrows some of these to string-literal types when `--glint` is on, which the blanker picks up through a separate code path.
+- **`no-implicit-button-type` fires on every untyped `<button>`** regardless of `<form>` ancestry — that's html-validate's strict design (default `type=submit` is non-obvious). The plugin doesn't try to soften it; if you'd rather only flag buttons that actually live inside a `<form>` at runtime (where the default-submit matters), disable the rule project-wide and rely on review / a custom lint:
+  ```json
+  { "rules": { "no-implicit-button-type": "off" } }
+  ```
+  Static "is this `<button>` inside a `<form>`?" detection is feasible in principle (walk ancestors at the AST + chain into PascalCase wrappers) but adds the same per-Source-suppression caveat as `wcag/h32`: a button inside a wrapper component that someone else's template wraps in `<form>` would be silenced in the wrong direction. We left it untouched.
 - **TS-flavored block-param types are stripped, not parsed.** `@glimmer/syntax`'s parser doesn't understand `{{#each items as |item: T|}}`-style annotations (or the comma separators that come with multi-param lists). The transformer pre-strips them to whitespace before Glimmer parses, with balanced-bracket scanning so unions (`A | B`), object types (`{ a: number }`), parenthesized types (`(A | B)[]`), generics (`Map<string, number>`), arrays (`T[]`), and qualified names (`NS.Type`) all work. Length-preserving — AST offsets after the strip match original source. The strip only operates inside `as |…|` ranges of mustache openers; type literals appearing elsewhere in the template aren't touched (and Glimmer wouldn't accept them there anyway).
 
 ## Future work

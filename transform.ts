@@ -10,7 +10,14 @@ import type {
 } from 'html-validate';
 import { createRequire } from 'node:module';
 
-import { blankTemplateContent, blankTemplateContentMultipass } from './blank.js';
+import { preprocess } from '@glimmer/syntax';
+
+import {
+  blankTemplateContent,
+  blankTemplateContentMultipass,
+  stripBlockParamTypeAnnotations,
+} from './blank.js';
+import { buildResolutionMaps } from './lib/resolver/build-maps.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { extractStringScope } from './lib/scope.js';
@@ -143,7 +150,7 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
-  imgSplatSet: ReadonlySet<number>,
+  attrInjections: ReadonlyMap<number, ReadonlyArray<{ attr: string; value: string | null }>>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -182,18 +189,16 @@ function makeHooks(
         location,
       );
     }
-    // Inject required attrs synthetically for `<img ...attributes>`.
-    // The blanker erases `...attributes` from the source but records
-    // the element's start offset; we honor that here by adding a
-    // DynamicValue-backed `src` and/or `alt` if the consumer didn't
-    // already write them. Sidesteps the source-side slot-width
-    // problem (a 13-char `...attributes` slot can't fit two valid
-    // `attr=value` placeholders that html-validate accepts).
-    if (
-      imgSplatSet.has(templateRelativeOffset) &&
-      (el as unknown as { tagName?: string }).tagName === 'img'
-    ) {
+    // Apply attribute injections registered by blank.ts. Each entry
+    // names an attr and either a literal value or null (= DynamicValue
+    // placeholder). Attribute-already-present is a no-op so consumer-
+    // written values always win (the blanker's per-attr precision
+    // already gates which attrs get registered, but defensive double-
+    // check guards races where a substitution path didn't propagate).
+    const injections = attrInjections.get(templateRelativeOffset);
+    if (injections && injections.length > 0) {
       const elWithAttrs = el as unknown as {
+        tagName?: string;
         hasAttribute(name: string): boolean;
         setAttribute(
           name: string,
@@ -202,10 +207,10 @@ function makeHooks(
           valueLocation: unknown,
         ): void;
       };
-      for (const name of ['src', 'alt']) {
-        if (!elWithAttrs.hasAttribute(name)) {
-          elWithAttrs.setAttribute(name, new DynamicValue(''), location, location);
-        }
+      for (const { attr, value } of injections) {
+        if (elWithAttrs.hasAttribute(attr)) continue;
+        const injected = value === null ? new DynamicValue('') : value;
+        elWithAttrs.setAttribute(attr, injected, location, location);
       }
     }
   };
@@ -232,7 +237,32 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // mapping to native tags. Static-text resolution covers t-helper /
   // if-helper. No top-level scope (no JS).
   if (filename.endsWith('.hbs')) {
-    const result = blankTemplateContent(data);
+    // Classic-Ember by-name component resolution: parse the template
+    // once to walk PascalCase tags, look each one up in node_modules
+    // against the canonical addon component-template paths, and feed
+    // the resulting tag/attr maps to the blanker. Lets `<EsCard>` /
+    // `<HdsCard>` / etc. substitute to their actual rendered tag
+    // (`<li>`, `<div>`, …) instead of transparent-blanking, which
+    // fixes a major class of `element-permitted-content` FPs in
+    // classic Ember apps. Glint isn't involved — `.hbs` doesn't go
+    // through TS.
+    let classicTagMap: Map<string, string> | null = null;
+    let classicAttrMap: Parameters<typeof blankTemplateContent>[4] | null = null;
+    try {
+      // Match `blankTemplateContent`'s preprocessing: strip TS-style
+      // block-param type annotations (`as |x: T|`) before parsing so a
+      // `.hbs` file using that syntax doesn't silently lose classic
+      // resolution. Rare in practice (typed params are conventionally
+      // `.gts`), but keeps both paths consistent.
+      const ast = preprocess(stripBlockParamTypeAnnotations(data), { mode: 'codemod' });
+      const maps = buildResolutionMaps(filename, ast);
+      classicTagMap = maps.componentTagMap;
+      classicAttrMap = maps.componentAttrMap;
+    } catch {
+      // Parse failure here is non-fatal — `blankTemplateContent`
+      // re-parses and reports the error. Drop the maps and continue.
+    }
+    const result = blankTemplateContent(data, undefined, undefined, classicTagMap, classicAttrMap);
     if (result.error) {
       process.stderr.write(
         `[html-validate-ember] glimmer parse failure on ${filename}: ${result.error.message}\n`,
@@ -253,7 +283,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       originalData,
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
-        new Set(result.imgSplatOffsets ?? []),
+        result.attrInjections ?? new Map(),
         0,
       ),
     };
@@ -380,7 +410,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         originalData,
         hooks: makeHooks(
           new Set(result.dynamicContentOffsets ?? []),
-          new Set(result.imgSplatOffsets ?? []),
+          result.attrInjections ?? new Map(),
           startOffset,
         ),
       };

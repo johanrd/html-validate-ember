@@ -13,11 +13,25 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
-import { isNativeTag } from '../blank.js';
-import { getSplattedRootsForFile, extractSplattedRootFromTemplate } from './component-attrs.js';
+import { Preprocessor } from 'content-tag';
+import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
+
+import { isComponentTag, isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
+import { STRUCTURAL_CHILD_TAGS } from './element-sets.js';
+import { findTemplateSource } from './resolver/template-source.js';
+import {
+  resolveTemplate,
+  resolveThisProp,
+  resolveYieldHashBinding,
+  resolveYieldHashBindingSource,
+  type Resolution,
+} from './resolver/walk.js';
+import type { TemplateSource } from './resolver/template-source.js';
+
+const consumerPreprocessor = new Preprocessor();
 
 // Minimal local typing for the @glint/ember-tsc API surface we use.
 // Avoids importing types from @glint/ember-tsc (an optional peerDep)
@@ -541,6 +555,282 @@ const GENERIC_BASE_ELEMENT_TYPES: ReadonlySet<string> = new Set([
   'MathMLElement',
 ]);
 
+// Translate a Resolution from the canonical resolver into the
+// componentTagMap + componentAttrMap shape that blank.ts consumes.
+//
+// `transparent` from the canonical resolver overrides any prior
+// TS-side resolveComponentElement pick. The TS-side resolves to the
+// FIRST matching branch of a Signature['Element'] union — which for
+// `HTMLAnchorElement | HTMLButtonElement` arbitrarily picks one. The
+// canonical resolver, however, walks the actual template AST: when
+// the outer is a conditional with differing branches (HDS's
+// `HdsInteractive` shape: `{{#if @route}}<LinkTo>{{else if @href}}
+// <a>{{else}}<button>{{/if}}`), it returns transparent — meaning
+// "no single tag pins this; children float to the actual parent."
+// Overriding the arbitrary union pick with transparent eliminates
+// FPs cascading from the wrong branch (`<div>` under `<button>` for
+// elements that would actually render `<a>` at runtime).
+function applyResolution(
+  componentTagMap: Map<string, string>,
+  componentAttrMap: Map<string, ComponentAttrs>,
+  key: string,
+  resolution: Resolution,
+): void {
+  if (resolution.kind === 'transparent') {
+    componentTagMap.set(key, 'transparent');
+    componentAttrMap.delete(key);
+    return;
+  }
+  if (!isNativeTag(resolution.tag)) return;
+
+  let chosenTag = resolution.tag;
+  let chosenAttrs: Map<string, string> = resolution.attrs;
+  let hasSplat = resolution.hasSplat;
+  let fromYieldAncestor = false;
+  const yieldTag = resolution.yieldAncestorTag;
+  if (
+    yieldTag &&
+    yieldTag !== resolution.tag &&
+    !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
+    // Guard against substituting the invocation with a tag that
+    // itself only makes sense under a specific parent (e.g.
+    // `<table><thead>{{yield}}</thead></table>` — preferring
+    // `<thead>` would put it under whatever the call-site parent
+    // happens to be, often `<div>`, reintroducing the very
+    // element-permitted-parent FPs this preference is meant to
+    // suppress). Keep the outer wrapper when the yield-ancestor
+    // itself is structural-only.
+    !STRUCTURAL_CHILD_TAGS.has(yieldTag) &&
+    isNativeTag(yieldTag)
+  ) {
+    chosenTag = yieldTag;
+    chosenAttrs = resolution.yieldAncestorAttrs ?? new Map();
+    hasSplat = true;
+    fromYieldAncestor = true;
+  }
+
+  componentTagMap.set(key, chosenTag);
+  componentAttrMap.set(key, {
+    tag: chosenTag,
+    attrs: Object.fromEntries(chosenAttrs),
+    hasSplat,
+    fromYieldAncestor,
+  });
+}
+
+// Parse the consumer file's <template> blocks and build:
+//   1. argsByLoc: line:col → @arg literal values for each PascalCase
+//      invocation. Lets the resolver propagate `@tag="li"` etc.
+//   2. dottedBindings: line:col → resolution context for each dotted
+//      invocation `<X.Y>`. Records the enclosing block's binder tag
+//      and the hash key, so the resolver can follow the parent's
+//      `{{yield (hash Y=...)}}` chain.
+
+interface DottedBinding {
+  /** Enclosing block's binder tag (e.g. 'HdsStepperList' for `<HdsStepperList as |S|>`). */
+  binderTag: string;
+  /** The hash key from the dotted invocation: `<S.Step>` → 'Step'. */
+  hashKey: string;
+  /** Args the consumer passed to the binder. Lets `(hash Y=@arg)` chain through. */
+  binderArgs: Map<string, string>;
+  /** line:col of the binder invocation (lookup key into a binder→decl map
+   *  populated during the Glint walk). Lets us reach binder templates
+   *  that live in the same consumer file (no import to follow). */
+  binderKey: string;
+}
+
+interface ConsumerInfo {
+  argsByLoc: Map<string, Map<string, string>>;
+  dottedBindings: Map<string, DottedBinding>;
+  // line:col → `this.<propName>` reference for PascalCase elements
+  // whose tag is bound by `{{#let (element this.X) as |T|}}` in the
+  // consumer's OWN template. Used to override Glint's TS-side union
+  // pick (typically <h1> from HTMLHeadingElement) with the class
+  // getter's actual default (typically 'div').
+  ownLetElementByLoc: Map<string, string>;
+}
+
+function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
+  const argsByLoc = new Map<string, Map<string, string>>();
+  const dottedBindings = new Map<string, DottedBinding>();
+  const ownLetElementByLoc = new Map<string, string>();
+  let blocks: Array<{ contents: string; tagName: string }>;
+  try {
+    blocks = consumerPreprocessor.parse(contents, { filename });
+  } catch {
+    return { argsByLoc, dottedBindings, ownLetElementByLoc };
+  }
+  const templates = blocks.filter((b) => b.tagName === 'template');
+
+  // A block-param scope binds names introduced via `<Binder as |x y|>`.
+  // Inner scopes shadow outer; we walk a stack while traversing so a
+  // nested `<A as |x|><B as |x|>` resolves `x` to the inner B-binding.
+  interface Scope {
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }
+
+  // Scope for `{{#let (element this.X) as |T|}}` bindings — the
+  // PascalCase `T` shadows any imported component of the same name
+  // inside the block body. Tracked as a stack alongside dotted-binding
+  // scopes so nested `{{#let}}` blocks resolve `T` to the innermost
+  // binding.
+  interface LetElementScope {
+    paramName: string;
+    propName: string;
+  }
+
+  for (const block of templates) {
+    let ast: AST.Template;
+    try {
+      // Match `blankTemplateContent`'s preprocessing: strip TS-flavored
+      // block-param type annotations (`as |x: T|`) before parsing so
+      // typed-block consumers don't get silently dropped (which would
+      // leave argsByLoc/dottedBindings empty for their invocations).
+      ast = glimmerPreprocess(stripBlockParamTypeAnnotations(block.contents), {
+        mode: 'codemod',
+      });
+    } catch {
+      continue;
+    }
+    const scopeStack: Scope[] = [];
+    const letElementStack: LetElementScope[] = [];
+    function walk(node: AST.Node): void {
+      if (node.type === 'ElementNode') {
+        const elem = node;
+        // Args + dotted-binding lookup happen on entry, before pushing
+        // any scope this element introduces. Block-params shadow inside
+        // its body, not at the binder itself.
+        if (elem.loc.start && isComponentTag(elem.tag)) {
+          const args = collectLiteralArgs(elem);
+          const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
+          if (elem.tag.includes('.')) {
+            const [paramName, ...tail] = elem.tag.split('.');
+            const binding = lookupParam(scopeStack, paramName!);
+            if (binding && tail.length === 1) {
+              if (args.size > 0) argsByLoc.set(key, args);
+              dottedBindings.set(key, {
+                binderTag: binding.binderTag,
+                hashKey: tail[0]!,
+                binderArgs: binding.binderArgs,
+                binderKey: binding.binderKey,
+              });
+            }
+          } else {
+            if (args.size > 0) argsByLoc.set(key, args);
+            // Non-dotted candidate — check if it matches a let-element
+            // binding in scope. If so, the actual tag is the class
+            // getter's value, not whatever Glint's TS-side picks from
+            // the (element ...) helper's union return type.
+            const letBinding = lookupLetElement(letElementStack, elem.tag);
+            if (letBinding) {
+              ownLetElementByLoc.set(key, letBinding.propName);
+            }
+          }
+        }
+        // Push any block-params this element introduces.
+        const pushedCount = elem.blockParams.length;
+        const elemArgs = collectLiteralArgs(elem);
+        const binderKey = elem.loc.start
+          ? `${elem.loc.start.line}:${elem.loc.start.column}`
+          : '';
+        for (const paramName of elem.blockParams) {
+          scopeStack.push({
+            paramName,
+            binderTag: elem.tag,
+            binderArgs: elemArgs,
+            binderKey,
+          });
+        }
+        for (const child of elem.children) walk(child);
+        for (let i = 0; i < pushedCount; i++) scopeStack.pop();
+        return;
+      }
+      if (node.type === 'BlockStatement') {
+        const letElementBinding = matchLetElementHelper(node);
+        if (letElementBinding) letElementStack.push(letElementBinding);
+        for (const child of node.program.body) walk(child);
+        if (letElementBinding) letElementStack.pop();
+        if (node.inverse) for (const child of node.inverse.body) walk(child);
+        return;
+      }
+      if (node.type === 'Template') {
+        for (const child of node.body) walk(child);
+      }
+    }
+    walk(ast);
+  }
+  return { argsByLoc, dottedBindings, ownLetElementByLoc };
+}
+
+// Match `{{#let (element this.<propName>) as |<paramName>|}}` and
+// return its (paramName, propName) binding. Returns null for any
+// other block shape (regular `{{#let}}` with a non-helper expression,
+// `(element @arg)` — at the OWN-template level @arg can't be
+// resolved without a calling consumer; let canonical paths handle
+// those via consumerArgs propagation).
+function matchLetElementHelper(node: AST.BlockStatement): { paramName: string; propName: string } | null {
+  if (node.path.type !== 'PathExpression') return null;
+  if (node.path.original !== 'let') return null;
+  const first = node.params[0];
+  if (!first || first.type !== 'SubExpression') return null;
+  if (first.path.type !== 'PathExpression') return null;
+  if (first.path.original !== 'element') return null;
+  const inner = first.params[0];
+  if (!inner || inner.type !== 'PathExpression') return null;
+  if (inner.head?.type !== 'ThisHead') return null;
+  const propName = inner.tail[0];
+  if (!propName) return null;
+  const paramName = node.program.blockParams[0];
+  if (!paramName) return null;
+  return { paramName, propName };
+}
+
+function lookupLetElement(
+  stack: ReadonlyArray<{ paramName: string; propName: string }>,
+  name: string,
+): { paramName: string; propName: string } | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i]!.paramName === name) return stack[i]!;
+  }
+  return null;
+}
+
+function collectLiteralArgs(node: AST.ElementNode): Map<string, string> {
+  const args = new Map<string, string>();
+  for (const attr of node.attributes) {
+    if (!attr.name.startsWith('@')) continue;
+    const argName = attr.name.slice(1);
+    if (attr.value.type === 'TextNode') {
+      args.set(argName, attr.value.chars);
+    }
+  }
+  return args;
+}
+
+function lookupParam(
+  stack: ReadonlyArray<{
+    paramName: string;
+    binderTag: string;
+    binderArgs: Map<string, string>;
+    binderKey: string;
+  }>,
+  name: string,
+): { binderTag: string; binderArgs: Map<string, string>; binderKey: string } | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i]!.paramName === name) {
+      return {
+        binderTag: stack[i]!.binderTag,
+        binderArgs: stack[i]!.binderArgs,
+        binderKey: stack[i]!.binderKey,
+      };
+    }
+  }
+  return null;
+}
+
 function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
   const map = new Map<string, string>();
   const tagNameMaps = ['HTMLElementTagNameMap', 'SVGElementTagNameMap', 'MathMLElementTagNameMap'];
@@ -642,6 +932,17 @@ function matchElementTypeToTag(
     }
   }
   if (allGenericBase) return 'transparent';
+  // "Essentially all elements" — when the union covers (almost) every
+  // HTMLElement type, the author has expressed "this component can
+  // render any element"; picking the first matching branch arbitrarily
+  // would substitute to whatever happened to be first (often `<a>` or
+  // `<h1>`) and cascade FPs into the consumer's content-model checks.
+  // Resolve to 'transparent' so children float to the actual parent.
+  // Surfaced by HDS's `<HdsLayoutGrid>` declaring
+  // `Element: HTMLElementTagNameMap[keyof HTMLElementTagNameMap]`.
+  if (branches.length >= ESSENTIALLY_ALL_ELEMENTS_THRESHOLD) {
+    return 'transparent';
+  }
   // Pick a single tag for unions: take the first matching branch.
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
@@ -651,6 +952,15 @@ function matchElementTypeToTag(
   }
   return null;
 }
+
+// Threshold below which a union of HTML element types is treated as
+// "the author chose specific tags" (we resolve to one of them) and
+// above which it's treated as "the author chose effectively all tags"
+// (we resolve to 'transparent'). HTMLElementTagNameMap has ~110
+// entries; user-declared unions of "any of a handful" are typically
+// 5-10 elements. Pick a threshold well above realistic per-component
+// declarations but well below 110.
+const ESSENTIALLY_ALL_ELEMENTS_THRESHOLD = 30;
 
 // Recover the rendered tag from the *type* of the component-reference
 // expression itself — for cases where Glint's `emitComponent(...).element`
@@ -917,12 +1227,28 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
 
   const attrTypeMap = new Map<string, AttrTypeInfo>();
   const componentTagMap = new Map<string, string>();
-  // Maps "line:column" of a component invocation to its resolved
-  // splatted-root attributes (literal values from the component's
-  // template, e.g. `{ type: 'range', min: '0', max: '100' }` for an
-  // <input>-rooted slider). Built alongside componentTagMap when we
-  // can resolve the component's declaration source file.
   const componentAttrMap = new Map<string, ComponentAttrs>();
+  // Per-invocation consumer-side info: @args (for arg propagation) and
+  // dotted-binding context (for `<S.Step>` curried-via-yield-hash
+  // resolution).
+  const { argsByLoc: consumerArgsByLoc, dottedBindings, ownLetElementByLoc } = buildConsumerInfo(
+    filename,
+    contents,
+  );
+  // Populated as we resolve binder invocations during walkMapping. Keys
+  // by binder's line:col; value is its TemplateSource. Lets dotted-
+  // child resolution reach binders defined in the consumer file
+  // itself (no import to follow).
+  // For each dotted-binding chain hop we cache the parent's TemplateSource
+  // AND any curried args picked up at that hop (e.g.
+  // `Title=(component Inner size="300")` contributes `size="300"`).
+  // Without persisting curriedArgs across hops, multi-level dotted
+  // chains lose the curry's literals and the inner's destructure
+  // defaults win instead.
+  const binderSourceByKey = new Map<
+    string,
+    { source: ReturnType<typeof findTemplateSource>; curriedArgs: Map<string, string> }
+  >();
   if (!ctx.elementTypeToTag) {
     ctx.elementTypeToTag = buildElementTypeToTag(ts, program);
   }
@@ -959,7 +1285,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       sourceNode?.type === 'PathExpression' &&
       node.parent?.sourceNode?.type === 'ElementNode' &&
       node.parent.sourceNode.tag &&
-      /^[A-Z]/.test(node.parent.sourceNode.tag) &&
+      isComponentTag(node.parent.sourceNode.tag) &&
       node.transformedRange &&
       node.parent.sourceNode.loc?.start
     ) {
@@ -974,36 +1300,130 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       if (tag) {
         componentTagMap.set(key, tag);
       }
-      // Resolve the component's declaration source file (cross-file or
-      // same-file). When found, parse its `<template>` for the splatted
-      // root and stash literal attributes for blank.ts to inject.
+      // Run the canonical resolver: walks the component's template AST,
+      // handles polymorphic-tag chain, PascalCase wrapper recursion,
+      // conditional convergence, and yield-ancestor analysis in one
+      // pass. Replaces the previous six-path resolution sprawl
+      // (leaf-fallback, outer-wrapper override, polymorphic chain,
+      // classic-.hbs fallback, import-based outer-wrapper fallback,
+      // dual-tag heuristic).
       if (emitCall) {
         const declFile = findComponentDeclSourceFile(ts, checker, emitCall);
-        if (declFile) {
-          const gtsPath = resolveGtsPath(declFile);
-          if (gtsPath) {
-            const roots = getSplattedRootsForFile(gtsPath);
-            // MVP heuristic: pick the first template's splatted root.
-            // Most component files have a single `<template>`. Multi-
-            // template files (helpers + default export) would need
-            // declaration-to-template matching, deferred.
-            const first = roots[0];
-            if (first) {
-              componentAttrMap.set(key, first);
+        // Skip the same-package outer-wrapper override when the
+        // declaration ISN'T a top-level statement in `declFile` —
+        // typically a let-block-param (`{{let @x as |Group|}}` becomes
+        // `const [Group] = ...` inside the template-to-typescript
+        // output). For these, declFile is the consumer file and
+        // walking its outer `<template>` block returns whatever
+        // happens to be at the file's root (often unrelated to what
+        // `Group` actually renders).
+        const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+        const decl = symbol?.declarations?.[0];
+        const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
+        const componentName = node.parent.sourceNode.tag;
+
+        // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
+        // resolve via the binder's `{{yield (hash Step=...)}}` chain.
+        //
+        // Nested-dotted chains (HDS form-layout shape:
+        // `<HdsForm as |FORM|><FORM.Section as |FS|>
+        //  <FS.Header as |FSH|><FSH.Title>...`) — when the binder
+        // itself is a dotted tag (e.g. `FS.Header`), the importable
+        // root lives multiple hops up. Walk `binderSourceByKey` (now
+        // populated for dotted invocations too, see below) to find
+        // the parent's TemplateSource directly.
+        const dottedBinding = dottedBindings.get(key);
+        if (dottedBinding) {
+          const cached = binderSourceByKey.get(dottedBinding.binderKey);
+          let binderSource = cached?.source ?? null;
+          const cachedCurriedArgs = cached?.curriedArgs ?? new Map<string, string>();
+          if (!binderSource) {
+            binderSource = findTemplateSource({
+              consumerFile: filename,
+              componentName: dottedBinding.binderTag,
+              ts,
+            });
+          }
+          if (binderSource) {
+            // Args available at this hop, in increasing-priority order:
+            //   1. binderArgs (`<Binder @x="y" as |S|>` → consumer's
+            //      args on the outermost binder)
+            //   2. cachedCurriedArgs (curry literals collected at any
+            //      earlier hop, e.g. `(component Inner size="300")`)
+            //   3. invocation args on the dotted call itself
+            //      (`<S.Step @tag="li">`) — these should win against
+            //      curry/binder defaults since the consumer set them
+            //      most directly.
+            const invocationArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const mergedArgs = new Map<string, string>([
+              ...dottedBinding.binderArgs,
+              ...cachedCurriedArgs,
+              ...invocationArgs,
+            ]);
+            const resolution = resolveYieldHashBinding({
+              parentSource: binderSource,
+              hashKey: dottedBinding.hashKey,
+              parentArgs: mergedArgs,
+              ts,
+            });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+            // Cache the SOURCE that this dotted invocation yields,
+            // so children whose binder is this dotted invocation
+            // (`<FS.Header>` whose binder is `<FORM.Section>`) can
+            // chain through to the next level without re-walking
+            // from the importable root. Also persist curriedArgs so
+            // the next-level hop can incorporate `(component Inner
+            // size="300")` literals into its mergedArgs.
+            const nextSource = resolveYieldHashBindingSource({
+              parentSource: binderSource,
+              hashKey: dottedBinding.hashKey,
+              parentArgs: mergedArgs,
+              ts,
+            });
+            if (nextSource) {
+              const accumulatedCurried = new Map([
+                ...cachedCurriedArgs,
+                ...nextSource.curriedArgs,
+              ]);
+              binderSourceByKey.set(key, { source: nextSource.source, curriedArgs: accumulatedCurried });
             }
           }
-        }
-        // Classic Ember addon fallback: when the JS-driven resolution
-        // didn't yield a concrete tag (null, or 'transparent' meaning
-        // unknown/any element type), try the component's `.hbs` template
-        // via the addon's import path. Modern shapes (class form, TOC
-        // forms, curried block-params) already resolved above take
-        // priority — this only runs as a last resort.
-        if (tag === null || tag === 'transparent') {
-          const addonRoot = resolveAddonHbsTemplate(ts, checker, emitCall, filename);
-          if (addonRoot) {
-            componentTagMap.set(key, addonRoot.tag);
-            componentAttrMap.set(key, addonRoot);
+        } else if (declFile && isTopLevel) {
+          // Skip non-top-level decls (let-block-params): walking their
+          // declaring file's template returns whatever's at the file's
+          // root, unrelated to what the binding renders.
+          const declRange = decl ? { start: decl.getStart(), end: decl.getEnd() } : null;
+          const source = findTemplateSource({
+            declFile,
+            declRange,
+            consumerFile: filename,
+            componentName,
+            ts,
+          });
+          // Cache for any dotted-children that name this invocation as
+          // their binder. Accept null too — a transparent binder result
+          // still belongs to this invocation, no point re-querying. No
+          // curried args at this level: this is a direct (non-dotted)
+          // invocation whose binder is its own template.
+          binderSourceByKey.set(key, { source, curriedArgs: new Map() });
+          if (source) {
+            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const resolution = resolveTemplate(source, { consumerArgs, ts });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
+          }
+        } else {
+          // Cross-package barrel: TS resolved through a re-export and
+          // we can't reach the source via decl. Fall back to consumer-
+          // side import resolution.
+          const source = findTemplateSource({
+            consumerFile: filename,
+            componentName,
+            ts,
+          });
+          if (source) {
+            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+            const resolution = resolveTemplate(source, { consumerArgs, ts });
+            applyResolution(componentTagMap, componentAttrMap, key, resolution);
           }
         }
       }
@@ -1017,6 +1437,35 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   for (const span of transformed.correlatedSpans) {
     if (span.glimmerAstMapping) {
       walkMapping(span.glimmerAstMapping, span.transformedStart);
+    }
+  }
+
+  // Override Glint's TS-side fallback for `<T>` elements bound by
+  // `{{#let (element this.X) as |T|}}` in the consumer's OWN template.
+  // For these, Glint's TS-side picks the first matching union member
+  // from `(element …)`'s return type (typically <h1> from
+  // HTMLHeadingElement) — but the actual runtime tag is the class
+  // getter's value (typically 'div' from a `?? DEFAULT_TAG` default).
+  // resolveThisProp walks the consumer file's class body to find the
+  // getter's return literal.
+  if (ownLetElementByLoc.size > 0) {
+    const ownSource: TemplateSource = {
+      origin: filename,
+      content: '',
+      kind: filename.endsWith('.gjs') ? 'gjs' : 'gts',
+    };
+    for (const [key, propName] of ownLetElementByLoc) {
+      const literal = resolveThisProp(ownSource, propName, { ts });
+      if (!literal || !isNativeTag(literal)) continue;
+      componentTagMap.set(key, literal);
+      componentAttrMap.set(key, {
+        tag: literal,
+        attrs: {},
+        // `<T ...attributes>` is the canonical shape for this pattern;
+        // attribute injection / aria-strip can operate on the splatted
+        // tag like any other resolved component.
+        hasSplat: true,
+      });
     }
   }
 
@@ -1068,165 +1517,41 @@ function findComponentDeclSourceFile(
   return decl.getSourceFile().fileName;
 }
 
-// Resolve the rendered tag (and splatted-root attrs) for a classic Ember
-// addon component imported as `import X from '<addon>/components/<name>'`
-// — addons whose template lives at `addon/templates/components/<name>.hbs`
-// (legacy v1 addon) or `app/components/<name>.hbs` (Module Unification /
-// authored-as-app shim). These have no JS-side `Signature['Element']`, no
-// `satisfies TOC<…>`, so the JS-driven resolution paths return null.
+// True when the component reference's declaration is a top-level
+// statement in its source file (e.g. `const X: TOC<S> = <template>`),
+// rather than an inner-scope binding (e.g. a let-block-param emitted
+// as `const [Group] = ...` inside the template-to-typescript output).
 //
-// We extract the import's `moduleSpecifier` from the AST, match the
-// addon-component shape, walk up from the consumer file to find
-// `node_modules/<addon>`, and probe the canonical template paths. The
-// `.hbs` file is parsed with the same `extractSplattedRootFromTemplate`
-// helper used for `.gts` splatted-root extraction.
-//
-// Returns null when the import doesn't match an addon-component shape,
-// when the addon isn't found in node_modules, when no template file
-// exists at the expected paths, or when the template parses to no
-// element root (e.g. `{{outlet}}`-only).
-// Cache: (consumerFile-dir + importPath) → resolved ComponentAttrs.
-// POSITIVE results only — the map type enforces that. Caching negatives
-// indefinitely would permanently hide a template that's later installed
-// (linked workspace addons, IDE/watch mode where the user installs an
-// addon mid-session). Templates with many invocations of the same addon
-// component would otherwise hit the dir walk + multiple existsSync
-// probes + read+parse on every call; what we actually wanted to skip
-// with caching is the file read + Glimmer parse on positive hits.
-// Negatives stay cheap (regex + a handful of existsSync calls up to
-// the filesystem root) and re-probe each call.
-//
-// Keyed on the consumer file's directory so a monorepo with multiple
-// node_modules trees stays correct (different projects can resolve the
-// same addonName to different physical paths).
-//
-// Note: this in-memory cache is independent of the disk cache in
-// `lib/cache.ts`, which keys by consumer file content + mtime; that
-// disk cache will preserve a prior negative resolution until the
-// consumer file changes. Hot-installing a new addon mid-session may
-// require an editor restart to pick up if the consumer file's mtime
-// hasn't moved.
-const addonHbsResolutionCache = new Map<string, ComponentAttrs>();
-
-function resolveAddonHbsTemplate(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
-  emitComponentCall: TS.CallExpression,
-  consumerFile: string,
-): ComponentAttrs | null {
-  const innerCall = emitComponentCall.arguments[0];
-  if (!innerCall || !ts.isCallExpression(innerCall)) return null;
-  const resolveCall = innerCall.expression;
-  if (!ts.isCallExpression(resolveCall)) return null;
-  const componentRef = resolveCall.arguments[0];
-  if (!componentRef) return null;
-  const symbol = checker.getSymbolAtLocation(componentRef);
-  if (!symbol) return null;
-  let importDecl: TS.Node | undefined;
-  for (const decl of symbol.declarations ?? []) {
-    let n: TS.Node | undefined = decl;
-    while (n && !ts.isImportDeclaration(n)) n = n.parent;
-    if (n && ts.isImportDeclaration(n)) {
-      importDecl = n;
-      break;
+// Why we need this: the outer-wrapper override walks the declaration
+// file's first `<template>` block to find a wrapping native tag.
+// That's correct for top-level component declarations whose template
+// IS the file's first block, but produces wrong results for inner-
+// scope bindings — a `{{let @groupComponent as |Group|}}` would resolve
+// `<Group>`'s declFile back to the consumer file, and walking the
+// consumer's first `<template>` block returns whatever wrapper
+// happens to be there (often `<ul>` for a power-select-options-style
+// recursive template), not what `Group` actually renders.
+function isTopLevelDeclaration(ts: typeof TS, decl: TS.Declaration): boolean {
+  // VariableDeclaration → VariableDeclarationList → VariableStatement
+  // → SourceFile (when top-level).
+  // ClassDeclaration / FunctionDeclaration etc. → directly child of
+  // SourceFile.
+  let node: TS.Node | undefined = decl;
+  while (node) {
+    if (
+      node.kind === ts.SyntaxKind.VariableStatement ||
+      node.kind === ts.SyntaxKind.ClassDeclaration ||
+      node.kind === ts.SyntaxKind.FunctionDeclaration ||
+      node.kind === ts.SyntaxKind.InterfaceDeclaration ||
+      node.kind === ts.SyntaxKind.TypeAliasDeclaration ||
+      node.kind === ts.SyntaxKind.ExportAssignment
+    ) {
+      // Only top-level if the parent IS the SourceFile.
+      return node.parent?.kind === ts.SyntaxKind.SourceFile;
     }
+    node = node.parent;
   }
-  if (!importDecl || !ts.isImportDeclaration(importDecl)) return null;
-  const moduleSpecifier = importDecl.moduleSpecifier;
-  if (!ts.isStringLiteral(moduleSpecifier)) return null;
-  const importPath = moduleSpecifier.text;
-  const consumerDir = path.dirname(consumerFile);
-  const cacheKey = `${consumerDir}\0${importPath}`;
-  const cached = addonHbsResolutionCache.get(cacheKey);
-  if (cached !== undefined) return cached;
-  // Accept `<addon>/components/<name>` and `<addon>/templates/components/<name>`.
-  // Addon name follows npm package-name rules: lowercase letters, digits,
-  // `.`, `-`, `_`; cannot start with `.` / `_`; scoped names allowed
-  // (`@org/pkg`). We explicitly disallow `..` to prevent path traversal.
-  // Component name is kebab-case, lowercase only, allowing nested-by-slash
-  // like `forms/text-input`.
-  const PKG = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
-  const COMPONENT = '[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)*';
-  const importRe = new RegExp(
-    `^(@${PKG}\\/${PKG}|${PKG})\\/(?:templates\\/)?components\\/(${COMPONENT})$`,
-  );
-  const m = importRe.exec(importPath);
-  if (!m || importPath.includes('..')) return null;
-  const addonName = m[1]!;
-  const componentName = m[2]!;
-  // Walk up looking for node_modules/<addon>. Always check the current
-  // dir BEFORE stepping up, so the filesystem root (e.g. POSIX `/`,
-  // Windows `C:\`) is also probed — Node's module resolver does this
-  // and we should match. A `while (dir !== path.dirname(dir))` loop
-  // would skip the root.
-  let dir = consumerDir;
-  for (;;) {
-    const addonRoot = path.join(dir, 'node_modules', addonName);
-    if (fs.existsSync(addonRoot)) {
-      for (const subPath of [
-        `addon/templates/components/${componentName}.hbs`,
-        `app/components/${componentName}.hbs`,
-        `addon/components/${componentName}.hbs`,
-      ]) {
-        const hbsPath = path.join(addonRoot, subPath);
-        if (fs.existsSync(hbsPath)) {
-          // Read can still fail post-existsSync (TOCTOU race, perms,
-          // unreadable file). Return null without caching — the read
-          // may succeed on a subsequent call once the underlying issue
-          // clears.
-          let contents: string;
-          try {
-            contents = fs.readFileSync(hbsPath, 'utf8');
-          } catch {
-            return null;
-          }
-          const result = extractSplattedRootFromTemplate(contents);
-          // Guard: only return when the addon's root element is a
-          // native HTML tag. If the addon template's root is itself a
-          // component (PascalCase tag) we'd otherwise feed that
-          // non-native name into `componentTagMap`, and blank.ts's
-          // substitution path would rename the consumer's invocation
-          // to that PascalCase string — making content-model checks
-          // worse than the transparent-blanking fallback. In that
-          // case treat as unresolved so the caller falls back to
-          // `'transparent'` (children float to the actual parent).
-          if (!result || !isNativeTag(result.tag)) return null;
-          addonHbsResolutionCache.set(cacheKey, result);
-          return result;
-        }
-      }
-      return null;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
-}
-
-// Test-only: clear the addon-hbs resolution cache. Tests that mutate
-// fixtures' .hbs templates between runs need this to avoid stale hits.
-export function _clearAddonHbsCache(): void {
-  addonHbsResolutionCache.clear();
-}
-
-// Convert a TS sourceFile path to its underlying `.gts` or `.gjs` path.
-// The compilerHost shim lays virtual `.ts` shadows alongside their
-// originals; both forms may show up in `decl.getSourceFile().fileName`
-// depending on how TS resolved the import. Returns null when no
-// underlying source file exists.
-function resolveGtsPath(declFile: string): string | null {
-  if (declFile.endsWith('.gts') || declFile.endsWith('.gjs')) {
-    return fs.existsSync(declFile) ? declFile : null;
-  }
-  if (declFile.endsWith('.ts') && !declFile.endsWith('.d.ts')) {
-    const base = declFile.slice(0, -3);
-    for (const ext of ['.gts', '.gjs']) {
-      const candidate = base + ext;
-      if (fs.existsSync(candidate)) return candidate;
-    }
-  }
-  return null;
+  return false;
 }
 
 // Find the `__glintDSL__.emitComponent(...)` CallExpression that contains

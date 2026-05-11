@@ -24,6 +24,26 @@ export interface ComponentAttrs {
   tag: string;
   attrs: Record<string, string>;
   hasSplat: boolean;
+  // True when the resolved tag was chosen from a yield-ancestor
+  // (e.g. `<nav><ol>{{yield}}</ol></nav>` resolved as `<ol>` instead
+  // of `<nav>`). Consumer attributes that splat onto the outer
+  // wrapper (`...attributes`) land on the outer at runtime, not on
+  // the yield-ancestor — so the blanker must strip ARIA attributes
+  // from the substituted open tag to avoid html-validate firing
+  // aria-label-misuse / aria-labelledby-misuse on the wrong element.
+  fromYieldAncestor?: boolean;
+  // Source byte offsets of the `<template>` block this root was
+  // extracted from. Matches the `.gts` original-source coordinate
+  // system that content-tag's preprocessor reports AND that
+  // TypeScript reports for nodes in the emitted .ts (content-tag
+  // preserves byte positions from .gts). Used by `glint.ts` to pick
+  // the right root in multi-template files: the resolving
+  // declaration's TS-side `getStart()` / `getEnd()` are compared
+  // against these offsets, and the root whose template falls inside
+  // the declaration's range is the one that owns it. Optional —
+  // unset for builtins and for synthetic / non-file-backed sources.
+  templateStart?: number;
+  templateEnd?: number;
 }
 
 export const BUILTIN_COMPONENTS: ReadonlyMap<string, ComponentAttrs> = new Map<
