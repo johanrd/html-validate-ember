@@ -1238,8 +1238,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   // Populated as we resolve binder invocations during walkMapping. Keys
   // by binder's line:col; value is its TemplateSource. Lets dotted-
   // child resolution reach binders defined in the consumer file
-  // itself (no import to follow). Initialized lazy: only created if
-  // the consumer has any dotted invocations needing it.
+  // itself (no import to follow).
   // For each dotted-binding chain hop we cache the parent's TemplateSource
   // AND any curried args picked up at that hop (e.g.
   // `Title=(component Inner size="300")` contributes `size="300"`).
