@@ -783,6 +783,82 @@ export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resoluti
   });
 }
 
+// Like `resolveYieldHashBinding` but returns the underlying
+// `TemplateSource` (plus any curried `@arg` additions from a
+// `(component Inner …)` wrapper) instead of the leaf `Resolution`.
+// Used by the consumer-side walker in `lib/glint.ts` to chain
+// multi-level dotted bindings: `<FSH.Title>` whose binder is
+// itself dotted (`<FS.Header as |FSH|>`, with FS coming from
+// `<FORM.Section as |FS|>`, with FORM from `<HdsForm as |FORM|>`).
+// Each hop yields the next level's parent template source, until
+// we reach the leaf and let the normal resolver pick its tag.
+export interface YieldHashSourceResult {
+  source: TemplateSource;
+  /** `@arg="literal"` pairs collected from any `(component Inner …)`
+   *  curry on the hash entry. The caller should pass these into the
+   *  next-level lookup so the inner's destructure defaults respect
+   *  them (HDS `(component HdsFormHeaderTitle size="300")`). */
+  curriedArgs: Map<string, string>;
+}
+
+export function resolveYieldHashBindingSource(
+  opts: YieldHashBindingOptions,
+): YieldHashSourceResult | null {
+  const { parentSource, hashKey, ts, visited, depth } = opts;
+  let ast: AST.Template;
+  try {
+    ast = parseTemplate(parentSource.content);
+  } catch {
+    return null;
+  }
+
+  const binding = findYieldHashEntry(ast, hashKey);
+  if (!binding) return null;
+
+  // Unwrap `(component Inner @arg="lit" …)` to extract the inner
+  // identifier + curried args.
+  let target: AST.Expression = binding;
+  const curriedArgs = new Map<string, string>();
+  if (
+    target.type === 'SubExpression'
+    && target.path.type === 'PathExpression'
+    && target.path.original === 'component'
+    && target.params[0]
+  ) {
+    for (const pair of target.hash.pairs) {
+      if (pair.value.type === 'StringLiteral') {
+        curriedArgs.set(pair.key, pair.value.value);
+      }
+    }
+    target = target.params[0];
+  }
+
+  // Now `target` should be a bare identifier (VarHead PathExpression).
+  if (target.type !== 'PathExpression') return null;
+  if (target.head?.type !== 'VarHead') return null;
+  const name = target.head.name;
+
+  // Reuse `resolveImport` + `findTemplateSource` directly so we get
+  // the TemplateSource rather than walking the leaf's template again.
+  const importedFile = resolveImport(parentSource.origin, name, ts ?? null);
+  let source: TemplateSource | null = null;
+  if (importedFile) {
+    source = findTemplateSource({ declFile: importedFile, ts: ts ?? null });
+  }
+  if (!source) {
+    source = findTemplateSource({
+      declFile: parentSource.origin,
+      componentName: name,
+      ts: ts ?? null,
+    });
+  }
+  if (!source) return null;
+  // Track visited / depth in case the caller chains multiple hops.
+  void visited;
+  void depth;
+  return { source, curriedArgs };
+}
+
 // Walk the parent template for `{{yield (hash <hashKey>=<expr>)}}` and
 // return <expr>, or null when not found.
 function findYieldHashEntry(

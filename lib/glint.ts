@@ -21,7 +21,12 @@ import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
 import { findTemplateSource } from './resolver/template-source.js';
-import { resolveTemplate, resolveYieldHashBinding, type Resolution } from './resolver/walk.js';
+import {
+  resolveTemplate,
+  resolveYieldHashBinding,
+  resolveYieldHashBindingSource,
+  type Resolution,
+} from './resolver/walk.js';
 
 const consumerPreprocessor = new Preprocessor();
 
@@ -1254,6 +1259,14 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
 
         // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
         // resolve via the binder's `{{yield (hash Step=...)}}` chain.
+        //
+        // Nested-dotted chains (HDS form-layout shape:
+        // `<HdsForm as |FORM|><FORM.Section as |FS|>
+        //  <FS.Header as |FSH|><FSH.Title>...`) — when the binder
+        // itself is a dotted tag (e.g. `FS.Header`), the importable
+        // root lives multiple hops up. Walk `binderSourceByKey` (now
+        // populated for dotted invocations too, see below) to find
+        // the parent's TemplateSource directly.
         const dottedBinding = dottedBindings.get(key);
         if (dottedBinding) {
           let binderSource = binderSourceByKey.get(dottedBinding.binderKey) ?? null;
@@ -1272,6 +1285,20 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
               ts,
             });
             applyResolution(componentTagMap, componentAttrMap, key, resolution);
+            // Cache the SOURCE that this dotted invocation yields,
+            // so children whose binder is this dotted invocation
+            // (`<FS.Header>` whose binder is `<FORM.Section>`) can
+            // chain through to the next level without re-walking
+            // from the importable root.
+            const nextSource = resolveYieldHashBindingSource({
+              parentSource: binderSource,
+              hashKey: dottedBinding.hashKey,
+              parentArgs: dottedBinding.binderArgs,
+              ts,
+            });
+            if (nextSource) {
+              binderSourceByKey.set(key, nextSource.source);
+            }
           }
         } else if (declFile && isTopLevel) {
           // Skip non-top-level decls (let-block-params): walking their

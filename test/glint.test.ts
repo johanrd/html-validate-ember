@@ -457,6 +457,34 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('resolves multi-level dotted invocation `<S.Title>` where `S` itself comes from `<O.Section as |S|>`', () => {
+    // HDS form-layout showcase shape:
+    //   <HdsForm as |FORM|>
+    //     <FORM.Section as |FS|>
+    //       <FS.Header as |FSH|>
+    //         <FSH.Title>…</FSH.Title>
+    // Multi-level dotted binder chain. Without recursive binder
+    // lookup, `<FSH.Title>` has binderTag='FS.Header' (dotted) →
+    // `findTemplateSource` can't resolve a dotted name → the
+    // canonical resolver bails and TS-side picks the first union
+    // element-type member ('h1' from HTMLHeadingElement). Real-world
+    // FP: <FSH.Title> renders as <div> at runtime but html-validate
+    // sees <h1> and FP-fires element-permitted-content on legal
+    // `<div>` children underneath.
+    const { filename, contents } = readFixture('curry-multi-level-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    // The deepest dotted invocation `<S.Title>` (at template-relative
+    // line 6, column 10 in the consumer) must resolve to <div> — not
+    // transparent (which would mean we couldn't pin the tag) and
+    // not <h1> (Glint TS-side union fallback).
+    const sTitle = entries.find(([k]) => k === '6:10');
+    expect(
+      sTitle?.[1],
+      `expected <S.Title> resolution at 6:10 to be 'div' through full 2-level dotted chain; got map: ${JSON.stringify(entries)}`,
+    ).toBe('div');
+  });
+
   it('resolves dotted invocation through `(component Inner …)` curried yield-hash', () => {
     // HDS HdsFormSectionHeader yields `Title=(component
     // HdsFormHeaderTitle size="300")` — a curried component
