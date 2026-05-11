@@ -296,7 +296,12 @@ function resolveElementHelperLet(
   const tagBinding = stmt.program.blockParams[0];
   const innerTag = tagBinding ? findInnerElementByName(stmt.program.body, tagBinding) : null;
   const attrs = innerTag ? extractLiteralAttrs(innerTag) : new Map<string, string>();
-  const hasSplat = innerTag ? innerTag.attributes.some((a) => a.name === '...attributes') : true;
+  // When the let-block body doesn't actually invoke `<Tag>` we have
+  // no element to harvest splat from; defaulting to `true` would
+  // incorrectly project consumer attributes onto a resolution that
+  // isn't backed by a splatted element. The conservative default
+  // is `false`.
+  const hasSplat = innerTag ? innerTag.attributes.some((a) => a.name === '...attributes') : false;
   const result: TagResolution = { kind: 'tag', tag, attrs, hasSplat };
   // Yield-ancestor inside the inner tag (rare but possible).
   if (innerTag) {

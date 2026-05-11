@@ -596,6 +596,15 @@ function applyResolution(
     yieldTag &&
     yieldTag !== resolution.tag &&
     !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
+    // Guard against substituting the invocation with a tag that
+    // itself only makes sense under a specific parent (e.g.
+    // `<table><thead>{{yield}}</thead></table>` — preferring
+    // `<thead>` would put it under whatever the call-site parent
+    // happens to be, often `<div>`, reintroducing the very
+    // element-permitted-parent FPs this preference is meant to
+    // suppress). Keep the outer wrapper when the yield-ancestor
+    // itself is structural-only.
+    !STRUCTURAL_CHILD_TAGS.has(yieldTag) &&
     isNativeTag(yieldTag)
   ) {
     chosenTag = yieldTag;
