@@ -16,7 +16,7 @@ import type * as TS from 'typescript';
 import { Preprocessor } from 'content-tag';
 import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
-import { isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
+import { isComponentTag, isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -702,14 +702,8 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
         const elem = node;
         // Args + dotted-binding lookup happen on entry, before pushing
         // any scope this element introduces. Block-params shadow inside
-        // its body, not at the binder itself. Skip known HTML5 tags
-        // (`<div>`, `<span>`, …); everything else is a candidate
-        // component invocation (PascalCase, dotted, or a let-element
-        // binding even when lowercase). Mirrors Glimmer's own
-        // `isComponent` predicate at @glimmer/syntax's normalize.ts —
-        // the predicate isn't exported, so we approximate via the
-        // existing HTML-tag whitelist.
-        if (elem.loc.start && !isNativeTag(elem.tag)) {
+        // its body, not at the binder itself.
+        if (elem.loc.start && isComponentTag(elem.tag)) {
           const args = collectLiteralArgs(elem);
           const key = `${elem.loc.start.line}:${elem.loc.start.column}`;
           if (elem.tag.includes('.')) {
@@ -1292,12 +1286,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       sourceNode?.type === 'PathExpression' &&
       node.parent?.sourceNode?.type === 'ElementNode' &&
       node.parent.sourceNode.tag &&
-      // Component invocation: anything that isn't a known HTML5 tag.
-      // Covers PascalCase (`<HdsButton>`), dotted (`<o.Section>`,
-      // `<X.Y>`), and let-element bindings — and mirrors Glimmer's
-      // internal `isComponent` predicate (which the package doesn't
-      // export).
-      !isNativeTag(node.parent.sourceNode.tag) &&
+      isComponentTag(node.parent.sourceNode.tag) &&
       node.transformedRange &&
       node.parent.sourceNode.loc?.start
     ) {
