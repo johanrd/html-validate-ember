@@ -292,6 +292,7 @@ async function validateTarget(target: Target, repoDir: string): Promise<{ files:
         file: rel,
         line: 1,
         column: 1,
+        severity: 'error',
         ruleId: '__transformer-crash__',
         message: err instanceof Error ? err.message : String(err),
       });
