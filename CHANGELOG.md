@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-05-12)
+
+* html-validate-ember 0.6.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#25](https://github.com/johanrd/html-validate-ember/pull/25) Widen peer dep. range of html-validate to support v11 ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-11)
 
 * html-validate-ember 0.5.0 (minor)
