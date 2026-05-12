@@ -4,9 +4,9 @@ This document maps each `template-*` rule in `eslint-plugin-ember` (135 rules) a
 
 ## Sources
 
-- **eslint-plugin-ember** v13.2.0 — `/Users/johanrd/fremby/eslint-plugin-ember/lib/rules/` (135 `template-*` rules + 97 JS/TS rules; the JS/TS rules are out of scope here).
-- **html-validate** master — `/Users/johanrd/Downloads/html-validate-master/src/rules/` (~86 active rules + 7 under `wcag/`).
-- **html-eslint** master — `/Users/johanrd/Downloads/html-eslint-main/packages/eslint-plugin/lib/rules/` (68 rules in the core plugin; the React/Svelte/Angular adapters at `packages/eslint-plugin-{react,svelte,angular-template}/` carry only 7 of these).
+- **eslint-plugin-ember** v13.2.0 — https://github.com/ember-cli/eslint-plugin-ember (`lib/rules/`: 135 `template-*` rules + 97 JS/TS rules; the JS/TS rules are out of scope here).
+- **html-validate** master — https://gitlab.com/html-validate/html-validate (`src/rules/`: ~86 active rules + 7 under `wcag/`).
+- **html-eslint** master — https://github.com/yeonjuan/html-eslint (`packages/eslint-plugin/lib/rules/`: 68 rules in the core plugin; the React/Svelte/Angular adapters at `packages/eslint-plugin-{react,svelte,angular-template}/` carry only 7 of these).
 
 ## Verdict legend
 
@@ -121,7 +121,7 @@ If your project runs Prettier on templates, these are redundant. Keep only if yo
 | `template-quotes` | enforce consistent quote style in templates |
 | `template-self-closing-void-elements` | require self-closing on void elements |
 
-`template-self-closing-void-elements` also overlaps with html-validate's `void-style` (which `html-validate-ember:gts-recommended` already configures to `selfclosing`).
+`template-self-closing-void-elements` also overlaps with html-validate's `void-style`. `html-validate-ember:gts-recommended` currently leaves `void-style` off (the rule fired far more on stylistic preferences than on real bugs across surveyed Ember repos); projects that want to enforce self-closing void elements can either re-enable `void-style: ['error', { style: 'selfclosing' }]` or keep this ESLint rule.
 
 ---
 

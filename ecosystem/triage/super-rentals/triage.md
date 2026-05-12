@@ -1,5 +1,7 @@
 # super-rentals — triage
 
+> **Historical.** Captured under the pre-change preset where `:gts-recommended` enforced `void-style: selfclosing`. The 6× `void-style` findings here no longer fire under the current default (now `off`); they're preserved as-is to document what motivated that change.
+
 Pinned at `3d0480f066b27b8410136a858320a47671affbe3`. 14 files validated, 13 findings.
 
 | # | File | Line | Rule | Verdict | Notes |

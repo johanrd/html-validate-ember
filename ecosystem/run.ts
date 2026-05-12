@@ -146,8 +146,9 @@ function installDeps(repoDir: string, target: Target): boolean {
     cmd = 'pnpm';
     args = ['install', '--frozen-lockfile', '--ignore-scripts'];
   } else if (fs.existsSync(path.join(repoDir, 'yarn.lock'))) {
-    // Works for yarn classic; yarn berry's `--immutable` is a separate path.
-    // Fall back to `yarn install` if `--frozen-lockfile` is rejected.
+    // Works for yarn classic; yarn berry rejects `--frozen-lockfile` and
+    // wants `--immutable`. We don't retry — install failure is non-fatal
+    // and the caller logs it then continues without Glint.
     cmd = 'yarn';
     args = ['install', '--frozen-lockfile', '--ignore-scripts'];
   } else if (fs.existsSync(path.join(repoDir, 'package-lock.json'))) {
@@ -247,19 +248,19 @@ function listFiles(repoDir: string, target: Target): string[] {
 }
 
 // Match the calibrated config that the bundled `validate-gts` CLI ships
-// with — `:gts-recommended` adds `void-style: selfclosing` (Ember idiom)
-// on top of `:recommended`'s transformer-artifact suppressions, and
-// `attribute-allowed-values: 'error'` matches the CLI's promotion. We
-// intentionally do NOT honor the target repo's `.htmlvalidate.json`:
-// ecosystem CI exists to catch *plugin*-side regressions, and a stable
-// fixed config keeps the signal apples-to-apples across PRs (otherwise a
-// target-side rule-toggle would silently change baseline output).
+// with — `:gts-recommended` is currently identical to `:recommended`
+// (transformer-artifact suppressions plus stylistic-noise suppressions
+// including `void-style: off`), and `attribute-allowed-values: 'error'`
+// matches the CLI's promotion. We intentionally do NOT honor the target
+// repo's `.htmlvalidate.json`: ecosystem CI exists to catch *plugin*-
+// side regressions, and a stable fixed config keeps the signal apples-
+// to-apples across PRs (otherwise a target-side rule-toggle would
+// silently change baseline output).
 //
-// We also intentionally do not enable Glint here — running it would
-// require `npm install`'ing each target (the deferred-blob clones skip
-// dependencies on purpose), which is far too expensive for a PR check.
-// Local users running `validate-gts --glint` will typically see fewer
-// findings on the same files; that's expected and documented.
+// Glint is enabled per-target (default on, opt-out via `glint: false`
+// in targets.json). `main()` installs the target's deps before running
+// — needed because Glint resolves `@glint/ember-tsc` from the *target's*
+// node_modules. Install failures fall back to no-Glint validation.
 function makeValidator(target: Target): HtmlValidate {
   return new HtmlValidate({
     root: true,

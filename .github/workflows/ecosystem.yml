@@ -8,7 +8,7 @@ on:
       - 'lib/**'
       - 'ecosystem/**'
       - 'package.json'
-      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
       - 'tsconfig.json'
       - '.github/workflows/ecosystem.yml'
   workflow_dispatch:
@@ -29,13 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+          cache: pnpm
 
-      - run: corepack enable
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       # Cache target repo clones AND their installed node_modules across runs.
       # Keyed on targets.json so any SHA bump invalidates the cache and forces
@@ -57,4 +58,4 @@ jobs:
           restore-keys: ecosystem-pnpm-
 
       - name: Run ecosystem checks
-        run: npm run ecosystem:check
+        run: pnpm run ecosystem:check

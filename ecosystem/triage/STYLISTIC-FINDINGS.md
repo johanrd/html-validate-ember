@@ -1,5 +1,7 @@
 # Stylistic findings — input for default-policy review
 
+> **Historical.** This is the empirical analysis that drove the current default-off policy. As of the `void-style` / `prefer-native-element` change, `:gts-recommended` turns `void-style` off and demotes `prefer-native-element` to `warn` — exactly the candidates flagged below. Counts and per-target verdicts are preserved as-is so future re-evaluations can compare against the same baseline; rule names referenced in past tense ("plugin sets `void-style: selfclosing`") describe the pre-change preset, not current behavior.
+
 Tracks rules that fired during triage which are **stylistic preferences** rather than correctness issues. The question for each: should the plugin's `:gts-recommended` preset turn this off (or weaken it) by default? Decision wants empirical data — counts across real Ember repos, not gut feel.
 
 A "stylistic" finding here means: removing it never changes the rendered DOM, never affects accessibility tree, never triggers a real bug. Code works the same either way. Maintainers may still prefer it on for consistency, but defaulting to *off* avoids noise for users who don't care.

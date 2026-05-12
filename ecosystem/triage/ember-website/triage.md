@@ -1,5 +1,7 @@
 # ember-website — triage
 
+> **Historical.** Captured under the pre-change preset where `:gts-recommended` enforced `void-style: selfclosing`. The 153× `void-style` findings here no longer fire under the current default (now `off`); they're preserved as-is to document what motivated that change.
+
 Pinned at `43ac579887f0722e0dc321392ecbab0affb49f34`. 73 files validated, 279 findings.
 
 This is the largest target after HDS. Findings cluster heavily by rule; triage by cluster rather than per-finding.

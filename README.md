@@ -32,8 +32,8 @@ Create `.htmlvalidate.json` at your project root:
 
 Pick whichever fits your project:
 
-- **`html-validate-ember:gts-recommended`** *(recommended for most projects)* — everything in `:recommended` plus Ember/Glimmer style conventions baked in (`void-style: selfclosing` to match `ember-template-lint`'s `self-closing-void-elements`, etc.). Use this if you want the plugin to "just work" the way an Ember dev expects.
-- **`html-validate-ember:recommended`** *(minimal)* — only the rule disables that are *required* for the transformer to behave correctly: `no-trailing-whitespace` (mustache lines blank to whitespace), `no-self-closing` (some emit paths preserve a self-closing `/>`), `attr-quotes` (rewritten attributes use double quotes). No stylistic opinions. Pick this if you'd rather keep all html-validate defaults and only opt into the transformer essentials.
+- **`html-validate-ember:recommended`** *(recommended for most projects)* — `html-validate:recommended` minus (a) the rules that fire on transformer-emission artifacts (`no-trailing-whitespace`, `no-self-closing`, `attr-quotes`, `no-raw-characters` — required for the plugin to behave correctly) and (b) a small set of stylistic rules whose Ember trade-offs tip toward noise: `no-inline-style` (off — runtime style binding `<div style={{this.x}}>` is a legitimate Ember pattern), `void-style` (off — `<br>` vs `<br />` is pure preference and Ember/Glimmer convention is split), `prefer-native-element` (demoted to `warn` — design systems intentionally wrap generic elements with role+keyboard handling). a11y, content-model, and required-attribute rules from `html-validate:recommended` are inherited as-is.
+- **`html-validate-ember:gts-recommended`** — backwards-compat alias of `:recommended`. Previously layered Ember-style opinions (`void-style: selfclosing`) on top, now folded back out so the two presets are identical. Stays so existing consumers don't need to edit their `extends`.
 
 ## Run
 
