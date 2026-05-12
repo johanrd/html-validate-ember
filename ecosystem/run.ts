@@ -394,6 +394,7 @@ async function main(): Promise<void> {
   }
 
   let regressions = 0;
+  let crashedTargets = 0;
   for (const target of targets) {
     process.stderr.write(`\n=== ${target.name} (${target.repo} @ ${target.ref.slice(0, 12)}) ===\n`);
     const repoDir = ensureClone(target, args.noClone);
@@ -419,6 +420,20 @@ async function main(): Promise<void> {
     process.stderr.write(
       `  files: ${files}\n  findings: ${findings.length} (errors: ${errors}, warnings: ${warnings})${useGlint ? ' (with Glint)' : ' (no Glint)'}\n`,
     );
+
+    // Transformer/parser crashes are plugin bugs, not findings against user
+    // code. They must never end up in a committed baseline — otherwise the
+    // crash becomes "expected output" and the bug stops failing CI. Refuse
+    // to write/diff this target's baseline if it crashed, and force a
+    // non-zero exit at the end regardless of mode.
+    const crashCount = findings.filter((f) => f.ruleId === '__transformer-crash__').length;
+    if (crashCount > 0) {
+      process.stderr.write(
+        `  CRASHED: ${crashCount} transformer crash(es) — refusing to baseline; fix the plugin\n`,
+      );
+      crashedTargets++;
+      continue;
+    }
 
     const current: Baseline = { ref: target.ref, fileCount: files, findings };
 
@@ -456,11 +471,17 @@ async function main(): Promise<void> {
     regressions++;
   }
 
+  if (crashedTargets > 0) {
+    process.stderr.write(
+      `\n${crashedTargets} target(s) crashed; baseline writes were skipped for those targets\n`,
+    );
+  }
   if (regressions > 0 && !args.update) {
     process.stderr.write(`\n${regressions} target(s) with diffs vs baseline\n`);
     process.stderr.write(`re-run with \`--update\` after vetting if the changes are intentional\n`);
-    process.exit(1);
   }
+  if (regressions > 0 && !args.update) process.exit(1);
+  if (crashedTargets > 0) process.exit(1);
   if (!args.update) {
     process.stderr.write(`\nall targets clean vs baseline\n`);
   }

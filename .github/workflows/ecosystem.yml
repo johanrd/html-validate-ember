@@ -42,20 +42,14 @@ jobs:
       # Keyed on targets.json so any SHA bump invalidates the cache and forces
       # a fresh fetch + reinstall (we want the baseline-vs-actual diff to
       # reflect the pinned SHA, not whatever was cached from a previous run).
+      # The pnpm store itself is cached by setup-node's `cache: pnpm` (above)
+      # against the current repo's lockfile, so target installs reuse the same
+      # content-addressed store transparently.
       - name: Cache target clones + node_modules
         uses: actions/cache@v4
         with:
           path: ecosystem/.cache
           key: ecosystem-clones-${{ hashFiles('ecosystem/targets.json') }}
-
-      # The pnpm store is content-addressed; caching it across runs makes
-      # repeat installs near-instant when the lockfile barely changes.
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ecosystem-pnpm-${{ hashFiles('ecosystem/targets.json') }}
-          restore-keys: ecosystem-pnpm-
 
       - name: Run ecosystem checks
         run: pnpm run ecosystem:check
