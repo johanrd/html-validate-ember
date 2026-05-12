@@ -1,5 +1,46 @@
 # Changelog
 
+## Release (2026-05-12)
+
+* html-validate-ember 0.6.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#25](https://github.com/johanrd/html-validate-ember/pull/25) Widen peer dep. range of html-validate to support v11 ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
+## Release (2026-05-11)
+
+* html-validate-ember 0.5.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#22](https://github.com/johanrd/html-validate-ember/pull/22) Fix VS Code regressions in 0.4.2: LSP shutdown errors + enable `--glint` by default ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
+## Release (2026-05-11)
+
+* html-validate-ember 0.4.2 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#21](https://github.com/johanrd/html-validate-ember/pull/21) Canonical resolver rewrite + cluster fixes for ecosystem-CI FPs ([@johanrd](https://github.com/johanrd))
+  * [#18](https://github.com/johanrd/html-validate-ember/pull/18) Resolve `Element` for block-param-yielded curried sub-components ([@johanrd](https://github.com/johanrd))
+  * [#19](https://github.com/johanrd/html-validate-ember/pull/19) Resolve `Element` for classic Ember addon `.hbs` components (`<EsCard>`-style) ([@johanrd](https://github.com/johanrd))
+  * [#15](https://github.com/johanrd/html-validate-ember/pull/15) Record arg-bound component attrs as `DynamicValue` placeholders ([@johanrd](https://github.com/johanrd))
+  * [#16](https://github.com/johanrd/html-validate-ember/pull/16) Resolve `Element` for TOC components (`satisfies TOC<S>` and `: TOC<S>` forms) ([@johanrd](https://github.com/johanrd))
+  * [#17](https://github.com/johanrd/html-validate-ember/pull/17) Suppress `wcag/h32` / `wcag/h71` on yield-bearing `<form>`/`<fieldset>` ([@johanrd](https://github.com/johanrd))
+  * [#14](https://github.com/johanrd/html-validate-ember/pull/14) Erase `as |…|` block-param clause when Glint substitutes a block-form component ([@johanrd](https://github.com/johanrd))
+  * [#13](https://github.com/johanrd/html-validate-ember/pull/13) Inject placeholder `src`/`alt` on `<img ...attributes>` ([@johanrd](https://github.com/johanrd))
+  * [#12](https://github.com/johanrd/html-validate-ember/pull/12) Don't resolve generic `HTMLElement` / `MathMLElement` to a phantom tag ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-07)
 
 * html-validate-ember 0.4.1 (patch)

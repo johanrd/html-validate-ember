@@ -29,7 +29,24 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { Preprocessor } from 'content-tag';
 import type * as TS from 'typescript';
-import { PackageCache, type Package } from '@embroider/shared-internals';
+// `@embroider/shared-internals` is lazy-imported via `loadEmbroider`
+// below — it's a 344KB dep (plus lodash, fs-extra, resolve-package-path,
+// etc. transitively) and importing it eagerly at module-load time
+// noticeably slowed VS Code's html-validate language-server startup +
+// teardown after we picked it up in 0.4.2. Only the v1-addon by-name
+// lookup path needs it; most validations never touch that path.
+type PackageCache = {
+  ownerOfFile: (file: string) => Package | null | undefined;
+  get: (pkgRoot: string) => Package;
+};
+type PackageCacheCtor = {
+  shared(appOrAddonName: string, basedir: string): PackageCache;
+};
+type Package = {
+  root: string;
+  isEmberAddon: () => boolean;
+  packageJSON: { name?: string; exports?: unknown };
+};
 
 const preprocessor = new Preprocessor();
 
@@ -493,6 +510,10 @@ function extractCompiledJs(file: string, ts: typeof TS): string | null {
 function findByName(consumerFile: string, componentName: string): TemplateSource | null {
   const kebab = pascalToKebab(componentName);
   const cache = getCache();
+  // No `@embroider/shared-internals` available — by-name v1-addon
+  // lookup needs PackageCache to classify addons; without it we can't
+  // safely probe arbitrary node_modules entries.
+  if (!cache) return null;
 
   let dir = path.dirname(consumerFile);
   for (;;) {
@@ -577,20 +598,45 @@ function pascalToKebab(name: string): string {
 // --- PackageCache helpers ------------------------------------------------
 
 let sharedCache: PackageCache | null = null;
+let embroiderModule: { PackageCache: PackageCacheCtor } | null | undefined;
 
-function getCache(): PackageCache {
+// Lazy import. Eagerly requiring `@embroider/shared-internals` at
+// module load (its 344KB JS + transitive lodash / fs-extra /
+// resolve-package-path / babel-import-util) showed up as noticeable
+// VS Code html-validate language-server startup + shutdown lag in
+// 0.4.2. Only the v1-addon by-name lookup path actually needs it,
+// so defer until the first `getCache()` call — projects with no v1
+// addons (or whose resolver never falls through to by-name) skip
+// the load entirely.
+function loadEmbroider(): { PackageCache: PackageCacheCtor } | null {
+  if (embroiderModule !== undefined) return embroiderModule;
+  try {
+    embroiderModule = createRequire(import.meta.url)('@embroider/shared-internals') as {
+      PackageCache: PackageCacheCtor;
+    };
+  } catch {
+    embroiderModule = null;
+  }
+  return embroiderModule;
+}
+
+function getCache(): PackageCache | null {
   // PackageCache.shared keys by ('appOrAddonName', basedir). We're not
   // an app — we're a plugin reading other people's packages. The
   // identifier just needs to be stable within a process.
   if (!sharedCache) {
-    sharedCache = PackageCache.shared('html-validate-ember', process.cwd());
+    const embroider = loadEmbroider();
+    if (!embroider) return null;
+    sharedCache = embroider.PackageCache.shared('html-validate-ember', process.cwd());
   }
   return sharedCache;
 }
 
 function packageOwnerOf(file: string): Package | null {
+  const cache = getCache();
+  if (!cache) return null;
   try {
-    return getCache().ownerOfFile(file) ?? null;
+    return cache.ownerOfFile(file) ?? null;
   } catch {
     return null;
   }

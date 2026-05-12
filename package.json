@@ -1,6 +1,6 @@
 {
   "name": "html-validate-ember",
-  "version": "0.4.1",
+  "version": "0.6.0",
   "description": "html-validate transformer for Ember .gts (Glimmer) templates",
   "keywords": [
     "html-validate",
@@ -74,7 +74,7 @@
     "@glint/environment-ember-template-imports": "^1.5.2",
     "@types/node": "^22.10.0",
     "@types/svg-tags": "^1.0.2",
-    "html-validate": "^10.13.1",
+    "html-validate": "^11.0.0",
     "release-plan": "^0.18.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -82,7 +82,7 @@
   },
   "peerDependencies": {
     "@glint/ember-tsc": ">=1.5",
-    "html-validate": "^10.0.0"
+    "html-validate": ">=10"
   },
   "peerDependenciesMeta": {
     "@glint/ember-tsc": {

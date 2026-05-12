@@ -294,15 +294,29 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // each one, optionally enrich with Glint type info.
   const scope = extractStringScope(data, filename);
   let glintTypeMap = null;
-  let glintComponentTagMap = null;
-  let glintComponentAttrMap = null;
-  // Glint type extraction is opt-in. It adds ~24× runtime overhead (TS
-  // program rebuild + rewriteModule per file) for narrow real-world yield —
-  // most Ember codebases don't type @args as string-literal unions or
-  // declare Signature['Element'], so Glint mostly returns generic types.
-  // Set HVE_GLINT=1 (or pass --glint to the runners) to enable when you
-  // know your components have the typing discipline to benefit.
-  if (process.env['HVE_GLINT']) {
+  let glintComponentTagMap: Map<string, string> | null = null;
+  let glintComponentAttrMap: Parameters<typeof blankTemplateContent>[4] | null = null;
+  // Glint type extraction is opt-OUT: it's worthwhile in real-world
+  // use (it lifts the resolver from "what's imported" to "what TS
+  // says about each invocation", catching @arg literals, Signature
+  // ['Element'] declarations, polymorphic-tag union picks, etc.),
+  // and `extractAttrTypeMap` handles a missing `@glint/ember-tsc`
+  // install gracefully by returning null and letting the canonical-
+  // resolver fallback below take over. Set `HVE_GLINT=0` (or pass
+  // `--no-glint` to the bundled runners) to disable.
+  //
+  // When Glint extraction runs, `extractAttrTypeMap` returns the same
+  // component-tag + attr maps the canonical resolver alone would
+  // produce, PLUS attrTypeMap (string-literal-union narrowing for
+  // mustache attr values). When it's disabled (or unavailable), we
+  // still need the tag/attr maps so e.g. `<HdsCard>` substitutes to
+  // `<li>` and `<AddResource>` substitutes to `<dialog id="…" …>` —
+  // without them, custom elements stay as-is in the blanked output
+  // and rules like `no-dup-id`, `element-permitted-content`,
+  // `prefer-tbody` etc. can't see the rendered DOM. The per-template
+  // `buildResolutionMaps` call inside the loop below covers that
+  // fallback path.
+  if (process.env['HVE_GLINT'] !== '0') {
     try {
       const result = extractAttrTypeMap(filename, data);
       if (result) {
@@ -363,12 +377,34 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     }
     const startOffset = tpl.contentRange.startChar;
     const { line, column } = offsetToLineCol(data, startOffset);
+    // No Glint info available → run the canonical resolver alone for
+    // this template block. Mirrors the .hbs path: walk PascalCase
+    // invocations, resolve via imports + addon by-name, project the
+    // resolved component's root tag + static attrs into the blanker.
+    // Without this, editors that don't set `HVE_GLINT=1` (e.g. the
+    // VS Code html-validate extension) blank-out `<MyComponent>` as
+    // a custom element and downstream rules can't see the rendered
+    // tag — observably, no-dup-id / element-permitted-content /
+    // prefer-tbody all stop firing on shape that the CLI catches.
+    let tagMap = glintComponentTagMap;
+    let attrMap = glintComponentAttrMap;
+    if (!tagMap) {
+      try {
+        const ast = preprocess(stripBlockParamTypeAnnotations(tpl.contents), { mode: 'codemod' });
+        const maps = buildResolutionMaps(filename, ast);
+        tagMap = maps.componentTagMap;
+        attrMap = maps.componentAttrMap;
+      } catch {
+        // Parse failure here is non-fatal — `blankTemplateContent`
+        // re-parses and reports the error. Drop the maps and continue.
+      }
+    }
     const results = blankTemplateContentMultipass(
       tpl.contents,
       scope,
       glintTypeMap,
-      glintComponentTagMap,
-      glintComponentAttrMap,
+      tagMap,
+      attrMap,
     );
     const branched = results.length > 1;
     if (branched) {
