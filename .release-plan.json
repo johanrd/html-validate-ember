@@ -2,8 +2,8 @@
   "solution": {
     "html-validate-ember": {
       "impact": "minor",
-      "oldVersion": "0.4.2",
-      "newVersion": "0.5.0",
+      "oldVersion": "0.5.0",
+      "newVersion": "0.6.0",
       "tagName": "latest",
       "constraints": [
         {
@@ -14,5 +14,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-11)\n\n* html-validate-ember 0.5.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#22](https://github.com/johanrd/html-validate-ember/pull/22) Fix VS Code regressions in 0.4.2: LSP shutdown errors + enable `--glint` by default ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-12)\n\n* html-validate-ember 0.6.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#25](https://github.com/johanrd/html-validate-ember/pull/25) Widen peer dep. range of html-validate to support v11 ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }
