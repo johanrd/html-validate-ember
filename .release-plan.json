@@ -2,17 +2,21 @@
   "solution": {
     "html-validate-ember": {
       "impact": "minor",
-      "oldVersion": "0.5.0",
-      "newVersion": "0.6.0",
+      "oldVersion": "0.6.0",
+      "newVersion": "0.7.0",
       "tagName": "latest",
       "constraints": [
         {
           "impact": "minor",
           "reason": "Appears in changelog section :rocket: Enhancement"
+        },
+        {
+          "impact": "patch",
+          "reason": "Appears in changelog section :house: Internal"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-12)\n\n* html-validate-ember 0.6.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#25](https://github.com/johanrd/html-validate-ember/pull/25) Widen peer dep. range of html-validate to support v11 ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-14)\n\n* html-validate-ember 0.7.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#27](https://github.com/johanrd/html-validate-ember/pull/27) feat: support short-form Glimmer comment directives ([@johanrd](https://github.com/johanrd))\n\n#### :house: Internal\n* `html-validate-ember`\n  * [#29](https://github.com/johanrd/html-validate-ember/pull/29) chore: trim README and remove dead block-param strip code ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }
