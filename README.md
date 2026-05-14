@@ -67,16 +67,18 @@ pnpm exec validate-gts app/templates                     # directory (walked rec
 
 ## What it catches
 
-HTML5 spec / a11y issues, not Ember/Glimmer-specific patterns.
+[html-validate](https://html-validate.org/rules/)'s recommended preset enables 80 rules covering HTML5 content models, ARIA / WCAG, form correctness, and attribute validity.
+
+A few examples — real bugs that ember-template-lint and eslint-plugin-ember don't catch:
 
 ### Block element inside a `<p>` silently closes the paragraph
 
 ```hbs
 <p class='text-sm text-gray-600'>
   Some explanation
-  <button>?</button>
-  <div popover>...</div>   {{!-- ← parser auto-closes <p> here --}}
-</p>                        {{!-- ← stray </p>, doesn't match anything --}}
+  <button>?</button>       
+  <div popover>...</div>   {{!-- ← parser auto-closes <p> before the <div> --}}
+</p>                       {{!-- ← stray </p>, doesn't match anything --}}
 ```
 
 ```
@@ -84,18 +86,13 @@ templates/page.gts:42: error [no-implicit-close] Element <p> is implicitly close
 templates/page.gts:74: error [close-order] Stray end tag '</p>'
 ```
 
-The browser silently rewrites the DOM; your screen-reader tree doesn't match what you wrote.
+The browser silently [rewrites the DOM](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/p); your screen-reader tree doesn't match what you wrote.
 
 ### Duplicate IDs (cross-component when `@glint/ember-tsc` is installed)
 
 ```hbs
-<td>
-  <input type='number' name='price' id='price' value='1000' />  {{!-- 1× --}}
-</td>
-<td>
-  <input type='number' name='price' id='price' value='2000' />  {{!-- 2× --}}
-</td>
-{{!-- 6 more identical rows --}}
+<input type='number' name='price' id='price' value='1000' />
+<input type='number' name='price' id='price' value='2000' />
 ```
 
 ```
@@ -103,13 +100,11 @@ templates/pricing-table.gts:128: error [no-dup-id] Duplicate ID "price"
 templates/pricing-table.gts:128: error [form-dup-name] Duplicate form control name "price"
 ```
 
-The author copy-pasted a pricing-tier column without parameterizing the id. `aria-describedby="price-currency"` resolves to whichever DOM node the browser sees first.
-
 ### Invalid attribute values
 
 ```hbs
 <img alt='Logo' width='100px' />   {{!-- ← width must be unitless integer --}}
-<input type='checkbox' readonly />  {{!-- ← readonly only valid on text-like inputs --}}
+<input type='checkbox' readonly /> {{!-- ← readonly only valid on text-like inputs --}}
 ```
 
 ```
@@ -123,9 +118,8 @@ templates/admin.gts:18: error [input-attributes] Attribute "readonly" not allowe
 
 | Tool | Question it answers |
 | --- | --- |
-| `eslint-plugin-ember` | Is this idiomatic Ember? — JS/TS rules, invocation conventions, reactivity, modifier API, built-in components. |
+| `eslint-plugin-ember` / `ember-template-lint` | Is this idiomatic Ember? Invocation style, reactivity, modifier API, built-in components, plus JS/TS-side rules from eslint-plugin-ember and some overlap of HTML spec and ARIA rules |
 | `html-validate-ember` (this plugin) | Is the rendered HTML spec-correct and accessible? — content model, ARIA / WCAG, form correctness, attribute validity, duplicate IDs, unique landmarks. |
-| `prettier-plugin-ember` | Is the source formatted consistently? — indentation, attribute layout, quote style. |
 
 ---
 
