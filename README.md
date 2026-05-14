@@ -2,9 +2,7 @@
   <img src="./assets/logo.png" alt="HTML-validate ember" width="480" />
 </p>
 
-[HTML-validate](https://html-validate.org) transformer for Ember templates — `.gts`, `.gjs`, and classic `.hbs`.
-
-Lint your templates against html-validate's HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
+Use [HTML-validate](https://html-validate.org) on your Ember templates — `.gts`, `.gjs`, and classic `.hbs`. Run HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
 
 ## Install
 
@@ -32,20 +30,16 @@ Create `.htmlvalidate.json` at your project root:
 
 Pick whichever fits your project:
 
-- **`html-validate-ember:gts-recommended`** *(recommended for most projects)* — everything in `:recommended` plus Ember/Glimmer style conventions baked in (`void-style: selfclosing` to match `ember-template-lint`'s `self-closing-void-elements`, etc.). Use this if you want the plugin to "just work" the way an Ember dev expects.
-- **`html-validate-ember:recommended`** *(minimal)* — only the rule disables that are *required* for the transformer to behave correctly: `no-trailing-whitespace` (mustache lines blank to whitespace), `no-self-closing` (some emit paths preserve a self-closing `/>`), `attr-quotes` (rewritten attributes use double quotes). No stylistic opinions. Pick this if you'd rather keep all html-validate defaults and only opt into the transformer essentials.
+- **`html-validate-ember:gts-recommended`** *(recommended for most projects)* — everything in `:recommended` plus Ember/Glimmer style conventions baked in (`void-style: selfclosing` to match `ember-template-lint`'s `self-closing-void-elements`, etc.).
+- **`html-validate-ember:recommended`** *(minimal)* — only the rule disables that are *required* for the transformer to behave correctly: `no-trailing-whitespace`, `no-self-closing`, `attr-quotes`, `no-raw-characters`. No stylistic opinions.
 
 ## Run
 
-The bundled `validate-gts` CLI accepts any mix of `.gts` / `.gjs` / `.hbs` files and directories. Directories are walked recursively. Exits non-zero when any file has errors.
-
-The recommended pattern is to wire it into `package.json` scripts:
+The recommended pattern is to wire the bundled `validate-gts` into `package.json` scripts:
 
 ```json
 "scripts": {
-  "lint:html:templates": "validate-gts --glint app/templates",
-  "lint:html:components": "validate-gts --glint app/components",
-  "lint:html": "validate-gts --glint app/templates app/components"
+  "lint:html": "validate-gts app/templates app/components"
 }
 ```
 
@@ -61,34 +55,19 @@ For ad-hoc one-off runs, use `pnpm exec`:
 
 ```sh
 pnpm exec validate-gts app/components/foo.gts            # single file
+pnpm exec validate-gts --no-glint app/components/foo.gts # single file no glint
 pnpm exec validate-gts app/templates                     # directory (walked recursively)
-pnpm exec validate-gts --glint app/templates             # enable Glint type extraction
-pnpm exec validate-gts --quiet app                       # only show summary
 ```
-
-
-## Supported formats
-
-| Format | What it is | Glint integration |
-|---|---|---|
-| `.gts` | Template-imports + TypeScript (Ember's modern default) | ✅ full (component → element resolution, attribute type narrowing, splatted-root literal extraction) |
-| `.gjs` | Template-imports + JavaScript | ✅ same machinery as `.gts` (Glint understands both) |
-| `.hbs` | Classic separate template file | ⚠️ no Glint integration. Built-in Ember components (`<Input>`/`<Textarea>`/`<LinkTo>`) substitute to their rendered native tag (`<input>`/`<textarea>`/`<a>`) so content-model rules apply; other components blank transparently (open/close tags removed; children float into the parent's content model). Static-text resolution applies (`{{t 'Key'}}`, `{{if cond 'a' 'b'}}`). |
-
 
 ## Progressive enhancement
 
-The plugin works at every level — opt in to more accuracy as your project's typing investment grows:
-
-1. **Bare** (no project config, no `--glint`): bundled `:gts-recommended` preset, components blank transparently (children float into the parent's content model), static-text resolution via t-helper / if-helper / top-level consts.
+1. **Bare** (no project config): bundled `:gts-recommended` preset, built-in components (`<Input>` / `<Textarea>` / `<LinkTo>`) substitute to native tags, other components blank transparently as a fallback, static-text resolution via t-helper / if-helper / top-level consts.
 2. **+ project `.htmlvalidate.json`**: your rules / extends / transform overrides apply. Bundled CLI loads + merges them.
-3. **+ `--glint`** (requires `@glint/ember-tsc` installed): `Signature['Element']` resolves component invocations to native tags. Type-narrowed `@arg` values flow into attribute enum checks. Splatted-root literal attributes propagate (e.g. `<MySlider />` substitutes to `<input type='range' min='0' max='100' />` with the actual literal values from the imported component's template).
-
-Glint silently no-ops when `@glint/ember-tsc` isn't installed, so you can flip `--glint` on and off without breaking anything.
+3. **+ install `@glint/ember-tsc`** (auto-detected, default on; pass `--no-glint` to opt out): `Signature['Element']` resolves component invocations to native tags. Type-narrowed `@arg` values flow into attribute enum checks. Splatted-root literal attributes propagate (e.g. `<MySlider />` substitutes to `<input type='range' min='0' max='100' />` with the actual literal values from the imported component's template).
 
 ## What it catches
 
-These are real bugs found in a 300-file Ember codebase that **ember-template-lint** and **eslint-plugin-ember** don't catch. They're HTML5 spec / a11y issues, not Ember/Glimmer-specific patterns.
+HTML5 spec / a11y issues, not Ember/Glimmer-specific patterns.
 
 ### Block element inside a `<p>` silently closes the paragraph
 
@@ -107,7 +86,7 @@ templates/page.gts:74: error [close-order] Stray end tag '</p>'
 
 The browser silently rewrites the DOM; your screen-reader tree doesn't match what you wrote.
 
-### Hardcoded duplicate IDs across copy-pasted form rows
+### Duplicate IDs (cross-component when `@glint/ember-tsc` is installed)
 
 ```hbs
 <td>
@@ -122,133 +101,9 @@ The browser silently rewrites the DOM; your screen-reader tree doesn't match wha
 ```
 templates/pricing-table.gts:128: error [no-dup-id] Duplicate ID "price"
 templates/pricing-table.gts:128: error [form-dup-name] Duplicate form control name "price"
-…16 more
 ```
 
 The author copy-pasted a pricing-tier column without parameterizing the id. `aria-describedby="price-currency"` resolves to whichever DOM node the browser sees first.
-
-### `<menu>` used as a styled sidebar
-
-```hbs
-<menu class='shadow-md flex flex-col px-4 ...'>
-  <div>...</div>
-  <input type='search' />
-  <DatePicker />
-</menu>
-```
-
-```
-templates/sidebar.gts:18: error [element-permitted-content] <div> not permitted under <menu>
-templates/sidebar.gts:23: error [element-permitted-content] <input> not permitted under <menu>
-```
-
-`<menu>` only accepts `<li>` per HTML5. Catches a common pattern of using `<menu role='menu'>` for popovers/sidebars (~50 sites in the audited app).
-
-### Block element inside phrasing parents
-
-```hbs
-<span class='flex gap-2'>
-  <p class='rounded-full ...'>Automatisert</p>   {{!-- ← <p> is flow content --}}
-</span>
-
-<button>
-  <div class='truncate'>Daily total</div>  {{!-- ← <div> is flow content --}}
-  <div class='font-semibold'>...</div>
-</button>
-
-<h1>
-  <div class='skeleton'></div>                   {{!-- ← <div> is flow content --}}
-</h1>
-
-<label for='X'>
-  <div>Label text</div>                          {{!-- ← <div> is flow content --}}
-</label>
-```
-
-```
-templates/page.gts:88: error [element-permitted-content] <p> not permitted under <span>
-components/tile.gts:41: error [element-permitted-content] <div> not permitted under <button>
-templates/page.gts:14: error [element-permitted-content] <div> not permitted under <h1>
-components/dialog.gts:32: error [element-permitted-content] <div> not permitted under <label>
-```
-
-Replace inner `<div>`/`<p>` with `<span class='block'>` — keeps Tailwind classes, fixes the spec violation.
-
-### `<dt>` / `<dd>` outside `<dl>`, or `<dl>` nested in `<dl>`
-
-```hbs
-{{!-- Used as a key/value row inside <details><summary>: --}}
-<details>
-  <summary>
-    <div class='flex justify-between'>
-      <dt>Total</dt>             {{!-- ← needs <dl> ancestor --}}
-      <dd>1,234</dd>             {{!-- ← needs <dl> ancestor --}}
-    </div>
-  </summary>
-</details>
-
-{{!-- Or nested incorrectly: --}}
-<dl>
-  <dt>{{row.key}}</dt>
-  <dl>{{row.value}}</dl>         {{!-- ← author meant <dd> --}}
-</dl>
-```
-
-```
-components/details-row.gts:22: error [element-required-ancestor] <dt> requires "dl > dt" ancestor
-templates/item-detail.gts:104: error [element-permitted-content] <dl> not permitted under <dl>
-```
-
-### Icon-only `<button>` without an accessible name
-
-```hbs
-<button type='button' commandfor='Modal' command='close'>
-  <svg>...</svg>   {{!-- ← screen readers announce "button" --}}
-</button>
-```
-
-```
-templates/item-detail.gts:188: error [text-content] <button> must have accessible text
-```
-
-Add `aria-label='Close'` (or use the `<button title='...'>` "subjective" form — html-validate flags `title` as discouraged but accepts it).
-
-### `<form>` missing a submit button
-
-```hbs
-<form {{on 'submit' this.handleSubmit}}>
-  <textarea name='message'></textarea>
-  <button type='button'>Cancel</button>   {{!-- only button is type='button' --}}
-</form>
-```
-
-```
-components/chat-form.gts:24: error [wcag/h32] <form> element must have a submit button
-```
-
-### Camel-case attribute names
-
-HTML5 attribute names are case-insensitive and lowercase canonical. Camel-case in source compiles down to lowercase in the DOM, so attribute selectors silently fail.
-
-```hbs
-<div data-test-userMenuList></div>   {{!-- ← lowercased to data-test-usermenulist --}}
-```
-
-```
-templates/page.gts:42: error [attr-case] Attribute "data-test-userMenuList" should be lowercase
-```
-
-### Duplicate CSS class
-
-```hbs
-<div class='flex w-full focus:bg-blue-500 focus:text-white rounded-md flex grow gap-2'>
-                                                                  ↑↑↑↑
-                                                                  duplicate "flex"
-```
-
-```
-components/menu-button.gts:18: error [no-dup-class] Class "flex" duplicated
-```
 
 ### Invalid attribute values
 
@@ -264,13 +119,23 @@ templates/admin.gts:18: error [input-attributes] Attribute "readonly" not allowe
 
 ---
 
+## How this fits in the Ember linting stack
+
+| Tool | Question it answers |
+| --- | --- |
+| `eslint-plugin-ember` | Is this idiomatic Ember? — JS/TS rules, invocation conventions, reactivity, modifier API, built-in components. |
+| `html-validate-ember` (this plugin) | Is the rendered HTML spec-correct and accessible? — content model, ARIA / WCAG, form correctness, attribute validity, duplicate IDs, unique landmarks. |
+| `prettier-plugin-ember` | Is the source formatted consistently? — indentation, attribute layout, quote style. |
+
+---
+
 ## Inline errors in VS Code
 
 Install the official extension: [html-validate.vscode-html-validate](https://marketplace.visualstudio.com/items?itemName=html-validate.vscode-html-validate).
 
-The extension only validates files whose **VS Code language ID** is in its `html-validate.validate` allow-list. The default list is `["html", "javascript", "markdown", "vue", "vue-html"]` — none of which match `.gts` / `.gjs` / `.hbs`. Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
+Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
 
-```json
+```diff
 {
   "html-validate.validate": [
     "html",
@@ -278,26 +143,16 @@ The extension only validates files whose **VS Code language ID** is in its `html
     "markdown",
     "vue",
     "vue-html",
-    "glimmer-ts",
-    "glimmer-js",
-    "handlebars"
++    "glimmer-ts",
++    "glimmer-js",
++    "handlebars"
   ]
 }
 ```
 
-The Glimmer language IDs (`glimmer-ts` for `.gts`, `glimmer-js` for `.gjs`) are registered by the Glimmer / Glint extensions:
-- [`lifeart.vscode-glimmer-syntax`](https://marketplace.visualstudio.com/items?itemName=lifeart.vscode-glimmer-syntax) (syntax highlighting + grammars)
-- [`typed-ember.glint2-vscode`](https://marketplace.visualstudio.com/items?itemName=typed-ember.glint2-vscode) (Glint language service)
+## Glint integration
 
-Either one is enough. (`gts` / `gjs` shown in the language picker are display *aliases* — the actual ID is `glimmer-ts` / `glimmer-js`. Same trick Vue uses with `vue` / `vue-html`.) `handlebars` is a built-in language ID.
-
-After adding the setting, **reload the VS Code window** (Cmd+Shift+P → "Developer: Reload Window"). The html-validate extension activates lazily — if you don't see "HTML-Validate" in the Output dropdown, run **"Developer: Show Running Extensions"** to confirm it loaded, and check **"Workspaces: Manage Workspace Trust"** (the extension refuses to run in untrusted workspaces).
-
-> **If you installed via `pnpm install file:/path/to/html-validate-ember`** and you've updated the local source: pnpm's `file:`-dep cache doesn't always invalidate on source-content changes. Bump the version in `html-validate-ember/package.json` (or run `pnpm install --force` in the consuming project), then reload VS Code. Stale plugin code looks like phantom diagnostics that don't reproduce when running `validate-gts` from the terminal.
-
-## Glint integration (opt-in)
-
-When `@glint/ember-tsc` is installed in your project, the transformer can extract TypeScript type information for two patterns:
+Install `@glint/ember-tsc` in your project and the transformer extracts TypeScript type information for two patterns. Default on when installed; pass `--no-glint` (or `HVE_GLINT=0`) to opt out.
 
 ### 1. String-literal-union narrowing in attribute positions
 
@@ -335,27 +190,13 @@ class MyButton extends Component<{
 
 For components with `Element: unknown` (typically yield-only components) the transformer treats the invocation as transparent — children float into the parent's content model.
 
-### Enabling Glint
+### Disabling Glint
 
-Pass `--glint` to the bundled CLI or set `HVE_GLINT=1` in the environment:
-
-```sh
-npx validate-gts --glint app
-# or, when invoking html-validate directly:
-HVE_GLINT=1 npx html-validate 'app/**/*.gts'
-```
-
-Glint integration adds significant per-file overhead (TS program rebuild + module rewrite + TypeChecker calls). The static-resolution path is the default for that reason; turn Glint on for design-system-style codebases with strict typing discipline.
+Glint adds per-file overhead (TS program build, module rewrite, TypeChecker calls). The cache makes repeat runs over unchanged files cheap, but the file you're actively editing pays the cost each iteration. Pass `--no-glint` (or `HVE_GLINT=0`) to skip — you keep built-in component substitution but lose `Signature['Element']` resolution and `@arg` enum narrowing.
 
 ### Caching
 
-Glint results are content-addressed and cached on disk under `node_modules/.cache/html-validate-ember/glint/`. The cache key includes file SHA + tsconfig SHA + plugin version, so:
-
-- **Repeat runs** (CI, pre-commit, IDE re-validation) skip the entire Glint pipeline for unchanged files. On the audited 207-file codebase: ~464s cold → ~2.5s warm.
-- **Plugin upgrades** invalidate all entries naturally (version is in the key).
-- **Tsconfig changes** invalidate per-project entries.
-
-Set `HVE_NO_CACHE=1` to bypass the cache (e.g. when debugging the Glint pipeline). Set `HVE_DEBUG=1` to print per-file skip reasons during preload (non-gts/gjs, read error, rewrite returned empty/error) — useful when you see a non-zero "skipped" count and want to know what fell out.
+Glint results are content-addressed and cached on disk under `node_modules/.cache/html-validate-ember/glint/`. Set `HVE_NO_CACHE=1` to bypass the cache.
 
 ## Silencing rules
 
@@ -391,27 +232,17 @@ Three layers, broadest to narrowest:
    <header>...</header>
    ```
 
-   Trailing text *after* the closing `]` does **not** parse — html-validate raises `parser-error: Missing end bracket "]" on directive`. The reason has to live inside the brackets.
-
    Variants (per html-validate's [inline-config docs](https://html-validate.org/usage/inline-config.html)):
-   - `html-validate-disable rule` — disables `rule` for the rest of the file (or until re-enabled with `html-validate-enable`).
-   - `html-validate-disable-next rule` — disables for the next element only.
-   - `html-validate-disable-block rule` — disables for all siblings and descendants of the directive's parent that follow the directive. Useful for scoping to e.g. a whole `<dialog>` subtree:
-     ```hbs
-     <dialog>
-       {{!-- [html-validate-disable-block unique-landmark -- pending https://github.com/w3c/html-aria/issues/579] --}}
-       <header>...</header>
-       <section>...</section>
-     </dialog>
-     ```
+   
+<details>
+<summary><strong>How positions work</strong></summary>
 
-## How positions work
+`content-tag` gives byte offsets for each `<template>` block's content. We compute `line:column` for the block's start, attach as the `Source` base, and emit length-equivalent HTML so byte positions inside the template match positions inside the original `.gts`. html-validate adds reported positions to the base. No SourceMap machinery — same approach `html-validate-vue` and `html-validate-angular` use.
 
-`content-tag` gives byte offsets for each `<template>` block's content. We compute `line:column` for the block's start, attach as the `Source` base, and emit length-equivalent HTML so byte positions inside the template match positions inside the original `.gts`. html-validate adds reported positions to the base.
+</details>
 
-No SourceMap machinery — same approach `html-validate-vue` and `html-validate-angular` use.
-
-## Multipass branch validation
+<details>
+<summary><strong>Multipass branch validation</strong></summary>
 
 `{{#if}}/{{else}}` (and `{{else if}}` chains) are validated **per branch by default**. The transformer enumerates branch combinations, yields one html-validate `Source` per combination, and html-validate validates each independently. Errors from every branch surface — including the un-selected branch under single-pass.
 
@@ -421,22 +252,21 @@ Enumeration is **tree-aware**: branches are organized by nesting, and choosing o
 
 The bundled `validate-gts` CLI dedupes identical messages by `(line, column, ruleId, message)` before printing, so an error stable across branches (e.g., a misnested element *outside* the if/else) is reported once even though it lives in every pass. The dedupe util is also exported as `dedupeMultipassReport` from `lib/multipass-dedupe.js` for custom consumers.
 
-## Known limitations
+</details>
 
-- **Static-string scope.** `{{NAME}}` resolves against same-file `const NAME = '...'` declarations and one-level-deep `import { NAME } from './sibling'` (relative paths only — package and path-aliased imports are skipped). `{{this.field}}` resolves against same-file class-field initializers (`field = '...'` or `field: T = '...'`). What's not resolved: transitive re-exports (`export { X } from './...'` chains), default imports, namespace imports, and getters returning literals — Glint narrows some of these to string-literal types when `--glint` is on, which the blanker picks up through a separate code path.
+<details>
+<summary><strong>Known limitations</strong></summary>
+
+- **Static-string scope.** `{{NAME}}` resolves against same-file `const NAME = '...'` declarations and one-level-deep `import { NAME } from './sibling'` (relative paths only — package and path-aliased imports are skipped). `{{this.field}}` resolves against same-file class-field initializers (`field = '...'` or `field: T = '...'`). What's not resolved: transitive re-exports (`export { X } from './...'` chains), default imports, namespace imports, and getters returning literals — Glint narrows some of these to string-literal types when `@glint/ember-tsc` is installed, which the blanker picks up through a separate code path.
 - **`no-implicit-button-type` fires on every untyped `<button>`** regardless of `<form>` ancestry — that's html-validate's strict design (default `type=submit` is non-obvious). The plugin doesn't try to soften it; if you'd rather only flag buttons that actually live inside a `<form>` at runtime (where the default-submit matters), disable the rule project-wide and rely on review / a custom lint:
   ```json
   { "rules": { "no-implicit-button-type": "off" } }
   ```
-  Static "is this `<button>` inside a `<form>`?" detection is feasible in principle (walk ancestors at the AST + chain into PascalCase wrappers) but adds the same per-Source-suppression caveat as `wcag/h32`: a button inside a wrapper component that someone else's template wraps in `<form>` would be silenced in the wrong direction. We left it untouched.
-- **TS-flavored block-param types are stripped, not parsed.** `@glimmer/syntax`'s parser doesn't understand `{{#each items as |item: T|}}`-style annotations (or the comma separators that come with multi-param lists). The transformer pre-strips them to whitespace before Glimmer parses, with balanced-bracket scanning so unions (`A | B`), object types (`{ a: number }`), parenthesized types (`(A | B)[]`), generics (`Map<string, number>`), arrays (`T[]`), and qualified names (`NS.Type`) all work. Length-preserving — AST offsets after the strip match original source. The strip only operates inside `as |…|` ranges of mustache openers; type literals appearing elsewhere in the template aren't touched (and Glimmer wouldn't accept them there anyway).
 
-## Future work
+</details>
 
-- **Custom rules** — html-validate plugins can ship their own rules. Candidates: `ember-prefer-glimmer-comment-directive` (flag `<!-- [html-validate-disable …] -->` and suggest `{{!-- … --}}`), `ember-component-naming` (enforce PascalCase / dotted invocations).
-- **Piecewise string-builder** in `blank.ts` — current `split('')` / `join('')` is O(n) per `<template>` block; not a bottleneck on real codebases (sub-second for 1000-line files).
-
-## Inspecting what gets emitted
+<details>
+<summary><strong>Inspecting what gets emitted</strong></summary>
 
 When debugging a false positive:
 
@@ -445,6 +275,8 @@ node node_modules/html-validate-ember/dump-blanked.js path/to/file.gts
 ```
 
 Prints the original `<template>` body and the length-equivalent HTML the transformer hands to html-validate. False positives are usually traceable to the blanker losing or mis-emitting structure.
+
+</details>
 
 ## Contributing
 

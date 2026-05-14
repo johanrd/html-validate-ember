@@ -405,114 +405,6 @@ function findCloseTagStart(content: string, elementEnd: number): number {
   return -1;
 }
 
-// `@glimmer/syntax`'s parser doesn't understand TS-flavored block params:
-// `{{#each items as |x: T|}}` is sometimes accepted (single simple
-// type), sometimes rejected (multi-param + comma, qualified types,
-// object/parenthesized/union types). When parse fails the whole
-// template is silently skipped. We pre-process the `as |…|` interior
-// so Glimmer sees the normalized space-separated form `as |a b|`
-// regardless. Length-preserving — every stripped char becomes a space
-// so AST loc offsets after the strip match the original source.
-//
-// Strategy: walk the source linearly, find each mustache opener
-// `{{…}}`, locate `as |` and the matching closing `|` (last `|` before
-// `}}`), then walk the param list character-by-character with balanced-
-// bracket tracking for `()`, `{}`, `<>`, `[]` so union (`A | B`),
-// object (`{ a: number }`), parenthesized (`(A | B)[]`), and generic
-// (`Map<string, number>`) types are stripped correctly.
-export function stripBlockParamTypeAnnotations(content: string): string {
-  const buf = content.split('');
-  let i = 0;
-  while (i < content.length - 1) {
-    if (content[i] !== '{' || content[i + 1] !== '{') {
-      i++;
-      continue;
-    }
-    const mustacheEnd = content.indexOf('}}', i + 2);
-    if (mustacheEnd < 0) break;
-    // Find the start of the param list — the `|` after `as`.
-    const asMatch = /\bas\s*\|/.exec(content.slice(i, mustacheEnd));
-    if (!asMatch) {
-      i = mustacheEnd + 2;
-      continue;
-    }
-    const paramStart = i + asMatch.index + asMatch[0].length;
-    // The closing `|` is the LAST `|` before `}}` in the opener — `|`s
-    // before it are union operators inside types.
-    const paramEnd = content.lastIndexOf('|', mustacheEnd - 1);
-    if (paramEnd <= paramStart) {
-      i = mustacheEnd + 2;
-      continue;
-    }
-    stripBlockParamRange(buf, paramStart, paramEnd);
-    i = mustacheEnd + 2;
-  }
-  return buf.join('');
-}
-
-// Walk `[start, end)` (the chars between the opening and closing `|`
-// of `as |…|`), find each `name: TypeExpr` pair and replace the
-// `:` + type-expression bytes with spaces. Comma separators between
-// params also become spaces so Glimmer's space-separated grammar is
-// happy. Length-preserved throughout.
-function stripBlockParamRange(buf: string[], start: number, end: number): void {
-  const isWS = (c: string) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
-  const isIdent = (c: string) => /[A-Za-z0-9_$]/.test(c);
-  const opens = '({[<';
-  const closes = ')}]>';
-
-  let i = start;
-  while (i < end) {
-    // Skip whitespace.
-    while (i < end && isWS(buf[i] ?? '')) i++;
-    if (i >= end) return;
-
-    // Comma between params — strip to space and continue.
-    if (buf[i] === ',') {
-      buf[i] = ' ';
-      i++;
-      continue;
-    }
-
-    // Read identifier (the param name).
-    const idStart = i;
-    while (i < end && isIdent(buf[i] ?? '')) i++;
-    if (i === idStart) {
-      // Unexpected char — defensively advance.
-      i++;
-      continue;
-    }
-
-    // Skip whitespace, then look for `:` (the type annotation marker).
-    while (i < end && isWS(buf[i] ?? '')) i++;
-    if (i >= end || buf[i] !== ':') continue;
-
-    // Walk the type expression with bracket-depth tracking. Terminates
-    // at `,` at depth 0 (next param separator) or end of range. `|` at
-    // any depth is part of the type (union operator), never a separator
-    // — the closing `|` of `as |…|` is OUTSIDE the range we're given.
-    const typeStart = i;
-    let depth = 0;
-    while (i < end) {
-      const c = buf[i] ?? '';
-      if (opens.includes(c)) {
-        depth++;
-      } else if (closes.includes(c)) {
-        if (depth > 0) depth--;
-      } else if (c === ',' && depth === 0) {
-        break;
-      }
-      i++;
-    }
-    for (let k = typeStart; k < i; k++) {
-      const c = buf[k];
-      if (c !== '\n' && c !== '\r') {
-        buf[k] = ' ';
-      }
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Per-element handlers. Each takes the AST node + a mutable `ctx` object
 // that accumulates the rewrite plan (blank ranges, renames, etc.).
@@ -1622,19 +1514,13 @@ function blankTemplateContent(
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): BlankResult | BlankErrorResult {
-  // Pre-strip TS type annotations from block params so Glimmer's parser
-  // accepts `{{#each items as |a: A, b: B|}}` and similar (it rejects
-  // multi-param-with-types and complex types otherwise, silently
-  // dropping the whole template). Length-preserving — AST offsets we
-  // record below still match the original `content` string.
-  const parseInput = stripBlockParamTypeAnnotations(content);
   let ast: AST.Template;
   try {
     // `mode: 'codemod'` preserves source-level distinctions we care about
     // (e.g. long-form `{{!-- ... --}}` vs short-form `{{! ... }}` comments;
     // exact whitespace) — same flag `ember-estree` uses for its
     // `templateOnly: true` path.
-    ast = preprocess(parseInput, { mode: 'codemod' });
+    ast = preprocess(content, { mode: 'codemod' });
   } catch (err) {
     return { content, error: err instanceof Error ? err : new Error(String(err)) };
   }
@@ -2472,16 +2358,9 @@ function blankTemplateContentMultipass(
       blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
     ];
   }
-  // Same pre-strip as `blankTemplateContent` — see that function's
-  // comment for rationale. We need the strip here too because we walk
-  // the AST locally to enumerate branch points before delegating each
-  // combination to `blankTemplateContent` (which strips again on its
-  // own — idempotent since the strip is length-preserving and a second
-  // pass finds nothing left to strip).
-  const parseInput = stripBlockParamTypeAnnotations(content);
   let ast: AST.Template;
   try {
-    ast = preprocess(parseInput, { mode: 'codemod' });
+    ast = preprocess(content, { mode: 'codemod' });
   } catch (err) {
     return [{ content, error: err instanceof Error ? err : new Error(String(err)) }];
   }
