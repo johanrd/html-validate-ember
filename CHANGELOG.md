@@ -1,5 +1,20 @@
 # Changelog
 
+## Release (2026-05-14)
+
+* html-validate-ember 0.7.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#27](https://github.com/johanrd/html-validate-ember/pull/27) feat: support short-form Glimmer comment directives ([@johanrd](https://github.com/johanrd))
+
+#### :house: Internal
+* `html-validate-ember`
+  * [#29](https://github.com/johanrd/html-validate-ember/pull/29) chore: trim README and remove dead block-param strip code ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-12)
 
 * html-validate-ember 0.6.0 (minor)
