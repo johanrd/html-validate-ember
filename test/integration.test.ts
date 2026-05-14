@@ -711,21 +711,6 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(1);
   });
 
-  it('block-param-types: multi-param `as |a: A, b: B|` parses and the body validates', async () => {
-    // Glimmer's parser rejects multi-param block-params with type
-    // annotations (and the commas between them). The transformer
-    // pre-strips both before Glimmer sees the source so the template
-    // parses normally. We verify by asserting that a body-level error
-    // (duplicate id `dup`) fires — proving the body was actually
-    // walked, not silently skipped.
-    const r = await validate('block-param-types.gts');
-    const dupIds = r.messages.filter((m) => m.rule === 'no-dup-id');
-    expect(
-      dupIds,
-      `expected no-dup-id from body of multi-param block; got: ${JSON.stringify(r.messages)}`,
-    ).toHaveLength(1);
-  });
-
   it('multipass-multi-template: no-unused-disable suppression is scoped to the branched template, not the whole file', async () => {
     // Two top-level templates in one file. Header (no branches) has a
     // directive that's really unused — `no-unused-disable` MUST fire

@@ -16,7 +16,7 @@ import type * as TS from 'typescript';
 import { Preprocessor } from 'content-tag';
 import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
-import { isComponentTag, isNativeTag, stripBlockParamTypeAnnotations } from '../blank.js';
+import { isComponentTag, isNativeTag } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
@@ -685,13 +685,7 @@ function buildConsumerInfo(filename: string, contents: string): ConsumerInfo {
   for (const block of templates) {
     let ast: AST.Template;
     try {
-      // Match `blankTemplateContent`'s preprocessing: strip TS-flavored
-      // block-param type annotations (`as |x: T|`) before parsing so
-      // typed-block consumers don't get silently dropped (which would
-      // leave argsByLoc/dottedBindings empty for their invocations).
-      ast = glimmerPreprocess(stripBlockParamTypeAnnotations(block.contents), {
-        mode: 'codemod',
-      });
+      ast = glimmerPreprocess(block.contents, { mode: 'codemod' });
     } catch {
       continue;
     }

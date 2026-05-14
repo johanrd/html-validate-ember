@@ -28,17 +28,8 @@ import type * as TS from 'typescript';
 import path from 'node:path';
 import fs from 'node:fs';
 
-import { stripBlockParamTypeAnnotations } from '../../blank.js';
-
-// Match the rest of the pipeline (`blankTemplateContent`, `transform.ts`,
-// `buildConsumerInfo`): strip TS-flavored block-param type annotations
-// (`as |item: T|`) before `@glimmer/syntax` sees the template, and parse
-// in `codemod` mode. Without this, any addon template using typed block
-// params would throw at parse time and silently fall through to
-// transparent — losing wrapper / yield-ancestor / polymorphic
-// resolution and reintroducing the FPs the resolver exists to prevent.
 function parseTemplate(content: string): AST.Template {
-  return preprocess(stripBlockParamTypeAnnotations(content), { mode: 'codemod' });
+  return preprocess(content, { mode: 'codemod' });
 }
 
 const ctPreprocessor = new Preprocessor();
