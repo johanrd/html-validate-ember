@@ -102,6 +102,19 @@ describe('end-to-end fixtures', () => {
     expect(r.messages[0]!.rule).toBe('attribute-allowed-values');
   });
 
+  it('glimmer-comment-disable: long-form {{!-- ... --}} directive suppresses the rule', async () => {
+    const r = await validate('glimmer-comment-disable.gts');
+    expect(r.errorCount).toBe(0);
+  });
+
+  it('glimmer-comment-disable-short: short-form {{! ... }} directive suppresses the rule', async () => {
+    // Confirms the Prettier-collapsed short form parses as an
+    // html-validate directive end-to-end (not just at the blanker
+    // level). All three dir='bogus' violations should be silenced.
+    const r = await validate('glimmer-comment-disable-short.gts');
+    expect(r.errorCount).toBe(0);
+  });
+
   it('components: clean (mustaches/components/blocks all handled)', async () => {
     const r = await validate('components.gts');
     expect(r.valid).toBe(true);

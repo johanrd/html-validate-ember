@@ -380,9 +380,10 @@ Three layers, broadest to narrowest:
    ```hbs
    {{!-- [html-validate-disable-next no-dup-id] --}}
    <div id={{this.id}}>x</div>
-   ```
 
-   Use the long form `{{!-- ... --}}`, not `{{! ... }}`. The transformer rewrites the long form to a `<!-- -->` HTML comment in place; the short form is too short to fit `<!-- -->` while preserving byte length.
+   {{! [html-validate-disable-next no-dup-id] }}
+   <div id={{this.id}}>x</div>
+   ```
 
    **Inline reason / link** — append `-- text` *inside* the brackets (html-validate's directive parser splits on `--` after the rule name):
    ```hbs

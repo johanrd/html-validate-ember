@@ -1445,8 +1445,9 @@ function handleMustacheStatement(node: AST.MustacheStatement, ctx: Context): voi
   }
 }
 
-// Handle a `{{!-- comment --}}` AST node. If it's an html-validate directive,
-// rewrite as an HTML comment in place (length-preserved) so html-validate's
+// Handle a `{{!-- ... --}}` (long form) or `{{! ... }}` (short form)
+// MustacheCommentStatement. If it's an html-validate directive, rewrite
+// as an HTML comment in place (length-preserved) so html-validate's
 // parser sees the directive. Otherwise blank.
 function handleMustacheCommentStatement(
   node: AST.MustacheCommentStatement,
@@ -1460,36 +1461,62 @@ function handleMustacheCommentStatement(
   const wholeStart = start;
   const wholeEnd = endOffset(node);
   const fullText = content.slice(wholeStart, wholeEnd);
-  // `{{!--` (5 chars) → `<!-- ` (5 chars) and `--}}` (4 chars) → ` -->`
-  // (4 chars) — same length, inner content untouched. Lets users write
-  // directives without triggering `ember/template-no-html-comments`.
-  //
-  // The short form `{{! ... }}` is NOT supported: its markers are 5 chars
-  // total, 2 chars shorter than `<!-- -->`, so we can't substitute in
-  // place without changing length.
+
   if (
-    /\[html-validate-(?:disable|enable)/.test(fullText) &&
-    !/[\n\r]/.test(fullText) &&
-    fullText.startsWith('{{!--') &&
-    fullText.endsWith('--}}')
+    !/\[html-validate-(?:disable|enable)/.test(fullText) ||
+    /[\n\r]/.test(fullText)
   ) {
-    const newPrefix = '<!-- ';
-    const newSuffix = ' -->';
-    for (let i = 0; i < newPrefix.length; i++) {
-      if (fullText[i] !== newPrefix[i]) {
-        renames.push([wholeStart + i, wholeStart + i + 1, newPrefix[i]!]);
-      }
-    }
-    const totalLen = wholeEnd - wholeStart;
-    for (let i = 0; i < newSuffix.length; i++) {
-      const idx = totalLen - newSuffix.length + i;
-      if (fullText[idx] !== newSuffix[i]) {
-        renames.push([wholeStart + idx, wholeStart + idx + 1, newSuffix[i]!]);
-      }
-    }
+    blankRanges.push(rangeOf(node));
     return;
   }
+
+  // Long form: `{{!--` (5) → `<!-- ` (5) and `--}}` (4) → ` -->` (4) —
+  // marker swap preserves byte length, inner content untouched.
+  if (fullText.startsWith('{{!--') && fullText.endsWith('--}}')) {
+    rewriteCommentMarkers(fullText, wholeStart, wholeEnd, '<!-- ', ' -->', renames);
+    return;
+  }
+
+  // Short form: `{{! ` (4) → `<!--` (4) and ` }}` (3) → `-->` (3) — we
+  // steal the inner padding spaces Prettier always emits to absorb the
+  // 2-byte marker delta. Requires the Prettier-normalized
+  // `{{! <content> }}` shape (single space on each side); other shapes
+  // fall through to blank.
+  //
+  // Why we need this: Prettier's glimmer printer hard-codes the collapse
+  // from `{{!-- ... --}}` to `{{! ... }}` whenever the inner content
+  // doesn't itself contain `}}`. There is no opt-out, so users running
+  // Prettier could not previously place inline directives without
+  // dropping to raw `<!-- -->` HTML comments (which `ember/template-no-
+  // html-comments` then flags).
+  if (fullText.startsWith('{{! ') && fullText.endsWith(' }}')) {
+    rewriteCommentMarkers(fullText, wholeStart, wholeEnd, '<!--', '-->', renames);
+    return;
+  }
+
   blankRanges.push(rangeOf(node));
+}
+
+function rewriteCommentMarkers(
+  fullText: string,
+  wholeStart: number,
+  wholeEnd: number,
+  newPrefix: string,
+  newSuffix: string,
+  renames: Array<[number, number, string]>,
+): void {
+  for (let i = 0; i < newPrefix.length; i++) {
+    if (fullText[i] !== newPrefix[i]) {
+      renames.push([wholeStart + i, wholeStart + i + 1, newPrefix[i]!]);
+    }
+  }
+  const totalLen = wholeEnd - wholeStart;
+  for (let i = 0; i < newSuffix.length; i++) {
+    const idx = totalLen - newSuffix.length + i;
+    if (fullText[idx] !== newSuffix[i]) {
+      renames.push([wholeStart + idx, wholeStart + idx + 1, newSuffix[i]!]);
+    }
+  }
 }
 
 // Handle a `{{#if}}/{{else}}/{{/if}}` (and `{{#each}}` / `{{#unless}}` /
