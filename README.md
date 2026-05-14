@@ -135,7 +135,7 @@ Install the official extension: [html-validate.vscode-html-validate](https://mar
 
 Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
 
-```diff
+```json
 {
   "html-validate.validate": [
     "html",
@@ -143,9 +143,9 @@ Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
     "markdown",
     "vue",
     "vue-html",
-+    "glimmer-ts",
-+    "glimmer-js",
-+    "handlebars"
+    "glimmer-ts",
+    "glimmer-js",
+    "handlebars"
   ]
 }
 ```
@@ -280,4 +280,4 @@ Prints the original `<template>` body and the length-equivalent HTML the transfo
 
 ## Contributing
 
-PRs welcome. Run `npm test` for the unit + integration suite.
+PRs welcome. CI runs `pnpm install --frozen-lockfile`, `pnpm run build`, `pnpm run typecheck:tests`, and `pnpm test` — mirror those locally.
