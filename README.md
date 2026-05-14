@@ -2,7 +2,7 @@
   <img src="./assets/logo.png" alt="HTML-validate ember" width="480" />
 </p>
 
-Use [HTML-validate](https://html-validate.org) on your Ember templates — `.gts`, `.gjs`, and classic `.hbs`. Run HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
+[HTML-validate](https://html-validate.org) for your Ember templates (`.gts`, `.gjs`, `.hbs`): Run HTML5 spec checks, accessibility rules, content-model rules, and form-correctness rules — with diagnostics pointing at exact source positions.
 
 ## Install
 
