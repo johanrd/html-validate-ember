@@ -1,5 +1,17 @@
 # Changelog
 
+## Release (2026-05-19)
+
+* html-validate-ember 0.7.1 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#36](https://github.com/johanrd/html-validate-ember/pull/36) Fix divergence bug (#33) in non-glint mode where yieldAncestorTag was discarded ([@johanrd](https://github.com/johanrd))
+  * [#35](https://github.com/johanrd/html-validate-ember/pull/35) Fix for false positive (#34): Submit button in a component with a <form> not detected ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-14)
 
 * html-validate-ember 0.7.0 (minor)
