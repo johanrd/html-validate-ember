@@ -1693,6 +1693,22 @@ function detectStructuralYieldRules(
           (isNativeTag(stmt.tag) ? stmt.tag : null) ||
           (stmtKey ? glintComponentTagMap?.get(stmtKey) : undefined);
         if (stmtResolved === 'form') {
+          // `stmtResolved === 'form'` is reached two ways: the consumer
+          // wrote a literal `<form>` (native tag), OR a PascalCase /
+          // dotted component invocation resolved to `<form>` via the
+          // tag map. In the latter case the form's body — including any
+          // submit button — lives in the COMPONENT's own template, not
+          // at this call site. The blanker only substitutes the root
+          // tag, so the substituted `<form>` carries at most the
+          // consumer's own children (none for `<MyForm />`; whatever
+          // the consumer wrote for `<MyForm>…</MyForm>`) and never the
+          // component's own submit — `wcag/h32` FP-fires here. The
+          // `!hasStaticSubmit` guard in `elementYieldsAndLacksSubmit`
+          // still bails when the consumer's own children include a
+          // submit (then wcag/h32 wouldn't fire anyway). A genuinely
+          // submit-less form is still caught when the component's own
+          // file is validated directly.
+          const formTagFromComponentSubstitution = !isNativeTag(stmt.tag);
           if (
             formHasInputModifier(stmt) ||
             elementYieldsAndLacksSubmit(
@@ -1700,6 +1716,7 @@ function detectStructuralYieldRules(
               branchSelections,
               glintComponentTagMap,
               glintComponentAttrMap,
+              formTagFromComponentSubstitution,
             )
           ) {
             out.push('wcag/h32');
@@ -1784,15 +1801,26 @@ function selectBranch(
   return inverseHasSubmit && !programHasSubmit ? block.inverse : block.program;
 }
 
-// True when a `<form>` body contains `{{yield}}` (or `{{has-block}}`)
-// somewhere AND has no statically-detectable submit-style child. The
-// yield means the consumer might supply a submit button at runtime;
-// the absence of a static submit means wcag/h32 would FP-fire on the
-// blanked output. Together: the suppression is needed.
+// True when a `<form>` has an opaque body source AND no statically-
+// detectable submit-style child. Two opaque sources:
 //
-// If a static submit DOES exist, wcag/h32 wouldn't fire and our
-// injected `<!--html-validate-disable wcag/h32-->` would itself be
-// flagged "unused" by `no-unused-disable`. So we bail in that case.
+//   - `{{yield}}` / `{{has-block}}` somewhere in the body: the consumer
+//     might supply a submit button at runtime (PR #17).
+//   - `formTagFromComponentSubstitution`: the `<form>` tag is itself
+//     the resolved root of a component invocation (`<MyForm />` or
+//     `<MyForm>…</MyForm>` → `<form>`). The form's real body lives in
+//     the component's own template; the blanker only substitutes the
+//     root tag, so the substituted `<form>` carries at most the
+//     consumer's own children and never the component's submit button,
+//     regardless of what the component renders inside (issue #34).
+//
+// Either way the absence of a static submit means wcag/h32 would
+// FP-fire on the blanked output, so the suppression is needed.
+//
+// If a static submit DOES exist (here, among the children the consumer
+// projects through the component's `{{yield}}`), wcag/h32 wouldn't fire
+// and our injected `<!--html-validate-disable wcag/h32-->` would itself
+// be flagged "unused" by `no-unused-disable`. So we bail in that case.
 //
 // "Statically-detectable submit" means a `<button>` whose `type` is
 // absent (default `submit` inside a form) or statically equals
@@ -2022,6 +2050,12 @@ function elementYieldsAndLacksSubmit(
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
   glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+  // True when this `<form>` is the substituted root of a component
+  // invocation rather than a literal consumer-written `<form>`. The
+  // component owns the form body, so the blanked call site can never
+  // show the component's own submit button. Treated as an opaque body
+  // source — same role as `{{yield}}`. See the header comment.
+  formTagFromComponentSubstitution = false,
 ): boolean {
   let hasYield = false;
   let hasStaticSubmit = false;
@@ -2095,10 +2129,17 @@ function elementYieldsAndLacksSubmit(
     }
   }
   walk(form.children);
-  // Suppress wcag/h32 for either an opaque-source form (yield-bearing,
-  // PR #17) OR a form whose only "candidates" for submit are
-  // unresolved component invocations (heuristic above).
-  return (hasYield || hasUnresolvedComponent) && !hasStaticSubmit;
+  // Suppress wcag/h32 for an opaque-source form: yield-bearing (PR #17),
+  // a form whose only "candidates" for submit are unresolved component
+  // invocations (heuristic above), OR a `<form>` that is itself a
+  // component substitution whose body lives in the component's template
+  // (issue #34) — in every case the blanked call site can't show the
+  // real submit, but a static submit among the consumer's own children
+  // still disqualifies (it'd make the directive `no-unused-disable`).
+  return (
+    (hasYield || hasUnresolvedComponent || formTagFromComponentSubstitution) &&
+    !hasStaticSubmit
+  );
 }
 
 // True when a `<fieldset>` body has opaque legend-source content AND

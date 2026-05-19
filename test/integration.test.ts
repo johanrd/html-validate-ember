@@ -507,6 +507,31 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('issue #34: self-closing component that resolves to <form> with its OWN static submit does not FP-fire wcag/h32', async () => {
+    // `<FormWithSubmit />` resolves to `<form>`; the component's
+    // template has a `<button type="submit">`, but the blanker only
+    // substitutes the root tag, so the consumer's call site is an
+    // empty substituted `<form>`. Pre-fix, `detectStructuralYieldRules`
+    // only suppressed yield-bearing forms — a self-closing component
+    // invocation had no yield and no consumer-side submit, so wcag/h32
+    // FP-fired at the invocation. The form's submit is the component's
+    // responsibility (caught if its own file is genuinely submit-less).
+    const r = await validate('component-form-own-submit-consumer.gjs');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a component invocation that resolves to <form> and owns its submit; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    // The suppression must be load-bearing, not gratuitous: wcag/h32
+    // genuinely fires on the empty substituted <form>, so the injected
+    // disable directive is used and `no-unused-disable` stays quiet.
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — the wcag/h32 suppression is load-bearing here; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('fieldset-with-component-content: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}</fieldset>` does not FP-fire wcag/h71 in either pass', async () => {
     // Multipass case where the fieldset branches into either yield
     // (program) or component invocation (inverse). Without the
