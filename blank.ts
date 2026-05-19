@@ -1698,10 +1698,16 @@ function detectStructuralYieldRules(
           // dotted component invocation resolved to `<form>` via the
           // tag map. In the latter case the form's body — including any
           // submit button — lives in the COMPONENT's own template, not
-          // at this call site, so the blanked output is an effectively
-          // empty `<form>` and `wcag/h32` FP-fires here. (A genuinely
+          // at this call site. The blanker only substitutes the root
+          // tag, so the substituted `<form>` carries at most the
+          // consumer's own children (none for `<MyForm />`; whatever
+          // the consumer wrote for `<MyForm>…</MyForm>`) and never the
+          // component's own submit — `wcag/h32` FP-fires here. The
+          // `!hasStaticSubmit` guard in `elementYieldsAndLacksSubmit`
+          // still bails when the consumer's own children include a
+          // submit (then wcag/h32 wouldn't fire anyway). A genuinely
           // submit-less form is still caught when the component's own
-          // file is validated directly.)
+          // file is validated directly.
           const formTagFromComponentSubstitution = !isNativeTag(stmt.tag);
           if (
             formHasInputModifier(stmt) ||
@@ -1801,11 +1807,12 @@ function selectBranch(
 //   - `{{yield}}` / `{{has-block}}` somewhere in the body: the consumer
 //     might supply a submit button at runtime (PR #17).
 //   - `formTagFromComponentSubstitution`: the `<form>` tag is itself
-//     the resolved root of a component invocation (`<MyForm />` →
-//     `<form>`). The form's real body lives in the component's own
-//     template; the blanker only substitutes the root tag, so the
-//     consumer's blanked output is an empty `<form>` regardless of
-//     what the component renders inside (issue #34).
+//     the resolved root of a component invocation (`<MyForm />` or
+//     `<MyForm>…</MyForm>` → `<form>`). The form's real body lives in
+//     the component's own template; the blanker only substitutes the
+//     root tag, so the substituted `<form>` carries at most the
+//     consumer's own children and never the component's submit button,
+//     regardless of what the component renders inside (issue #34).
 //
 // Either way the absence of a static submit means wcag/h32 would
 // FP-fire on the blanked output, so the suppression is needed.
