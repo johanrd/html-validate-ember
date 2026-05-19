@@ -20,9 +20,9 @@ import { isComponentTag, isNativeTag } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
 import { readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
-import { STRUCTURAL_CHILD_TAGS } from './element-sets.js';
 import { findTemplateSource } from './resolver/template-source.js';
 import {
+  chooseSubstitution,
   resolveTemplate,
   resolveThisProp,
   resolveYieldHashBinding,
@@ -583,31 +583,11 @@ function applyResolution(
   }
   if (!isNativeTag(resolution.tag)) return;
 
-  let chosenTag = resolution.tag;
-  let chosenAttrs: Map<string, string> = resolution.attrs;
-  let hasSplat = resolution.hasSplat;
-  let fromYieldAncestor = false;
-  const yieldTag = resolution.yieldAncestorTag;
-  if (
-    yieldTag &&
-    yieldTag !== resolution.tag &&
-    !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
-    // Guard against substituting the invocation with a tag that
-    // itself only makes sense under a specific parent (e.g.
-    // `<table><thead>{{yield}}</thead></table>` — preferring
-    // `<thead>` would put it under whatever the call-site parent
-    // happens to be, often `<div>`, reintroducing the very
-    // element-permitted-parent FPs this preference is meant to
-    // suppress). Keep the outer wrapper when the yield-ancestor
-    // itself is structural-only.
-    !STRUCTURAL_CHILD_TAGS.has(yieldTag) &&
-    isNativeTag(yieldTag)
-  ) {
-    chosenTag = yieldTag;
-    chosenAttrs = resolution.yieldAncestorAttrs ?? new Map();
-    hasSplat = true;
-    fromYieldAncestor = true;
-  }
+  // Yield-ancestor preference + guards live in the shared
+  // `chooseSubstitution` so the canonical-resolver path
+  // (`buildResolutionMaps`) applies the exact same rule (issue #33).
+  const { tag: chosenTag, attrs: chosenAttrs, hasSplat, fromYieldAncestor } =
+    chooseSubstitution(resolution);
 
   componentTagMap.set(key, chosenTag);
   componentAttrMap.set(key, {

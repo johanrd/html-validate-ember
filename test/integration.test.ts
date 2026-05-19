@@ -296,6 +296,51 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('issue #33: component resolving to <nav><ol>{{yield}}</ol></nav> places yielded <li> under the <ol> yield-ancestor (canonical resolver path)', async () => {
+    // `<Breadcrumb>` resolves to outer `<nav>` with yield-ancestor
+    // `<ol>`; `<BreadcrumbItem>` resolves to `<li>`. The yield-ancestor
+    // preference must substitute `<Breadcrumb>` as `<ol>` so the
+    // yielded `<li>` validates against `<ol>`, not `<nav>`. The Glint
+    // path (`applyResolution`) always did this; the canonical-resolver
+    // path (`buildResolutionMaps`) did NOT — it discarded the
+    // yield-ancestor and FP-fired element-permitted-content/-parent.
+    // `HVE_GLINT=0` forces that previously-broken path; assert it's
+    // fixed (the shared `chooseSubstitution` now backs both).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '0';
+    try {
+      const r = await validate('breadcrumb-consumer.gjs');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire — <li> lands inside the <ol> yield-ancestor; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('issue #33: same fixture is also clean on the Glint path', async () => {
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('breadcrumb-consumer.gjs');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire on the Glint path either; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('multi-template-file-consumer: a component in a multi-template file does NOT get tagged with the first template block\'s root element', async () => {
     // Mirrors limber's `apps/repl/app/templates/docs/support/api.gts`
     // pattern: a file with multiple top-level `<template>` blocks
