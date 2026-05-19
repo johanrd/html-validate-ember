@@ -102,6 +102,19 @@ describe('end-to-end fixtures', () => {
     expect(r.messages[0]!.rule).toBe('attribute-allowed-values');
   });
 
+  it('glimmer-comment-disable: long-form {{!-- ... --}} directive suppresses the rule', async () => {
+    const r = await validate('glimmer-comment-disable.gts');
+    expect(r.errorCount).toBe(0);
+  });
+
+  it('glimmer-comment-disable-short: short-form {{! ... }} directive suppresses the rule', async () => {
+    // Confirms the Prettier-collapsed short form parses as an
+    // html-validate directive end-to-end (not just at the blanker
+    // level). All three dir='bogus' violations should be silenced.
+    const r = await validate('glimmer-comment-disable-short.gts');
+    expect(r.errorCount).toBe(0);
+  });
+
   it('components: clean (mustaches/components/blocks all handled)', async () => {
     const r = await validate('components.gts');
     expect(r.valid).toBe(true);
@@ -276,6 +289,51 @@ describe('end-to-end fixtures', () => {
       expect(
         offenders,
         `element-permitted-content / -parent must not fire when wrapper has multi-yield template; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('issue #33: component resolving to <nav><ol>{{yield}}</ol></nav> places yielded <li> under the <ol> yield-ancestor (canonical resolver path)', async () => {
+    // `<Breadcrumb>` resolves to outer `<nav>` with yield-ancestor
+    // `<ol>`; `<BreadcrumbItem>` resolves to `<li>`. The yield-ancestor
+    // preference must substitute `<Breadcrumb>` as `<ol>` so the
+    // yielded `<li>` validates against `<ol>`, not `<nav>`. The Glint
+    // path (`applyResolution`) always did this; the canonical-resolver
+    // path (`buildResolutionMaps`) did NOT — it discarded the
+    // yield-ancestor and FP-fired element-permitted-content/-parent.
+    // `HVE_GLINT=0` forces that previously-broken path; assert it's
+    // fixed (the shared `chooseSubstitution` now backs both).
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '0';
+    try {
+      const r = await validate('breadcrumb-consumer.gjs');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire — <li> lands inside the <ol> yield-ancestor; got: ${JSON.stringify(r.messages)}`,
+      ).toHaveLength(0);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
+  it('issue #33: same fixture is also clean on the Glint path', async () => {
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = '1';
+    try {
+      const r = await validate('breadcrumb-consumer.gjs');
+      const offenders = r.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
+      expect(
+        offenders,
+        `element-permitted-content / -parent must not fire on the Glint path either; got: ${JSON.stringify(r.messages)}`,
       ).toHaveLength(0);
     } finally {
       if (prevGlint === undefined) delete process.env['HVE_GLINT'];
@@ -494,6 +552,31 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('issue #34: self-closing component that resolves to <form> with its OWN static submit does not FP-fire wcag/h32', async () => {
+    // `<FormWithSubmit />` resolves to `<form>`; the component's
+    // template has a `<button type="submit">`, but the blanker only
+    // substitutes the root tag, so the consumer's call site is an
+    // empty substituted `<form>`. Pre-fix, `detectStructuralYieldRules`
+    // only suppressed yield-bearing forms — a self-closing component
+    // invocation had no yield and no consumer-side submit, so wcag/h32
+    // FP-fired at the invocation. The form's submit is the component's
+    // responsibility (caught if its own file is genuinely submit-less).
+    const r = await validate('component-form-own-submit-consumer.gjs');
+    const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      h32,
+      `wcag/h32 must not fire on a component invocation that resolves to <form> and owns its submit; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+    // The suppression must be load-bearing, not gratuitous: wcag/h32
+    // genuinely fires on the empty substituted <form>, so the injected
+    // disable directive is used and `no-unused-disable` stays quiet.
+    const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
+    expect(
+      unused,
+      `no-unused-disable must not fire — the wcag/h32 suppression is load-bearing here; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('fieldset-with-component-content: `<fieldset>{{#if (has-block)}}{{yield}}{{else}}<C />{{/if}}</fieldset>` does not FP-fire wcag/h71 in either pass', async () => {
     // Multipass case where the fieldset branches into either yield
     // (program) or component invocation (inverse). Without the
@@ -695,21 +778,6 @@ describe('end-to-end fixtures', () => {
     expect(
       dirErrors,
       `expected attribute-allowed-values on dir; got: ${JSON.stringify(r.messages)}`,
-    ).toHaveLength(1);
-  });
-
-  it('block-param-types: multi-param `as |a: A, b: B|` parses and the body validates', async () => {
-    // Glimmer's parser rejects multi-param block-params with type
-    // annotations (and the commas between them). The transformer
-    // pre-strips both before Glimmer sees the source so the template
-    // parses normally. We verify by asserting that a body-level error
-    // (duplicate id `dup`) fires — proving the body was actually
-    // walked, not silently skipped.
-    const r = await validate('block-param-types.gts');
-    const dupIds = r.messages.filter((m) => m.rule === 'no-dup-id');
-    expect(
-      dupIds,
-      `expected no-dup-id from body of multi-param block; got: ${JSON.stringify(r.messages)}`,
     ).toHaveLength(1);
   });
 

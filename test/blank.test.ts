@@ -49,6 +49,8 @@ describe('length preservation invariant', () => {
     '<p>Prefix {{value}} suffix</p>',
     '<input class="input input--{{size}}" />',
     '{{!-- [html-validate-disable rule] --}}<div>x</div>',
+    '{{! [html-validate-disable rule] }}<div>x</div>',
+    '{{!  [html-validate-disable rule]  }}<div>x</div>',
   ];
   it.each(cases)('preserves byte length: %s', (src) => {
     const out = blank(src);
@@ -76,6 +78,13 @@ describe('mustache blanking', () => {
 
   it('blanks {{!-- comment --}}', () => {
     const src = '<div>{{!-- a comment --}}</div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('comment');
+  });
+
+  it('blanks {{! short-form comment }}', () => {
+    const src = '<div>{{! a comment }}</div>';
     const out = blank(src);
     expect(out.content).toHaveLength(src.length);
     expect(out.content).not.toContain('comment');
@@ -164,6 +173,86 @@ function injectedAttrsAt(
 ): Set<string> {
   return new Set((out.attrInjections?.get(offset) ?? []).map((i) => i.attr));
 }
+
+describe('html-validate directive comment rewrite', () => {
+  // Long form: `{{!-- [html-validate-disable rule] --}}` rewritten to
+  // `<!-- [html-validate-disable rule] -->` so html-validate's parser
+  // sees the directive. Marker swap is length-preserving by design.
+  it('rewrites {{!-- [html-validate-disable …] --}} long form to HTML comment', () => {
+    const src = '{{!-- [html-validate-disable no-dup-id] --}}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    // Long-form rewrite preserves the original inner padding (` foo `)
+    // on top of the new marker spacing (`<!-- ` / ` -->`), yielding 2
+    // leading and 2 trailing spaces inside.
+    expect(out.content).toContain('<!--  [html-validate-disable no-dup-id]  -->');
+    expect(out.content).not.toContain('{{!--');
+  });
+
+  // Short form: Prettier's glimmer printer collapses the long form to
+  // `{{! ... }}` whenever the inner content has no `}}`. We absorb the
+  // 2-byte marker delta by stealing the inner padding spaces, so
+  // `{{! [foo] }}` → `<!--[foo]-->` is length-preserving.
+  it('rewrites {{! [html-validate-disable …] }} short form to HTML comment', () => {
+    const src = '{{! [html-validate-disable no-dup-id] }}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toContain('<!--[html-validate-disable no-dup-id]-->');
+    expect(out.content).not.toContain('{{!');
+  });
+
+  it('rewrites {{!  …  }} short form with double padding (one space stays inside)', () => {
+    const src = '{{!  [html-validate-disable no-dup-id]  }}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toContain('<!-- [html-validate-disable no-dup-id] -->');
+  });
+
+  it('rewrites disable-next short form', () => {
+    const src = '{{! [html-validate-disable-next no-dup-id] }}\n<div id="x"></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toContain('<!--[html-validate-disable-next no-dup-id]-->');
+  });
+
+  it('honors inline reason text inside short-form brackets', () => {
+    const src = '{{! [html-validate-disable-next no-dup-id -- pending https://x/123] }}\n<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).toContain(
+      '<!--[html-validate-disable-next no-dup-id -- pending https://x/123]-->',
+    );
+  });
+
+  // Falling-through shapes: when the short form lacks the leading or
+  // trailing padding space we have nothing to steal, so we'd have to
+  // shift downstream offsets. Instead we blank the comment (directive
+  // is silently ineffective) and preserve byte length. Prettier always
+  // emits the padded shape, so this only bites hand-written sources.
+  it('blanks short form without trailing padding space', () => {
+    const src = '{{! [html-validate-disable rule]}}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('html-validate-disable');
+    expect(out.content).not.toContain('<!--');
+  });
+
+  it('blanks short form without leading padding space', () => {
+    const src = '{{![html-validate-disable rule] }}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('html-validate-disable');
+    expect(out.content).not.toContain('<!--');
+  });
+
+  it('blanks short form with no padding spaces', () => {
+    const src = '{{![html-validate-disable rule]}}<div></div>';
+    const out = blank(src);
+    expect(out.content).toHaveLength(src.length);
+    expect(out.content).not.toContain('html-validate-disable');
+    expect(out.content).not.toContain('<!--');
+  });
+});
 
 describe('component substitution (transparent fallback)', () => {
   // Without Glint resolution, component invocations have their open and
@@ -649,10 +738,6 @@ describe('Glint substitution: self-closing component → native tag (FP fix)', (
     // After Glimmer normalization block params look like `as |item index|`
     // (space-separated). The blanker's regex `\|[^|]*\|` covers any
     // non-pipe contents, so multi-param forms get blanked uniformly.
-    // Typed forms (`as |item: T|`) are stripped earlier by
-    // `stripBlockParamTypeAnnotations` before Glimmer's parser sees them,
-    // so by the time the AST reaches the blanker the type annotations are
-    // gone — no extra coverage needed at this layer.
     const src = '<Each @items={{this.xs}} as |item index|>x</Each>';
     const map = new Map([[locKey(src, 'Each'), 'ul']]);
     const r = blankWithMap(src, map);

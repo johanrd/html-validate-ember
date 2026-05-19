@@ -1,18 +1,18 @@
 {
   "solution": {
     "html-validate-ember": {
-      "impact": "minor",
-      "oldVersion": "0.5.0",
-      "newVersion": "0.6.0",
+      "impact": "patch",
+      "oldVersion": "0.7.0",
+      "newVersion": "0.7.1",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "minor",
-          "reason": "Appears in changelog section :rocket: Enhancement"
+          "impact": "patch",
+          "reason": "Appears in changelog section :bug: Bug Fix"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-12)\n\n* html-validate-ember 0.6.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#25](https://github.com/johanrd/html-validate-ember/pull/25) Widen peer dep. range of html-validate to support v11 ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-19)\n\n* html-validate-ember 0.7.1 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#36](https://github.com/johanrd/html-validate-ember/pull/36) Fix divergence bug (#33) in non-glint mode where yieldAncestorTag was discarded ([@johanrd](https://github.com/johanrd))\n  * [#35](https://github.com/johanrd/html-validate-ember/pull/35) Fix for false positive (#34): Submit button in a component with a <form> not detected ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }

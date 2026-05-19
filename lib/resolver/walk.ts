@@ -28,17 +28,10 @@ import type * as TS from 'typescript';
 import path from 'node:path';
 import fs from 'node:fs';
 
-import { stripBlockParamTypeAnnotations } from '../../blank.js';
+import { STRUCTURAL_CHILD_TAGS } from '../element-sets.js';
 
-// Match the rest of the pipeline (`blankTemplateContent`, `transform.ts`,
-// `buildConsumerInfo`): strip TS-flavored block-param type annotations
-// (`as |item: T|`) before `@glimmer/syntax` sees the template, and parse
-// in `codemod` mode. Without this, any addon template using typed block
-// params would throw at parse time and silently fall through to
-// transparent — losing wrapper / yield-ancestor / polymorphic
-// resolution and reintroducing the FPs the resolver exists to prevent.
 function parseTemplate(content: string): AST.Template {
-  return preprocess(stripBlockParamTypeAnnotations(content), { mode: 'codemod' });
+  return preprocess(content, { mode: 'codemod' });
 }
 
 const ctPreprocessor = new Preprocessor();
@@ -92,6 +85,69 @@ export interface ResolveOptions {
   /** Visited set + depth — cycle/recursion guard for cross-component recursion. */
   visited?: Set<string>;
   depth?: number;
+}
+
+// The substitution a resolved component invocation should blank to:
+// which native tag, with which literal attrs, whether `...attributes`
+// splats onto it, and whether the tag came from the yield-ancestor
+// rather than the outer wrapper.
+export interface ChosenSubstitution {
+  tag: string;
+  attrs: Map<string, string>;
+  hasSplat: boolean;
+  fromYieldAncestor: boolean;
+}
+
+// Pick the substitution tag for a resolved component invocation.
+//
+// Prefer the yield-ancestor over the outer wrapper when content-
+// permission validation hinges on it: a component whose template is
+// `<nav><ol>{{yield}}</ol></nav>` must substitute as `<ol>`, because
+// consumer-yielded `<li>` items land inside the `<ol>` at runtime —
+// substituting the outer `<nav>` would FP-fire element-permitted-content
+// / element-permitted-parent on the `<li>` (issue #33).
+//
+// Guards (mirrors the no-op cases this preference must NOT regress):
+//   - the yield-ancestor differs from the outer tag;
+//   - neither the outer nor the yield-ancestor is a structural child
+//     (`<li>`, `<td>`, `<legend>`, …) — those only make sense under a
+//     specific parent, so substituting one at the call site
+//     reintroduces the very element-permitted-parent FPs this
+//     preference is meant to suppress;
+//   - the yield-ancestor is a native tag.
+//
+// When the preference applies, consumer `...attributes` still splat
+// onto the OUTER wrapper at runtime, not the yield-ancestor — callers
+// use `fromYieldAncestor` to strip ARIA attrs off the substituted tag
+// (see `ComponentAttrs.fromYieldAncestor`).
+//
+// Shared by BOTH resolution-map builders — `applyResolution` (the
+// Glint path, lib/glint.ts) and `buildResolutionMaps` (the canonical-
+// resolver path, lib/resolver/build-maps.ts) — so the two can't
+// diverge on this again (issue #33 was exactly that divergence: only
+// the Glint path applied the preference).
+export function chooseSubstitution(resolution: TagResolution): ChosenSubstitution {
+  const yieldTag = resolution.yieldAncestorTag;
+  if (
+    yieldTag &&
+    yieldTag !== resolution.tag &&
+    !STRUCTURAL_CHILD_TAGS.has(resolution.tag) &&
+    !STRUCTURAL_CHILD_TAGS.has(yieldTag) &&
+    isNativeTagName(yieldTag)
+  ) {
+    return {
+      tag: yieldTag,
+      attrs: resolution.yieldAncestorAttrs ?? new Map(),
+      hasSplat: true,
+      fromYieldAncestor: true,
+    };
+  }
+  return {
+    tag: resolution.tag,
+    attrs: resolution.attrs,
+    hasSplat: resolution.hasSplat,
+    fromYieldAncestor: false,
+  };
 }
 
 const TRANSPARENT: TransparentResolution = { kind: 'transparent' };

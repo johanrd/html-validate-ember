@@ -405,114 +405,6 @@ function findCloseTagStart(content: string, elementEnd: number): number {
   return -1;
 }
 
-// `@glimmer/syntax`'s parser doesn't understand TS-flavored block params:
-// `{{#each items as |x: T|}}` is sometimes accepted (single simple
-// type), sometimes rejected (multi-param + comma, qualified types,
-// object/parenthesized/union types). When parse fails the whole
-// template is silently skipped. We pre-process the `as |…|` interior
-// so Glimmer sees the normalized space-separated form `as |a b|`
-// regardless. Length-preserving — every stripped char becomes a space
-// so AST loc offsets after the strip match the original source.
-//
-// Strategy: walk the source linearly, find each mustache opener
-// `{{…}}`, locate `as |` and the matching closing `|` (last `|` before
-// `}}`), then walk the param list character-by-character with balanced-
-// bracket tracking for `()`, `{}`, `<>`, `[]` so union (`A | B`),
-// object (`{ a: number }`), parenthesized (`(A | B)[]`), and generic
-// (`Map<string, number>`) types are stripped correctly.
-export function stripBlockParamTypeAnnotations(content: string): string {
-  const buf = content.split('');
-  let i = 0;
-  while (i < content.length - 1) {
-    if (content[i] !== '{' || content[i + 1] !== '{') {
-      i++;
-      continue;
-    }
-    const mustacheEnd = content.indexOf('}}', i + 2);
-    if (mustacheEnd < 0) break;
-    // Find the start of the param list — the `|` after `as`.
-    const asMatch = /\bas\s*\|/.exec(content.slice(i, mustacheEnd));
-    if (!asMatch) {
-      i = mustacheEnd + 2;
-      continue;
-    }
-    const paramStart = i + asMatch.index + asMatch[0].length;
-    // The closing `|` is the LAST `|` before `}}` in the opener — `|`s
-    // before it are union operators inside types.
-    const paramEnd = content.lastIndexOf('|', mustacheEnd - 1);
-    if (paramEnd <= paramStart) {
-      i = mustacheEnd + 2;
-      continue;
-    }
-    stripBlockParamRange(buf, paramStart, paramEnd);
-    i = mustacheEnd + 2;
-  }
-  return buf.join('');
-}
-
-// Walk `[start, end)` (the chars between the opening and closing `|`
-// of `as |…|`), find each `name: TypeExpr` pair and replace the
-// `:` + type-expression bytes with spaces. Comma separators between
-// params also become spaces so Glimmer's space-separated grammar is
-// happy. Length-preserved throughout.
-function stripBlockParamRange(buf: string[], start: number, end: number): void {
-  const isWS = (c: string) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
-  const isIdent = (c: string) => /[A-Za-z0-9_$]/.test(c);
-  const opens = '({[<';
-  const closes = ')}]>';
-
-  let i = start;
-  while (i < end) {
-    // Skip whitespace.
-    while (i < end && isWS(buf[i] ?? '')) i++;
-    if (i >= end) return;
-
-    // Comma between params — strip to space and continue.
-    if (buf[i] === ',') {
-      buf[i] = ' ';
-      i++;
-      continue;
-    }
-
-    // Read identifier (the param name).
-    const idStart = i;
-    while (i < end && isIdent(buf[i] ?? '')) i++;
-    if (i === idStart) {
-      // Unexpected char — defensively advance.
-      i++;
-      continue;
-    }
-
-    // Skip whitespace, then look for `:` (the type annotation marker).
-    while (i < end && isWS(buf[i] ?? '')) i++;
-    if (i >= end || buf[i] !== ':') continue;
-
-    // Walk the type expression with bracket-depth tracking. Terminates
-    // at `,` at depth 0 (next param separator) or end of range. `|` at
-    // any depth is part of the type (union operator), never a separator
-    // — the closing `|` of `as |…|` is OUTSIDE the range we're given.
-    const typeStart = i;
-    let depth = 0;
-    while (i < end) {
-      const c = buf[i] ?? '';
-      if (opens.includes(c)) {
-        depth++;
-      } else if (closes.includes(c)) {
-        if (depth > 0) depth--;
-      } else if (c === ',' && depth === 0) {
-        break;
-      }
-      i++;
-    }
-    for (let k = typeStart; k < i; k++) {
-      const c = buf[k];
-      if (c !== '\n' && c !== '\r') {
-        buf[k] = ' ';
-      }
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Per-element handlers. Each takes the AST node + a mutable `ctx` object
 // that accumulates the rewrite plan (blank ranges, renames, etc.).
@@ -1445,8 +1337,9 @@ function handleMustacheStatement(node: AST.MustacheStatement, ctx: Context): voi
   }
 }
 
-// Handle a `{{!-- comment --}}` AST node. If it's an html-validate directive,
-// rewrite as an HTML comment in place (length-preserved) so html-validate's
+// Handle a `{{!-- ... --}}` (long form) or `{{! ... }}` (short form)
+// MustacheCommentStatement. If it's an html-validate directive, rewrite
+// as an HTML comment in place (length-preserved) so html-validate's
 // parser sees the directive. Otherwise blank.
 function handleMustacheCommentStatement(
   node: AST.MustacheCommentStatement,
@@ -1460,36 +1353,62 @@ function handleMustacheCommentStatement(
   const wholeStart = start;
   const wholeEnd = endOffset(node);
   const fullText = content.slice(wholeStart, wholeEnd);
-  // `{{!--` (5 chars) → `<!-- ` (5 chars) and `--}}` (4 chars) → ` -->`
-  // (4 chars) — same length, inner content untouched. Lets users write
-  // directives without triggering `ember/template-no-html-comments`.
-  //
-  // The short form `{{! ... }}` is NOT supported: its markers are 5 chars
-  // total, 2 chars shorter than `<!-- -->`, so we can't substitute in
-  // place without changing length.
+
   if (
-    /\[html-validate-(?:disable|enable)/.test(fullText) &&
-    !/[\n\r]/.test(fullText) &&
-    fullText.startsWith('{{!--') &&
-    fullText.endsWith('--}}')
+    !/\[html-validate-(?:disable|enable)/.test(fullText) ||
+    /[\n\r]/.test(fullText)
   ) {
-    const newPrefix = '<!-- ';
-    const newSuffix = ' -->';
-    for (let i = 0; i < newPrefix.length; i++) {
-      if (fullText[i] !== newPrefix[i]) {
-        renames.push([wholeStart + i, wholeStart + i + 1, newPrefix[i]!]);
-      }
-    }
-    const totalLen = wholeEnd - wholeStart;
-    for (let i = 0; i < newSuffix.length; i++) {
-      const idx = totalLen - newSuffix.length + i;
-      if (fullText[idx] !== newSuffix[i]) {
-        renames.push([wholeStart + idx, wholeStart + idx + 1, newSuffix[i]!]);
-      }
-    }
+    blankRanges.push(rangeOf(node));
     return;
   }
+
+  // Long form: `{{!--` (5) → `<!-- ` (5) and `--}}` (4) → ` -->` (4) —
+  // marker swap preserves byte length, inner content untouched.
+  if (fullText.startsWith('{{!--') && fullText.endsWith('--}}')) {
+    rewriteCommentMarkers(fullText, wholeStart, wholeEnd, '<!-- ', ' -->', renames);
+    return;
+  }
+
+  // Short form: `{{! ` (4) → `<!--` (4) and ` }}` (3) → `-->` (3) — we
+  // steal the inner padding spaces Prettier always emits to absorb the
+  // 2-byte marker delta. Requires the Prettier-normalized
+  // `{{! <content> }}` shape (single space on each side); other shapes
+  // fall through to blank.
+  //
+  // Why we need this: Prettier's glimmer printer hard-codes the collapse
+  // from `{{!-- ... --}}` to `{{! ... }}` whenever the inner content
+  // doesn't itself contain `}}`. There is no opt-out, so users running
+  // Prettier could not previously place inline directives without
+  // dropping to raw `<!-- -->` HTML comments (which `ember/template-no-
+  // html-comments` then flags).
+  if (fullText.startsWith('{{! ') && fullText.endsWith(' }}')) {
+    rewriteCommentMarkers(fullText, wholeStart, wholeEnd, '<!--', '-->', renames);
+    return;
+  }
+
   blankRanges.push(rangeOf(node));
+}
+
+function rewriteCommentMarkers(
+  fullText: string,
+  wholeStart: number,
+  wholeEnd: number,
+  newPrefix: string,
+  newSuffix: string,
+  renames: Array<[number, number, string]>,
+): void {
+  for (let i = 0; i < newPrefix.length; i++) {
+    if (fullText[i] !== newPrefix[i]) {
+      renames.push([wholeStart + i, wholeStart + i + 1, newPrefix[i]!]);
+    }
+  }
+  const totalLen = wholeEnd - wholeStart;
+  for (let i = 0; i < newSuffix.length; i++) {
+    const idx = totalLen - newSuffix.length + i;
+    if (fullText[idx] !== newSuffix[i]) {
+      renames.push([wholeStart + idx, wholeStart + idx + 1, newSuffix[i]!]);
+    }
+  }
 }
 
 // Handle a `{{#if}}/{{else}}/{{/if}}` (and `{{#each}}` / `{{#unless}}` /
@@ -1595,19 +1514,13 @@ function blankTemplateContent(
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
 ): BlankResult | BlankErrorResult {
-  // Pre-strip TS type annotations from block params so Glimmer's parser
-  // accepts `{{#each items as |a: A, b: B|}}` and similar (it rejects
-  // multi-param-with-types and complex types otherwise, silently
-  // dropping the whole template). Length-preserving — AST offsets we
-  // record below still match the original `content` string.
-  const parseInput = stripBlockParamTypeAnnotations(content);
   let ast: AST.Template;
   try {
     // `mode: 'codemod'` preserves source-level distinctions we care about
     // (e.g. long-form `{{!-- ... --}}` vs short-form `{{! ... }}` comments;
     // exact whitespace) — same flag `ember-estree` uses for its
     // `templateOnly: true` path.
-    ast = preprocess(parseInput, { mode: 'codemod' });
+    ast = preprocess(content, { mode: 'codemod' });
   } catch (err) {
     return { content, error: err instanceof Error ? err : new Error(String(err)) };
   }
@@ -1780,6 +1693,22 @@ function detectStructuralYieldRules(
           (isNativeTag(stmt.tag) ? stmt.tag : null) ||
           (stmtKey ? glintComponentTagMap?.get(stmtKey) : undefined);
         if (stmtResolved === 'form') {
+          // `stmtResolved === 'form'` is reached two ways: the consumer
+          // wrote a literal `<form>` (native tag), OR a PascalCase /
+          // dotted component invocation resolved to `<form>` via the
+          // tag map. In the latter case the form's body — including any
+          // submit button — lives in the COMPONENT's own template, not
+          // at this call site. The blanker only substitutes the root
+          // tag, so the substituted `<form>` carries at most the
+          // consumer's own children (none for `<MyForm />`; whatever
+          // the consumer wrote for `<MyForm>…</MyForm>`) and never the
+          // component's own submit — `wcag/h32` FP-fires here. The
+          // `!hasStaticSubmit` guard in `elementYieldsAndLacksSubmit`
+          // still bails when the consumer's own children include a
+          // submit (then wcag/h32 wouldn't fire anyway). A genuinely
+          // submit-less form is still caught when the component's own
+          // file is validated directly.
+          const formTagFromComponentSubstitution = !isNativeTag(stmt.tag);
           if (
             formHasInputModifier(stmt) ||
             elementYieldsAndLacksSubmit(
@@ -1787,6 +1716,7 @@ function detectStructuralYieldRules(
               branchSelections,
               glintComponentTagMap,
               glintComponentAttrMap,
+              formTagFromComponentSubstitution,
             )
           ) {
             out.push('wcag/h32');
@@ -1871,15 +1801,26 @@ function selectBranch(
   return inverseHasSubmit && !programHasSubmit ? block.inverse : block.program;
 }
 
-// True when a `<form>` body contains `{{yield}}` (or `{{has-block}}`)
-// somewhere AND has no statically-detectable submit-style child. The
-// yield means the consumer might supply a submit button at runtime;
-// the absence of a static submit means wcag/h32 would FP-fire on the
-// blanked output. Together: the suppression is needed.
+// True when a `<form>` has an opaque body source AND no statically-
+// detectable submit-style child. Two opaque sources:
 //
-// If a static submit DOES exist, wcag/h32 wouldn't fire and our
-// injected `<!--html-validate-disable wcag/h32-->` would itself be
-// flagged "unused" by `no-unused-disable`. So we bail in that case.
+//   - `{{yield}}` / `{{has-block}}` somewhere in the body: the consumer
+//     might supply a submit button at runtime (PR #17).
+//   - `formTagFromComponentSubstitution`: the `<form>` tag is itself
+//     the resolved root of a component invocation (`<MyForm />` or
+//     `<MyForm>…</MyForm>` → `<form>`). The form's real body lives in
+//     the component's own template; the blanker only substitutes the
+//     root tag, so the substituted `<form>` carries at most the
+//     consumer's own children and never the component's submit button,
+//     regardless of what the component renders inside (issue #34).
+//
+// Either way the absence of a static submit means wcag/h32 would
+// FP-fire on the blanked output, so the suppression is needed.
+//
+// If a static submit DOES exist (here, among the children the consumer
+// projects through the component's `{{yield}}`), wcag/h32 wouldn't fire
+// and our injected `<!--html-validate-disable wcag/h32-->` would itself
+// be flagged "unused" by `no-unused-disable`. So we bail in that case.
 //
 // "Statically-detectable submit" means a `<button>` whose `type` is
 // absent (default `submit` inside a form) or statically equals
@@ -2109,6 +2050,12 @@ function elementYieldsAndLacksSubmit(
   branchSelections: ReadonlyMap<number, BranchChoice> | undefined,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
   glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
+  // True when this `<form>` is the substituted root of a component
+  // invocation rather than a literal consumer-written `<form>`. The
+  // component owns the form body, so the blanked call site can never
+  // show the component's own submit button. Treated as an opaque body
+  // source — same role as `{{yield}}`. See the header comment.
+  formTagFromComponentSubstitution = false,
 ): boolean {
   let hasYield = false;
   let hasStaticSubmit = false;
@@ -2182,10 +2129,17 @@ function elementYieldsAndLacksSubmit(
     }
   }
   walk(form.children);
-  // Suppress wcag/h32 for either an opaque-source form (yield-bearing,
-  // PR #17) OR a form whose only "candidates" for submit are
-  // unresolved component invocations (heuristic above).
-  return (hasYield || hasUnresolvedComponent) && !hasStaticSubmit;
+  // Suppress wcag/h32 for an opaque-source form: yield-bearing (PR #17),
+  // a form whose only "candidates" for submit are unresolved component
+  // invocations (heuristic above), OR a `<form>` that is itself a
+  // component substitution whose body lives in the component's template
+  // (issue #34) — in every case the blanked call site can't show the
+  // real submit, but a static submit among the consumer's own children
+  // still disqualifies (it'd make the directive `no-unused-disable`).
+  return (
+    (hasYield || hasUnresolvedComponent || formTagFromComponentSubstitution) &&
+    !hasStaticSubmit
+  );
 }
 
 // True when a `<fieldset>` body has opaque legend-source content AND
@@ -2445,16 +2399,9 @@ function blankTemplateContentMultipass(
       blankTemplateContent(content, scope, glintTypeMap, glintComponentTagMap, glintComponentAttrMap),
     ];
   }
-  // Same pre-strip as `blankTemplateContent` — see that function's
-  // comment for rationale. We need the strip here too because we walk
-  // the AST locally to enumerate branch points before delegating each
-  // combination to `blankTemplateContent` (which strips again on its
-  // own — idempotent since the strip is length-preserving and a second
-  // pass finds nothing left to strip).
-  const parseInput = stripBlockParamTypeAnnotations(content);
   let ast: AST.Template;
   try {
-    ast = preprocess(parseInput, { mode: 'codemod' });
+    ast = preprocess(content, { mode: 'codemod' });
   } catch (err) {
     return [{ content, error: err instanceof Error ? err : new Error(String(err)) }];
   }

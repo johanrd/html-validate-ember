@@ -12,7 +12,7 @@ import type * as TS from 'typescript';
 import { BUILTIN_COMPONENTS } from '../builtin-components.js';
 import type { ComponentAttrs } from '../builtin-components.js';
 import { findTemplateSource } from './template-source.js';
-import { resolveTemplate } from './walk.js';
+import { chooseSubstitution, resolveTemplate } from './walk.js';
 
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set(BUILTIN_COMPONENTS.keys());
 
@@ -76,11 +76,19 @@ export function buildResolutionMaps(
       const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
       const resolution = resolveTemplate(source, { consumerArgs, ts });
       if (resolution.kind !== 'tag') return;
-      componentTagMap.set(key, resolution.tag);
+      // Apply the SAME yield-ancestor preference the Glint path uses
+      // (`applyResolution`): a component whose template is
+      // `<nav><ol>{{yield}}</ol></nav>` must substitute as `<ol>` so
+      // consumer-yielded `<li>` items validate against `<ol>`, not the
+      // outer `<nav>`. Without this the canonical-resolver path
+      // FP-fired element-permitted-content/-parent (issue #33).
+      const chosen = chooseSubstitution(resolution);
+      componentTagMap.set(key, chosen.tag);
       componentAttrMap.set(key, {
-        tag: resolution.tag,
-        attrs: Object.fromEntries(resolution.attrs),
-        hasSplat: resolution.hasSplat,
+        tag: chosen.tag,
+        attrs: Object.fromEntries(chosen.attrs),
+        hasSplat: chosen.hasSplat,
+        fromYieldAncestor: chosen.fromYieldAncestor,
       });
     },
   });
