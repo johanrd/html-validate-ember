@@ -99,31 +99,26 @@ const preprocessor = new Preprocessor();
 // rework this.
 export const __multipassBranchedRanges = new Map<string, Array<[number, number]>>();
 
-// Build an inline `<!--html-validate-disable …-->` directive to prepend to
-// a Source. Rules come from two sources:
-//   - `branched` (from multipass): adds `no-unused-disable` so directives
-//     load-bearing in one branch combination don't get reported "unused" in
-//     another. The post-report dedupe in `lib/multipass-dedupe.ts` only
-//     runs for callers that route through `dedupeMultipassReport` (the
-//     bundled CLI and tests; NOT the html-validate VS Code extension,
-//     NOT the standalone `html-validate` CLI), so we mirror it inline.
-//   - `disableForRules` (from blank.ts): structural-rule suppressions for
-//     this Source's templated content (e.g. `wcag/h32` for a yield-bearing
-//     `<form>`, `wcag/h71` for a yield-bearing `<fieldset>`). See
-//     `BlankResult.disableForRules` and `detectStructuralYieldRules` in
-//     `blank.ts`.
+// Build an inline `<!--html-validate-disable …-->` directive to prepend
+// to a multipass branched Source. The only rule passed in today is
+// `no-unused-disable` — directives load-bearing in one branch
+// combination would otherwise be reported "unused" in another. The
+// post-report dedupe in `lib/multipass-dedupe.ts` only runs for callers
+// that route through `dedupeMultipassReport` (the bundled CLI and
+// tests; NOT the html-validate VS Code extension, NOT the standalone
+// `html-validate` CLI), so we mirror it inline. The rule name must
+// stay in sync with `MULTIPASS_INCOMPATIBLE_RULES` in
+// `lib/multipass-dedupe.ts`.
+//
+// Structural-rule suppressions (wcag/h32, wcag/h63, wcag/h67, wcag/h71,
+// element-permitted-content, element-permitted-parent,
+// element-required-content) are no longer routed through this directive
+// — they land as per-element `el.disableRules(...)` calls via the
+// `processElement` hook (see `BlankResult.disablePerElement`).
 //
 // Bracket-less form is the shortest valid spelling per html-validate's
-// `MATCH_DIRECTIVE` regex; no newline so we can compensate with a single
-// column-shift on the Source.
-//
-// The branched-template caller adds `no-unused-disable` to its rule list;
-// that one specific rule must stay in sync with `MULTIPASS_INCOMPATIBLE_RULES`
-// in `lib/multipass-dedupe.ts` (the post-report dedupe drops the same rule
-// for branched ranges). The structural-yield rules (`wcag/h32`, `wcag/h71`)
-// passed in by `BlankResult.disableForRules` are intentionally NOT in that
-// set — they're suppressions specific to a yield-bearing source, not
-// dedupe-incompatible-with-multipass rules.
+// `MATCH_DIRECTIVE` regex; no newline so we can compensate with a
+// single column-shift on the Source.
 function buildDisableDirective(rules: ReadonlyArray<string>): string {
   if (rules.length === 0) return '';
   // html-validate's directive grammar requires COMMA-separated rule
@@ -150,6 +145,7 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
   attrInjections: ReadonlyMap<number, ReadonlyArray<{ attr: string; value: string | null }>>,
+  disablePerElement: ReadonlyMap<number, ReadonlySet<string>>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -212,6 +208,20 @@ function makeHooks(
         elWithAttrs.setAttribute(attr, injected, location, location);
       }
     }
+    // Per-element rule disables. Registered by blank.ts when a
+    // specific element triggers a Glimmer-opacity FP class (e.g.,
+    // `<table>` with a cell-loop {{#each}}, `<form>` with a
+    // yield-bearing body, `<img>` with dynamic title, …). Rule
+    // listeners (`element:ready`, `tag:end`, `dom:ready`, …) check
+    // `ruleEnabled(...)` inside their `report()` paths, so this
+    // disable lands before emission regardless of when the rule
+    // fires for this element.
+    const disables = disablePerElement.get(templateRelativeOffset);
+    if (disables && disables.size > 0) {
+      (el as unknown as { disableRules(rules: ReadonlyArray<string>): void }).disableRules([
+        ...disables,
+      ]);
+    }
   };
 
   return { processAttribute, processElement };
@@ -267,17 +277,21 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${data.length}\n`,
       );
     }
-    const hbsPrefix = buildDisableDirective(result.disableForRules ?? []);
+    // .hbs files never go through the multipass branched path, so
+    // there's no `no-unused-disable` directive to inject and no
+    // structural-rule file-level disables (those are all per-element
+    // now). The Source's data starts at offset 0 / column 1.
     yield {
-      data: hbsPrefix + result.content,
+      data: result.content,
       filename,
       line: 1,
-      column: 1 - hbsPrefix.length,
-      offset: 0 - hbsPrefix.length,
+      column: 1,
+      offset: 0,
       originalData,
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
         result.attrInjections ?? new Map(),
+        result.disablePerElement ?? new Map(),
         0,
       ),
     };
@@ -420,10 +434,11 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
           `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
         );
       }
-      const rules: string[] = [];
-      if (branched) rules.push('no-unused-disable');
-      for (const r of result.disableForRules ?? []) rules.push(r);
-      const prefix = buildDisableDirective(rules);
+      // The only rule the prefix directive carries today is
+      // `no-unused-disable` for branched (multipass) sources;
+      // structural suppressions live in `result.disablePerElement`
+      // and land via `processElement → el.disableRules` instead.
+      const prefix = branched ? buildDisableDirective(['no-unused-disable']) : '';
       const sourceData = prefix + result.content;
       const sourceOffset = startOffset - prefix.length;
       const sourceColumn = column - prefix.length;
@@ -441,6 +456,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         hooks: makeHooks(
           new Set(result.dynamicContentOffsets ?? []),
           result.attrInjections ?? new Map(),
+          result.disablePerElement ?? new Map(),
           startOffset,
         ),
       };
