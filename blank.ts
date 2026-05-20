@@ -1665,9 +1665,9 @@ function blankTemplateContent(
 // `<button>`/`<input>` via Glint or builtin maps count as static
 // submit when their splatted-root attrs make them submit-style — a
 // `<MyButton>` resolving to `<button type='submit' ...attributes>`
-// would otherwise trigger `no-unused-disable` (the rule it's trying
-// to suppress doesn't actually fire on the blanked output, since
-// substitution emits a real submit).
+// means wcag/h32 wouldn't fire on the blanked output (substitution
+// emits a real submit), so registering a per-element disable for it
+// would be unnecessary.
 //
 // Dynamic types as positive suppression signal. `<button type={{x}}>`
 // and `<input type={{x}}>` set `hasAmbiguousSubmit` in
@@ -1993,18 +1993,17 @@ function selectBranch(
 // FP-fire on the blanked output, so the suppression is needed.
 //
 // If a static submit DOES exist (here, among the children the consumer
-// projects through the component's `{{yield}}`), wcag/h32 wouldn't fire
-// and our injected `<!--html-validate-disable wcag/h32-->` would itself
-// be flagged "unused" by `no-unused-disable`. So we bail in that case.
+// projects through the component's `{{yield}}`), wcag/h32 wouldn't
+// fire and the per-element disable would target a form that doesn't
+// need it. So we bail in that case.
 //
 // "Statically-detectable submit" means a `<button>` whose `type` is
 // absent (default `submit` inside a form) or statically equals
 // `submit` (ASCII case-insensitive); a `<button type='button'>` /
 // `type='reset'` is explicitly non-submit and does NOT disqualify.
 // For `<input>`, `type='submit'` / `type='image'` (case-insensitive)
-// counts. Bare-mustache types are conservatively treated as MAYBE
-// submit (we bail) — better an extra real wcag/h32 fire than an
-// unused-disable cascade.
+// counts. Bare-mustache types are NOT static submit — they're handled
+// separately as `hasAmbiguousSubmit` (positive suppression trigger).
 // True when a `<form>` carries an event modifier that signals
 // input-event-driven UX (rather than submission-driven). Two events
 // trigger the suppression:
@@ -2340,10 +2339,10 @@ function elementYieldsAndLacksSubmit(
   // button/input with ambiguous type. In all three cases the actual
   // runtime type could be 'submit' (no FP, no real bug) or anything
   // else (real bug). The blanker can't determine the structure →
-  // suppress wcag/h32 per Mel #38's principle. Safe because the
-  // rule WOULD fire on the blanked output (the placeholder isn't
-  // recognized as 'submit'), so the suppression directive is
-  // load-bearing and no-unused-disable doesn't cascade.
+  // suppress wcag/h32 per Mel #38's principle. The per-element
+  // disable lands on a form that WOULD have fired wcag/h32 anyway
+  // (the placeholder type isn't recognized as 'submit'), so the
+  // suppression is well-targeted.
   let hasAmbiguousSubmit = false;
   // Tracks whether the form contains any UNRESOLVED PascalCase /
   // dotted component invocation. Such a component may render a
@@ -2385,8 +2384,8 @@ function elementYieldsAndLacksSubmit(
           // Dynamic-type (`<button type='{{x}}'>`) or splatted
           // (`<input ...attributes>`) submit candidate. We can't
           // know the runtime type → wcag/h32 fires on the blanked
-          // output regardless. Suppress (the directive is load-
-          // bearing, so no-unused-disable doesn't cascade).
+          // output (the placeholder isn't recognized as 'submit').
+          // Trigger per-element suppression on the form.
           hasAmbiguousSubmit = true;
         }
         const componentSubmit = classifyComponentSubmit(
@@ -2432,11 +2431,13 @@ function elementYieldsAndLacksSubmit(
   walk(form.children);
   // Suppress wcag/h32 for an opaque-source form: yield-bearing (PR #17),
   // a form whose only "candidates" for submit are unresolved component
-  // invocations (heuristic above), OR a `<form>` that is itself a
-  // component substitution whose body lives in the component's template
-  // (issue #34) — in every case the blanked call site can't show the
-  // real submit, but a static submit among the consumer's own children
-  // still disqualifies (it'd make the directive `no-unused-disable`).
+  // invocations (heuristic above), an ambiguous-typed inline submit
+  // candidate (`hasAmbiguousSubmit`), OR a `<form>` that is itself a
+  // component substitution whose body lives in the component's
+  // template (issue #34) — in every case the blanked call site can't
+  // show a real submit. A static submit among the consumer's own
+  // children still disqualifies (the per-element disable would target
+  // a form that wouldn't have fired wcag/h32 anyway).
   return (
     (hasYield ||
       hasUnresolvedComponent ||
@@ -2555,16 +2556,17 @@ function isInputOrButtonWithSplat(node: AST.ElementNode): boolean {
 //   'static-submit'  — the component definitively renders a submit
 //                      control (e.g. `<button>` with no type, or
 //                      `<button type='submit'>`). Triggers
-//                      `hasStaticSubmit`, blocking suppression
-//                      (no-unused-disable would fire on the
-//                      directive otherwise).
+//                      `hasStaticSubmit`, blocking suppression so we
+//                      don't register a per-element disable on a
+//                      form that wouldn't have fired wcag/h32 anyway.
 //   'ambiguous'      — the component might or might not be a submit
 //                      at runtime (e.g. `<button>` with dynamic
 //                      `type='{{x}}'`). Triggers `hasAmbiguousSubmit`
-//                      → suppress wcag/h32 (the rule WILL fire on
-//                      the blanked output because the placeholder
-//                      isn't recognized as 'submit', so the
-//                      directive is load-bearing).
+//                      → suppress wcag/h32 via per-element disable
+//                      on the form (the rule WILL fire on the
+//                      blanked output because the placeholder isn't
+//                      recognized as 'submit', so the disable is
+//                      well-targeted).
 //   'not-submit'     — definitively non-submit OR not a button/input
 //                      at all. Doesn't affect suppression decisions.
 //

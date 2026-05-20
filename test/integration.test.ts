@@ -412,10 +412,11 @@ describe('end-to-end fixtures', () => {
   it('h32-dynamic-submit-type: wcag/h32 must NOT fire when the only candidate submit is <button type="{{dynamic}}">', async () => {
     // The blanker can't determine the runtime button type; could be
     // 'submit' (form valid) or 'button' (form invalid). Mel #38
-    // principle: suppress the technique-rule on uncertainty. Safe
-    // because the rule WILL fire on the blanked output (placeholder
-    // type isn't recognized as submit), so the directive is load-
-    // bearing and no-unused-disable doesn't cascade.
+    // principle: suppress the technique-rule on uncertainty. The
+    // suppression lands as a per-element `disableRules` on the form
+    // via `processElement`; the rule would fire on the blanked
+    // output regardless (the placeholder type isn't recognized as
+    // 'submit'), so the disable is well-targeted.
     const r = await validate('h32-dynamic-submit-type.gts');
     const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
     expect(

@@ -1306,9 +1306,15 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     // the transparent dotted <S.Step> itself (which gets blanked
     // away and never reaches the processElement hook at parse time).
     const divOffset = content.indexOf('<div>');
+    // Format `Map<offset, Set<rule>>` as `[[offset, [...rules]], …]`
+    // so failures are actionable — naive `JSON.stringify` on a `Set`
+    // returns `{}` and hides the rules that were registered.
+    const entries = [...(result.disablePerElement?.entries() ?? [])].map(
+      ([off, set]) => [off, [...set]],
+    );
     expect(
       result.disablePerElement?.get(divOffset)?.has('element-permitted-content'),
-      `element-permitted-content must be disabled on the floating <div> at offset ${divOffset}; got: ${JSON.stringify([...(result.disablePerElement?.entries() ?? [])])}`,
+      `element-permitted-content must be disabled on the floating <div> at offset ${divOffset}; got disablePerElement=${JSON.stringify(entries)}`,
     ).toBe(true);
   });
 
