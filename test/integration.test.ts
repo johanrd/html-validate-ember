@@ -433,6 +433,44 @@ describe('end-to-end fixtures', () => {
     ).toHaveLength(0);
   });
 
+  it('regression: element-permitted-content fires on <th> directly under <thead> (no <tr> wrapper) — table suppressions must not mask this real-bug shape', async () => {
+    // Unmasked by fix/38's per-element migration. Regression guard
+    // against future broadening of table-cell suppressions.
+    const r = await validate('regression-th-under-thead-without-tr.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders.length,
+      `element-permitted-content must fire on <th>-under-<thead>-without-<tr>; got: ${JSON.stringify(r.messages)}`,
+    ).toBeGreaterThan(0);
+  });
+
+  it('regression: element-permitted-content fires on <div> inside <span> — wrapper suppressions must not mask block-in-phrasing', async () => {
+    // Unmasked by fix/38's per-element migration. Regression guard
+    // against future broadening of wrapper-non-native suppressions.
+    const r = await validate('regression-div-inside-span.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders.length,
+      `element-permitted-content must fire on <div>-inside-<span>; got: ${JSON.stringify(r.messages)}`,
+    ).toBeGreaterThan(0);
+  });
+
+  it('regression: element-permitted-content fires when a non-native <div>-resolving child sits inside a non-native <ul>-resolving wrapper — must not over-suppress', async () => {
+    // Unmasked by fix/38's per-element migration. During fix/38
+    // development a broader detection attempt masked this case (see
+    // the reverted extension); this test ensures any future attempt
+    // keeps the real bug firing. The wrapper's internal template is
+    // `<ul>{{yield}}</ul>` so the wrapper IS the runtime parent and
+    // the child IS its runtime child — masking would silence a real
+    // <ul><div></ul> at runtime.
+    const r = await validate('regression-pascalcase-div-under-pascalcase-ul.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders.length,
+      `element-permitted-content must fire when both wrapper and child are non-native PascalCase with mismatched runtime tags; got: ${JSON.stringify(r.messages)}`,
+    ).toBeGreaterThan(0);
+  });
+
   it('h32-yield-and-ambiguous-submit: wcag/h32 must NOT fire when a form has BOTH {{yield}} AND a dynamic-typed button', async () => {
     // Composes the yield and ambiguous-submit suppression triggers.
     // Pre-migration the ambiguous flag set hasStaticSubmit=true and
