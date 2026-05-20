@@ -1488,22 +1488,34 @@ export interface BlankResult {
   // transform.ts's `processElement` hook via `setAttribute`. See
   // `Context.attrInjections` for rationale.
   attrInjections: Map<number, AttrInjection[]>;
-  // Rule IDs that the consumer should disable for this Source as a whole —
-  // populated when the template contains structural patterns the static
-  // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
-  // `{{yield}}` in its body (consumer provides the submit button), and
-  // `wcag/h71` when a `<fieldset>` does (consumer provides the legend).
-  // Transform.ts prepends an inline `<!--html-validate-disable …-->`
-  // directive built from this list, with offset adjustment.
-  disableForRules: string[];
+  // Per-element rule disables — applied at parse-time by transform.ts's
+  // `processElement` hook via `el.disableRules(...)`. Keys are template-
+  // relative source offsets of the element start (matching the
+  // `dynamicContentOffsets` / `attrInjections` coordinate system); values
+  // are rule IDs to disable on that element. Used for surgical per-
+  // element suppression that doesn't bleed across siblings — e.g., one
+  // `<table>` with a cell-loop FP doesn't silence a real `wcag/h63`
+  // violation on a sibling `<table>`.
+  //
+  // All structural-rule suppressions (wcag/h32, wcag/h63, wcag/h67,
+  // wcag/h71, element-permitted-content, element-permitted-parent,
+  // element-required-content) currently land here, not as file-level
+  // disable directives. The non-multipass branched directive prefix is
+  // empty for these sources.
+  //
+  // For rules that fire on descendants (e.g. wcag/h63 reports on each
+  // `<th>` inside a `<table>`), the entry is keyed by the DESCENDANT
+  // offsets, not the container's — html-validate's `disableRules` only
+  // affects the node it's called on, not its children.
+  disablePerElement: Map<number, Set<string>>;
 }
 
 export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
-  disableForRules?: undefined;
   attrInjections?: undefined;
+  disablePerElement?: undefined;
 }
 
 function blankTemplateContent(
@@ -1599,7 +1611,7 @@ function blankTemplateContent(
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
     attrInjections: ctx.attrInjections,
-    disableForRules: detectStructuralYieldRules(
+    disablePerElement: detectSuppressions(
       ast,
       branchSelections,
       glintComponentTagMap,
@@ -1609,10 +1621,11 @@ function blankTemplateContent(
 }
 
 // Detect cases where a structural rule would FP-fire on the blanked
-// output, and add the rule to `disableForRules` so the transformer can
-// inject a one-shot disable directive into this Source.
+// output, and register per-element `disableRules` entries so the
+// transformer's `processElement` hook calls them at parse time on the
+// specific nodes whose rule-firing would be a Glimmer-opacity FP.
 //
-// Three FP classes covered today:
+// FP classes covered today:
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
@@ -1629,45 +1642,198 @@ function blankTemplateContent(
 //      parent via a yield chain we can't statically follow (e.g.
 //      `(yield (hash X=PassThrough))` where PassThrough yields
 //      without producing an element). Suppress
-//      `element-permitted-content` / `element-permitted-parent` at
-//      the Source level. Same per-Source-suppression trade-off as
-//      cases 1 and 2; addressable case-by-case by extending the
-//      resolver to follow specific yield-chain shapes.
+//      `element-permitted-content` / `element-permitted-parent` on
+//      the affected children.
+//
+//   4. wcag/h63 on `<table>` shapes the blanker has flattened —
+//      cell-generating `{{#each}}` / `{{#if}}` blocks, or PascalCase
+//      row components Glint resolves to `<tr>`/`<td>`/`<th>`. The
+//      per-`<th>` disable lands on each header cell descendant.
+//
+//   5. wcag/h67 on `<img alt='' title='{{x}}'>`-shaped patterns
+//      (incl. ConcatStatement titles with whitespace-only literals).
+//      The per-`<img>` disable lands on the element itself.
+//
+//   6. wcag/h32 on `<form>`s whose only submit candidate is dynamic-
+//      typed or splatted. The per-`<form>` disable lands on the form.
+//
+//   7. element-required-content on self-closing component invocations
+//      that resolve to native elements with required content (e.g.
+//      `<details>` requires `<summary>`).
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
 // FP. Instead we honor `branchSelections` (the same per-pass selection
-// `handleBlockStatement` uses) so each emitted Source's
-// `disableForRules` matches its own blanked content. When no
-// selection is present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass
-// mode) we mirror `handleBlockStatement`'s heuristic: prefer program,
-// switch to inverse only when inverse has a static submit and program
-// doesn't.
+// `handleBlockStatement` uses) so each emitted Source's per-element
+// disables match its own blanked content. When no selection is
+// present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass mode) we mirror
+// `handleBlockStatement`'s heuristic: prefer program, switch to
+// inverse only when inverse has a static submit and program doesn't.
 //
 // Component-aware. Component invocations that resolve to native
 // `<button>`/`<input>` via Glint or builtin maps count as static
 // submit when their splatted-root attrs make them submit-style — a
 // `<MyButton>` resolving to `<button type='submit' ...attributes>`
-// would otherwise trigger `no-unused-disable` (the rule it's trying
-// to suppress doesn't actually fire on the blanked output, since
-// substitution emits a real submit).
+// means wcag/h32 wouldn't fire on the blanked output (substitution
+// emits a real submit), so registering a per-element disable for it
+// would be unnecessary.
 //
-// Conservative on dynamic types: `<button type={{x}}>` and
-// `<input type={{x}}>` count as MAYBE-submit and disqualify the
-// suppression. Trade-off: a yield-bearing form whose only "submit-like"
-// element has a dynamic type stays unsuppressed (real h32 may fire) —
-// preferred to introducing a synthetic no-unused-disable.
-function detectStructuralYieldRules(
+// Dynamic types as positive suppression signal. `<button type={{x}}>`
+// and `<input type={{x}}>` set `hasAmbiguousSubmit` in
+// `elementYieldsAndLacksSubmit`, triggering wcag/h32 suppression on
+// the form (per Mel #38: when the validator can't determine code
+// structure, the technique-rule shouldn't fire). The prior trade-off
+// — treating these as "MAYBE-submit" that DISqualifies suppression to
+// avoid `no-unused-disable` cascades — no longer applies under the
+// per-element migration: there's no directive comment to be "unused",
+// and the rule WOULD fire on the blanked output regardless (the
+// placeholder isn't recognized as 'submit'), so the per-element
+// `disableRules` is load-bearing.
+//
+// Returns the per-element suppression map (`Map<offset, Set<rule>>`)
+// — keys are template-relative source offsets, values are the rules
+// to disable on that element via `processElement → el.disableRules`.
+// Per-element scope is used for every FP class listed above; a
+// Glimmer-opacity FP on one element doesn't silence real violations
+// on its siblings.
+function detectSuppressions(
   ast: AST.Template,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
   glintComponentTagMap?: ReadonlyMap<string, string> | null,
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
-): string[] {
-  const out: string[] = [];
+): Map<number, Set<string>> {
+  const perElement = new Map<number, Set<string>>();
+  function addPer(offset: number, rule: string): void {
+    const set = perElement.get(offset);
+    if (set) {
+      set.add(rule);
+    } else {
+      perElement.set(offset, new Set([rule]));
+    }
+  }
+  function collectThOffsets(
+    stmts: ReadonlyArray<AST.Statement>,
+    into: number[],
+  ): void {
+    for (const stmt of stmts) {
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (arm) collectThOffsets(arm.body, into);
+        continue;
+      }
+      if (stmt.type === 'ElementNode') {
+        if (stmt.tag === 'th') {
+          into.push(startOffset(stmt));
+        } else if (!isNativeTag(stmt.tag) && glintComponentTagMap && stmt.loc.start) {
+          // Component invocation resolving to `<th>` via Glint (e.g.
+          // `<MyHeaderCell />` with `Element: HTMLTableCellElement` and
+          // a `<th>` root). `tableHasGlimmerObscuredCells` treats these
+          // as cell tags that trigger suppression; without collecting
+          // their offsets here the per-`<th>` `disableRules` wouldn't
+          // land on the substituted output.
+          const key = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+          if (glintComponentTagMap.get(key) === 'th') into.push(startOffset(stmt));
+        }
+        collectThOffsets(stmt.children, into);
+      }
+    }
+  }
+  // For the STRUCTURAL_CONTENT_PARENT + transparent-dotted-child
+  // branch only: collect offsets of the element children of any
+  // transparent dotted node — these "float up" to the wrapper after
+  // the dotted node's open/close tags are blanked away, and the
+  // wrapper's content-model rule fires on them. The transparent
+  // dotted node itself is blanked away, so `disableRules` on its
+  // offset never runs at parse time — register on the floating
+  // children instead. Skips siblings of transparent dotted children
+  // (those stay as their own non-transparent parent's content; any
+  // rule fire on them is a real-bug shape that must still surface).
+  function collectTransparentDottedChildOffsets(
+    node: AST.ElementNode,
+    into: number[],
+  ): void {
+    if (!glintComponentTagMap) return;
+    const tagMap = glintComponentTagMap;
+    function isTransparentDotted(el: AST.ElementNode): boolean {
+      if (!el.tag.includes('.')) return false;
+      if (!el.loc.start) return false;
+      return tagMap.get(`${el.loc.start.line}:${el.loc.start.column}`) === 'transparent';
+    }
+    function collectFloatingChildren(stmts: ReadonlyArray<AST.Statement>): void {
+      // Direct element children of a transparent dotted node float
+      // up to the wrapper. If a floating child is ITSELF transparent
+      // dotted, its own direct children float further up to the same
+      // wrapper — recurse.
+      for (const stmt of stmts) {
+        if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) collectFloatingChildren(arm.body);
+          continue;
+        }
+        if (stmt.type !== 'ElementNode') continue;
+        into.push(startOffset(stmt));
+        if (isTransparentDotted(stmt)) collectFloatingChildren(stmt.children);
+      }
+    }
+    function walk(stmts: ReadonlyArray<AST.Statement>): void {
+      for (const stmt of stmts) {
+        if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) walk(arm.body);
+          continue;
+        }
+        if (stmt.type !== 'ElementNode') continue;
+        if (isTransparentDotted(stmt)) {
+          collectFloatingChildren(stmt.children);
+        }
+        // Don't descend into non-transparent children — they keep
+        // their own non-transparent parent at runtime, so the
+        // wrapper's content-model concern doesn't apply to their
+        // descendants.
+      }
+    }
+    walk(node.children);
+  }
+
+  // For wrapper-with-content-restricted-children cases (element-
+  // permitted-content / -parent): walk the wrapper's descendants and
+  // record every child element that html-validate would flag. The
+  // rules fire on the CHILD, not on the wrapper, so per-element
+  // disable must land on each child.
+  function collectContentRestrictedChildOffsets(
+    node: AST.ElementNode,
+    into: number[],
+  ): void {
+    function walk(stmts: ReadonlyArray<AST.Statement>): void {
+      for (const stmt of stmts) {
+        if (stmt.type === 'ElementNode') {
+          if (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(stmt.tag)) {
+            into.push(startOffset(stmt));
+          }
+          if (stmt.tag.includes('.') && glintComponentTagMap && stmt.loc.start) {
+            const resolved = glintComponentTagMap.get(
+              `${stmt.loc.start.line}:${stmt.loc.start.column}`,
+            );
+            if (
+              resolved &&
+              (CONTENT_RESTRICTED_STRUCTURAL_CHILDREN.has(resolved) || resolved === 'transparent')
+            ) {
+              into.push(startOffset(stmt));
+            }
+          }
+          walk(stmt.children);
+        } else if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) walk(arm.body);
+        }
+      }
+    }
+    walk(node.children);
+  }
   // Custom walk — the off-the-shelf `traverse` would visit forms /
   // fieldsets that live entirely in a blanked-out branch for the
   // current pass, leaking their suppression rules into
-  // `disableForRules` and silently suppressing real violations on
+  // `disablePerElement` and silently suppressing real violations on
   // the actually-emitted output (false negatives). At every
   // BlockStatement we descend ONLY into the selected arm — the same
   // selection `handleBlockStatement` makes, so this matches what the
@@ -1702,12 +1868,9 @@ function detectStructuralYieldRules(
           // tag, so the substituted `<form>` carries at most the
           // consumer's own children (none for `<MyForm />`; whatever
           // the consumer wrote for `<MyForm>…</MyForm>`) and never the
-          // component's own submit — `wcag/h32` FP-fires here. The
-          // `!hasStaticSubmit` guard in `elementYieldsAndLacksSubmit`
-          // still bails when the consumer's own children include a
-          // submit (then wcag/h32 wouldn't fire anyway). A genuinely
-          // submit-less form is still caught when the component's own
-          // file is validated directly.
+          // component's own submit. `wcag/h32` fires on the substituted
+          // <form>; per-form disable scopes the suppression to this
+          // specific form.
           const formTagFromComponentSubstitution = !isNativeTag(stmt.tag);
           if (
             formHasInputModifier(stmt) ||
@@ -1719,13 +1882,14 @@ function detectStructuralYieldRules(
               formTagFromComponentSubstitution,
             )
           ) {
-            out.push('wcag/h32');
+            addPer(startOffset(stmt), 'wcag/h32');
           }
         } else if (
           stmtResolved === 'fieldset' &&
           elementYieldsAndLacksLegend(stmt, branchSelections)
         ) {
-          out.push('wcag/h71');
+          // wcag/h71 fires on the <fieldset>; per-fieldset disable.
+          addPer(startOffset(stmt), 'wcag/h71');
         } else if (
           !isNativeTag(stmt.tag) &&
           !lookupBuiltinComponent(stmt.tag) &&
@@ -1736,11 +1900,15 @@ function detectStructuralYieldRules(
           // `<li>`, `<optgroup>`, `<tr>`). At runtime such wrappers
           // typically render the structurally-correct parent
           // (`<select>`, `<thead>`, `<ul>`, …) via a yield chain we
-          // can't statically pin (curried-via-yield-hash patterns
-          // where the parent's `(yield (hash X=...))` crosses an
-          // addon boundary, etc.). Suppress at the Source level.
-          out.push('element-permitted-content');
-          out.push('element-permitted-parent');
+          // can't statically pin. element-permitted-content and
+          // element-permitted-parent fire on the offending CHILDREN;
+          // per-child disable.
+          const offsets: number[] = [];
+          collectContentRestrictedChildOffsets(stmt, offsets);
+          for (const off of offsets) {
+            addPer(off, 'element-permitted-content');
+            addPer(off, 'element-permitted-parent');
+          }
         } else if (
           stmt.selfClosing &&
           stmtResolved &&
@@ -1751,37 +1919,48 @@ function detectStructuralYieldRules(
           // `<summary>`, `<head>` requires `<title>`, etc.). The
           // blanker substitutes the self-closing form to a
           // `<resolved>...</resolved>` paired-tag pair around an
-          // empty body — the required child lives in the addon's
-          // template, not at the consumer's call site, so html-
-          // validate sees the substituted element as missing its
-          // required content. Suppress at the Source level.
-          //
-          // Pattern: recursive `<CalculationDetails />` self-closing
-          // invocations whose addon template is `<details><summary>
-          // ...</summary>...</details>`.
-          out.push('element-required-content');
+          // empty body — element-required-content fires on the
+          // substituted element itself.
+          addPer(startOffset(stmt), 'element-required-content');
         } else if (
           stmtResolved &&
           STRUCTURAL_CONTENT_PARENTS.has(stmtResolved) &&
           hasTransparentCurriedChild(stmt, glintComponentTagMap, branchSelections)
         ) {
-          // Mirror of the case above for the curried-yield-hash
-          // pattern from the OPPOSITE direction: the WRAPPER resolves
-          // to a structural-content-restrictive native (`<ol>`,
-          // `<select>`, …) AND has a dotted direct child that
+          // Mirror: WRAPPER is a structural-content-restrictive native
+          // (`<ol>`, `<select>`, …) AND has a dotted direct child that
           // resolves to 'transparent' (curried-via-yield-hash —
           // `<HdsStepperList as |S|><S.Step>...`). Static blanking
-          // can't see through `<S.Step>` to its template's `<li>`
-          // wrapper.
-          out.push('element-permitted-content');
-          out.push('element-permitted-parent');
+          // can't see through `<S.Step>`. Per-child disable on the
+          // transparent dotted children themselves and on any
+          // structural-child descendants nested INSIDE them — never on
+          // sibling structural-child literals elsewhere under the
+          // wrapper (those are real-bug shapes that should still fire).
+          const offsets: number[] = [];
+          collectTransparentDottedChildOffsets(stmt, offsets);
+          for (const off of offsets) {
+            addPer(off, 'element-permitted-content');
+            addPer(off, 'element-permitted-parent');
+          }
+        }
+        // wcag/h63 & wcag/h67: per-element. h63 fires on each <th>
+        // descendant, so disable per-<th>; h67 fires on the <img>.
+        if (stmtResolved === 'img' && imgHasDynamicTitle(stmt)) {
+          addPer(startOffset(stmt), 'wcag/h67');
+        } else if (
+          stmtResolved === 'table' &&
+          tableHasGlimmerObscuredCells(stmt, branchSelections, glintComponentTagMap)
+        ) {
+          const thOffsets: number[] = [];
+          collectThOffsets(stmt.children, thOffsets);
+          for (const off of thOffsets) addPer(off, 'wcag/h63');
         }
         walk(stmt.children);
       }
     }
   }
   walk(ast.body);
-  return [...new Set(out)];
+  return perElement;
 }
 
 // Pick a single arm of `{{#if}}/{{else}}` to walk — mirrors the
@@ -1818,18 +1997,17 @@ function selectBranch(
 // FP-fire on the blanked output, so the suppression is needed.
 //
 // If a static submit DOES exist (here, among the children the consumer
-// projects through the component's `{{yield}}`), wcag/h32 wouldn't fire
-// and our injected `<!--html-validate-disable wcag/h32-->` would itself
-// be flagged "unused" by `no-unused-disable`. So we bail in that case.
+// projects through the component's `{{yield}}`), wcag/h32 wouldn't
+// fire and the per-element disable would target a form that doesn't
+// need it. So we bail in that case.
 //
 // "Statically-detectable submit" means a `<button>` whose `type` is
 // absent (default `submit` inside a form) or statically equals
 // `submit` (ASCII case-insensitive); a `<button type='button'>` /
 // `type='reset'` is explicitly non-submit and does NOT disqualify.
 // For `<input>`, `type='submit'` / `type='image'` (case-insensitive)
-// counts. Bare-mustache types are conservatively treated as MAYBE
-// submit (we bail) — better an extra real wcag/h32 fire than an
-// unused-disable cascade.
+// counts. Bare-mustache types are NOT static submit — they're handled
+// separately as `hasAmbiguousSubmit` (positive suppression trigger).
 // True when a `<form>` carries an event modifier that signals
 // input-event-driven UX (rather than submission-driven). Two events
 // trigger the suppression:
@@ -1898,10 +2076,110 @@ const ELEMENTS_WITH_REQUIRED_CONTENT: ReadonlySet<string> = (() => {
   }
 })();
 
+// True when an `<img>` element has a `title` attribute whose value
+// is entirely dynamic in a way the blanker can't faithfully model.
+// Three shapes count:
+//
+//   1. `title={{x}}` (MustacheStatement)
+//   2. `title='{{x}}'` / `title='{{x}}{{y}}'` (ConcatStatement with
+//      only MustacheStatement parts)
+//   3. `title=' {{x}} '` (ConcatStatement with MustacheStatement
+//      parts plus TextNode parts that are only whitespace) — the
+//      runtime title is effectively `<whitespace><value><whitespace>`,
+//      which AT typically trim; treat as semantically dynamic
+//
+// In all three, the runtime title may legitimately be empty (or
+// effectively empty after AT trimming), but the blanker substitutes
+// a whitespace placeholder that html-validate's H67 treats as non-
+// empty. ConcatStatement values with any non-whitespace TextNode
+// part (e.g., `title='pre-{{x}}'`) keep a literal portion that pins
+// them as non-empty at runtime, so those stay in scope for the rule.
+function imgHasDynamicTitle(node: AST.ElementNode): boolean {
+  for (const attr of node.attributes) {
+    if (attr.name !== 'title') continue;
+    if (attr.value.type === 'MustacheStatement') return true;
+    if (attr.value.type === 'ConcatStatement') {
+      return attr.value.parts.every(
+        (p) => p.type === 'MustacheStatement' || (p.type === 'TextNode' && p.chars.trim() === ''),
+      );
+    }
+    return false;
+  }
+  return false;
+}
+
+// True when a `<table>` descendant has cells whose runtime shape the
+// blanker can't faithfully represent. Two sources of obscurity:
+//
+//   1. A block (`{{#each}}`, `{{#if}}`, `{{#unless}}`) whose body's
+//      top-level children include a `<td>` / `<th>` / `<tr>` — the
+//      block iterates/conditionally renders cells (or rows). After
+//      blanking, only the single representative iteration survives,
+//      so row widths observed by html-validate diverge from runtime
+//      widths.
+//
+//   2. A PascalCase / dotted component invocation that resolves (via
+//      Glint or the canonical resolver) to `<tr>` / `<td>` / `<th>`.
+//      The blanker substitutes the tag but the cell content lives in
+//      the component's own template — so substituted rows come out
+//      empty (`<tr></tr>` with no children), mismatching the static
+//      `<thead>` row widths.
+//
+// Either way, `wcag/h63`'s `isSimpleTable` check sees an irregular
+// table, decides "not simple", and requires `scope` on every `<th>` —
+// FP-firing on the static header cells of what's a structurally-regular
+// runtime table. Suppress when our blanker has demonstrably collapsed
+// cell information; the same conditional-suppression pattern as
+// `wcag/h32` / `wcag/h71` here.
+//
+// We walk into nested elements (`<thead>`, `<tbody>`, `<tr>`) and into
+// block arms (using the same selectBranch convention as the rest of
+// this file) so that, e.g., `{{#if cond}}<tr>…</tr>{{/if}}` inside a
+// `<tbody>` is detected, as is `{{#each cols}}<th>…</th>{{/each}}`
+// inside a `<thead>` `<tr>`, and `<MyRow />` inside a `<tbody>`.
+function tableHasGlimmerObscuredCells(
+  table: AST.ElementNode,
+  branchSelections?: ReadonlyMap<number, BranchChoice>,
+  glintComponentTagMap?: ReadonlyMap<string, string> | null,
+): boolean {
+  function resolveTag(node: AST.ElementNode): string | null {
+    if (isNativeTag(node.tag)) return node.tag.toLowerCase();
+    if (!glintComponentTagMap || !node.loc.start) return null;
+    const key = `${node.loc.start.line}:${node.loc.start.column}`;
+    return glintComponentTagMap.get(key) ?? null;
+  }
+  function isCellTag(tag: string | null): boolean {
+    return tag === 'td' || tag === 'th' || tag === 'tr';
+  }
+  function inspect(stmts: ReadonlyArray<AST.Statement>): boolean {
+    for (const stmt of stmts) {
+      if (stmt.type === 'BlockStatement') {
+        const arm = selectBranch(stmt, branchSelections);
+        if (!arm) continue;
+        // Direct cells inside the block body — the block IS the
+        // cell-loop we're looking for.
+        for (const child of arm.body) {
+          if (child.type === 'ElementNode' && isCellTag(resolveTag(child))) return true;
+        }
+        // Nested blocks (`{{#if}}` inside `{{#each}}`, etc.).
+        if (inspect(arm.body)) return true;
+      } else if (stmt.type === 'ElementNode') {
+        // PascalCase / dotted component that resolves to a cell tag —
+        // the substituted output has the cell tag but the content
+        // lives in the component's own template.
+        if (!isNativeTag(stmt.tag) && isCellTag(resolveTag(stmt))) return true;
+        if (inspect(stmt.children)) return true;
+      }
+    }
+    return false;
+  }
+  return inspect(table.children);
+}
+
 // True when `node` has at least one direct child that is a dotted
-// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution is
-// 'transparent' — i.e. a curried-via-yield-hash component the resolver
-// couldn't pin to a specific native tag.
+// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution
+// is 'transparent' — i.e. a curried-via-yield-hash component the
+// resolver couldn't pin to a specific native tag.
 function hasTransparentCurriedChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
@@ -2059,6 +2337,17 @@ function elementYieldsAndLacksSubmit(
 ): boolean {
   let hasYield = false;
   let hasStaticSubmit = false;
+  // Form contains a dynamic-typed `<button>` / `<input>`, an `<input
+  // ...attributes>` / `<button ...attributes>`, or a PascalCase /
+  // dotted component invocation whose Glint resolution lands on a
+  // button/input with ambiguous type. In all three cases the actual
+  // runtime type could be 'submit' (no FP, no real bug) or anything
+  // else (real bug). The blanker can't determine the structure →
+  // suppress wcag/h32 per Mel #38's principle. The per-element
+  // disable lands on a form that WOULD have fired wcag/h32 anyway
+  // (the placeholder type isn't recognized as 'submit'), so the
+  // suppression is well-targeted.
+  let hasAmbiguousSubmit = false;
   // Tracks whether the form contains any UNRESOLVED PascalCase /
   // dotted component invocation. Such a component may render a
   // submit button at runtime that we can't see statically — common
@@ -2091,14 +2380,29 @@ function elementYieldsAndLacksSubmit(
         continue;
       }
       if (stmt.type === 'ElementNode') {
-        if (
-          isStaticSubmitButton(stmt) ||
-          isSubmitInput(stmt) ||
-          isAmbiguouslyTypedInputOrButton(stmt) ||
-          isComponentResolvingToSubmitOrAmbiguous(stmt, glintComponentTagMap, glintComponentAttrMap)
-        ) {
+        if (isStaticSubmitButton(stmt) || isSubmitInput(stmt)) {
           hasStaticSubmit = true;
           return;
+        }
+        if (isAmbiguouslyTypedInputOrButton(stmt) || isInputOrButtonWithSplat(stmt)) {
+          // Dynamic-type (`<button type='{{x}}'>`) or splatted
+          // (`<input ...attributes>`) submit candidate. We can't
+          // know the runtime type → wcag/h32 fires on the blanked
+          // output (the placeholder isn't recognized as 'submit').
+          // Trigger per-element suppression on the form.
+          hasAmbiguousSubmit = true;
+        }
+        const componentSubmit = classifyComponentSubmit(
+          stmt,
+          glintComponentTagMap,
+          glintComponentAttrMap,
+        );
+        if (componentSubmit === 'static-submit') {
+          hasStaticSubmit = true;
+          return;
+        }
+        if (componentSubmit === 'ambiguous') {
+          hasAmbiguousSubmit = true;
         }
         // Track unresolved PascalCase / dotted component invocations.
         // These are candidates for "may contain submit" suppression
@@ -2131,13 +2435,18 @@ function elementYieldsAndLacksSubmit(
   walk(form.children);
   // Suppress wcag/h32 for an opaque-source form: yield-bearing (PR #17),
   // a form whose only "candidates" for submit are unresolved component
-  // invocations (heuristic above), OR a `<form>` that is itself a
-  // component substitution whose body lives in the component's template
-  // (issue #34) — in every case the blanked call site can't show the
-  // real submit, but a static submit among the consumer's own children
-  // still disqualifies (it'd make the directive `no-unused-disable`).
+  // invocations (heuristic above), an ambiguous-typed inline submit
+  // candidate (`hasAmbiguousSubmit`), OR a `<form>` that is itself a
+  // component substitution whose body lives in the component's
+  // template (issue #34) — in every case the blanked call site can't
+  // show a real submit. A static submit among the consumer's own
+  // children still disqualifies (the per-element disable would target
+  // a form that wouldn't have fired wcag/h32 anyway).
   return (
-    (hasYield || hasUnresolvedComponent || formTagFromComponentSubstitution) &&
+    (hasYield ||
+      hasUnresolvedComponent ||
+      formTagFromComponentSubstitution ||
+      hasAmbiguousSubmit) &&
     !hasStaticSubmit
   );
 }
@@ -2235,64 +2544,70 @@ function isAmbiguouslyTypedInputOrButton(node: AST.ElementNode): boolean {
   return false;
 }
 
-// True when a component invocation (`<MyButton>`, `<This.Foo>`)
-// resolves VIA GLINT to a native `<button>`/`<input>` that's either a
-// static submit OR ambiguous on its type. Treats both "definitely
-// submit" and "could be submit" as disqualifying — the goal is to
-// avoid `no-unused-disable` cascades, so we err on the side of NOT
-// suppressing when in doubt.
+// True for `<input ...attributes>` / `<button ...attributes>`. The
+// consumer can pass `type='submit'` / `type='image'` through the
+// splat at runtime; the blanker can't see the splatted attrs.
+function isInputOrButtonWithSplat(node: AST.ElementNode): boolean {
+  if (node.tag !== 'input' && node.tag !== 'button') return false;
+  return (node.attributes ?? []).some((a) => a.name === '...attributes');
+}
+
+// Classification of a component invocation's relationship to "this
+// might satisfy `<form>`'s submit requirement at runtime." Returned
+// by `classifyComponentSubmit`, which examines Glint's resolved tag
+// and recorded `type` attribute for the invocation.
 //
-// Glint-only on purpose: the implementation bails early when
-// `glintComponentTagMap` is falsy. The plugin's builtin component map
+//   'static-submit'  — the component definitively renders a submit
+//                      control (e.g. `<button>` with no type, or
+//                      `<button type='submit'>`). Triggers
+//                      `hasStaticSubmit`, blocking suppression so we
+//                      don't register a per-element disable on a
+//                      form that wouldn't have fired wcag/h32 anyway.
+//   'ambiguous'      — the component might or might not be a submit
+//                      at runtime (e.g. `<button>` with dynamic
+//                      `type='{{x}}'`). Triggers `hasAmbiguousSubmit`
+//                      → suppress wcag/h32 via per-element disable
+//                      on the form (the rule WILL fire on the
+//                      blanked output because the placeholder isn't
+//                      recognized as 'submit', so the disable is
+//                      well-targeted).
+//   'not-submit'     — definitively non-submit OR not a button/input
+//                      at all. Doesn't affect suppression decisions.
+//
+// Glint-only on purpose: the implementation bails to 'not-submit'
+// when `glintComponentTagMap` is falsy. The plugin's builtin map
 // (used by `handleGlintSubstitution` for `<Input>` / `<Textarea>` /
 // `<LinkTo>` in non-Glint runs) doesn't currently feed into submit
 // detection here. In practice the builtins that map to `<input>` are
-// rarely used as submit buttons (`<Input type='submit'>` exists but is
-// uncommon), so the missing fallback hasn't surfaced as a real FP.
-// Add it if a real-world target hits this case.
-//
-// "Static submit" cases:
-//   - Resolves to `<button>` with no static `type` attr (default
-//     submit per HTML), OR with `type='submit'` (case-insensitive).
-//   - Resolves to `<input>` with `type='submit'` / `type='image'`
-//     (case-insensitive).
-//
-// "Ambiguous" case:
-//   - Resolves to `<button>`/`<input>` with a `type` attr whose
-//     recorded value is whitespace-only (DynamicValue placeholder
-//     produced for bare-mustache types in component-attrs.ts).
-//
-// "Not submit" cases (returns false):
-//   - Component does not resolve, OR resolves to a non-submit-style tag.
-//   - Resolves to `<button>` with a non-submit static type
-//     (`type='button'`, `type='reset'`).
-//   - Resolves to `<input>` with a non-submit static type
-//     (`type='text'`, etc.).
-function isComponentResolvingToSubmitOrAmbiguous(
+// rarely used as submit buttons, so the missing fallback hasn't
+// surfaced as a real FP. Add it if a real-world target hits this case.
+function classifyComponentSubmit(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
   glintComponentAttrMap: ReadonlyMap<string, ComponentAttrs> | null | undefined,
-): boolean {
-  if (isNativeTag(node.tag)) return false;
-  if (!glintComponentTagMap || !node.loc.start) return false;
+): 'static-submit' | 'ambiguous' | 'not-submit' {
+  if (isNativeTag(node.tag)) return 'not-submit';
+  if (!glintComponentTagMap || !node.loc.start) return 'not-submit';
   const key = `${node.loc.start.line}:${node.loc.start.column}`;
   const resolvedTag = glintComponentTagMap.get(key);
-  if (resolvedTag !== 'button' && resolvedTag !== 'input') return false;
+  if (resolvedTag !== 'button' && resolvedTag !== 'input') return 'not-submit';
   const recordedType = glintComponentAttrMap?.get(key)?.attrs?.['type'];
   if (recordedType === undefined) {
     // No static type recorded by the component-attrs extractor.
     // For <button>: default IS submit per HTML → static submit.
     // For <input>: default is 'text' → not submit.
-    return resolvedTag === 'button';
+    return resolvedTag === 'button' ? 'static-submit' : 'not-submit';
   }
   if (/^\s+$/u.test(recordedType)) {
     // DynamicValue placeholder — type is bare-mustache at the splatted
-    // root; could resolve to 'submit' at runtime. Disqualify.
-    return true;
+    // root; could resolve to 'submit' at runtime.
+    return 'ambiguous';
   }
   const v = recordedType.toLowerCase();
-  if (resolvedTag === 'button') return v === 'submit';
-  return v === 'submit' || v === 'image';
+  if (resolvedTag === 'button') {
+    return v === 'submit' ? 'static-submit' : 'not-submit';
+  }
+  return v === 'submit' || v === 'image' ? 'static-submit' : 'not-submit';
 }
 
 // True when the branch's body contains nothing the validator can see —
