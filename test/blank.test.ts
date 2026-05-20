@@ -23,6 +23,24 @@ function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResul
   return result as BlankResult;
 }
 
+// Decouples shape-coupled detection-logic tests from the
+// disableForRules-vs-disablePerElement split. Tests for the
+// blanker's suppression DECISIONS (does the blanker recognize this
+// pattern as needing suppression?) use this helper; they don't care
+// whether the decision lands in the file-level list or the per-
+// element map. Behavior-driven tests for ACTUAL rule firing live in
+// integration.test.ts with real fixtures — that's the layer for
+// "does the rule message fire (or not) end-to-end."
+function suppressesRule(result: BlankResult, rule: string): boolean {
+  if (result.disableForRules?.includes(rule)) return true;
+  if (result.disablePerElement) {
+    for (const set of result.disablePerElement.values()) {
+      if (set.has(rule)) return true;
+    }
+  }
+  return false;
+}
+
 describe('length preservation invariant', () => {
   const cases = [
     '<div>hello</div>',
@@ -1272,7 +1290,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // STRUCTURAL_CONTENT_PARENTS set) AND the wrapper has a
   // transparent dotted direct child. Same per-Source trade-off as
   // case (B).
-  it('emits element-permitted-content / -parent in disableForRules when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
+  it('suppresses element-permitted-content / -parent when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
     const content = '<W as |S|>\n  <S.Step>\n    <div>step content</div>\n  </S.Step>\n</W>\n';
     const tagMap = new Map<string, string>([
       ['1:0', 'ol'], // <W>
@@ -1281,8 +1299,8 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.disableForRules).toContain('element-permitted-content');
-    expect(result.disableForRules).toContain('element-permitted-parent');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
+    expect(suppressesRule(result, 'element-permitted-parent')).toBe(true);
   });
 
   it('does NOT suppress when wrapper resolves to a permissive parent (e.g. <div>)', () => {
@@ -1294,8 +1312,8 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.disableForRules).not.toContain('element-permitted-content');
-    expect(result.disableForRules).not.toContain('element-permitted-parent');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(false);
+    expect(suppressesRule(result, 'element-permitted-parent')).toBe(false);
   });
 
   it('case (B) ALSO suppresses when dotted child resolves to a structural tag (li/option/etc)', () => {
@@ -1312,8 +1330,8 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.disableForRules).toContain('element-permitted-content');
-    expect(result.disableForRules).toContain('element-permitted-parent');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
+    expect(suppressesRule(result, 'element-permitted-parent')).toBe(true);
   });
 
   it('does NOT suppress when the direct child is non-dotted (suggests wrapper IS runtime parent)', () => {
@@ -1325,8 +1343,8 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.disableForRules).not.toContain('element-permitted-content');
-    expect(result.disableForRules).not.toContain('element-permitted-parent');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(false);
+    expect(suppressesRule(result, 'element-permitted-parent')).toBe(false);
   });
 
   // Regression for 9ef0b73 (Copilot round 6): case (B) was over-
@@ -1342,18 +1360,16 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const content =
       '<NonNativeWrapper>\n  <ListItem>\n    <span>x</span>\n  </ListItem>\n</NonNativeWrapper>\n';
     const tagMap = new Map<string, string>([
-      // Wrapper is unresolved (no entry); falls into the
-      // !isNativeTag && !lookupBuiltinComponent branch where case
-      // (B) runs. Pre-fix: child `<ListItem>` resolved to `<li>`
-      // would have triggered case (B). Post-fix: only DOTTED
-      // children trigger.
-      ['2:2', 'li'], // <ListItem> → <li> (concrete, non-dotted)
+      // Wrapper is unresolved (no entry); <ListItem> resolves to
+      // <li>. Pre-fix: case (B) suppressed for any structural-
+      // resolving child. Post-fix: only DOTTED children trigger.
+      ['2:2', 'li'],
     ]);
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(result.disableForRules).not.toContain('element-permitted-content');
-    expect(result.disableForRules).not.toContain('element-permitted-parent');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(false);
+    expect(suppressesRule(result, 'element-permitted-parent')).toBe(false);
   });
 
   // Ecosystem regression: when the wrapper resolves to a NATIVE tag
@@ -1373,7 +1389,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // a structural-content-parent — in that case we don't trust the
   // resolution to be the runtime parent of the structural literals
   // inside.
-  it('case (A) descent: fires when dotted child resolves to a non-structural-parent native (e.g. <div>) but contains literal structural children', () => {
+  it('case (A) descent: suppresses element-permitted-content when dotted child resolves to a non-structural-parent native (e.g. <div>) but contains literal structural children', () => {
     const content = '<W as |F|>\n  <F.Options>\n    <option>x</option>\n  </F.Options>\n</W>\n';
     const tagMap = new Map<string, string>([
       ['1:0', 'div'],     // <W> resolved to <div>
@@ -1382,10 +1398,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(
-      result.disableForRules,
-      `expected suppression when F.Options resolves to non-structural-parent <div> with <option> inside; got: ${JSON.stringify(result.disableForRules)}`,
-    ).toContain('element-permitted-content');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
   });
 
   // Counter-test: when the dotted child resolves to a structural-
@@ -1393,7 +1406,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // literal mismatches there are real bugs (e.g. <th> under <select>)
   // and should fire `element-permitted-content` rather than be
   // suppressed.
-  it('case (A) descent: does NOT fire when dotted child resolves to a structural-content-parent (trust Glint resolution)', () => {
+  it('case (A) descent: does NOT suppress when dotted child resolves to a structural-content-parent (trust Glint resolution)', () => {
     const content = '<W as |C|>\n  <C.Options>\n    <th>real bug</th>\n  </C.Options>\n</W>\n';
     const tagMap = new Map<string, string>([
       ['1:0', 'div'],     // <W>
@@ -1402,13 +1415,10 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(
-      result.disableForRules,
-      `must not suppress when dotted child is Glint-resolved to structural parent (real <th>-under-<select> bug); got: ${JSON.stringify(result.disableForRules)}`,
-    ).not.toContain('element-permitted-content');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(false);
   });
 
-  it('case (A) suppresses when a NATIVE-resolved wrapper has a transparent dotted child containing literal structural elements (multi-level descent)', () => {
+  it('case (A) suppresses element-permitted-content when a NATIVE-resolved wrapper has a transparent dotted child containing literal structural elements (multi-level descent)', () => {
     // Wrapper resolves to <div> (NOT a structural-content-parent).
     // Without descent, case-A's wrapper-pinned check would skip
     // (because <div> accepts <option> indirectly via flow content).
@@ -1424,10 +1434,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(
-      result.disableForRules,
-      `expected suppression on <option> nested inside transparent <F.Options>; got: ${JSON.stringify(result.disableForRules)}`,
-    ).toContain('element-permitted-content');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
   });
 
   // Ecosystem regression: HDS's `<HdsForm.Select.Field as |F|>` shape.
@@ -1449,7 +1456,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // unresolvable wrappers' children, the literal `<option>` floats
   // up to whatever native ancestor is at the consumer's call site
   // (often `<div>`) and FP-fires `element-permitted-content`.
-  it('case (A) suppresses when an unresolvable dotted wrapper has structural-child literals (multi-level yield-chain)', () => {
+  it('case (A) suppresses element-permitted-content when an unresolvable dotted wrapper has structural-child literals (multi-level yield-chain)', () => {
     const content = '<HdsForm.Select.Field as |F|>\n  <F.Options>\n    <option>one</option>\n    <option>two</option>\n  </F.Options>\n</HdsForm.Select.Field>\n';
     // F.Options resolves to 'transparent' (unresolvable curried-yield-hash);
     // HdsForm.Select.Field is unresolvable (dotted, no entry in tagMap).
@@ -1459,10 +1466,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const r = blankTemplateContent(content, undefined, null, tagMap);
     if (r.error) throw r.error;
     const result = r as BlankResult;
-    expect(
-      result.disableForRules,
-      `expected element-permitted-content suppression on <option> under transparent <F.Options> nested in dotted <HdsForm.Select.Field>; got: ${JSON.stringify(result.disableForRules)}`,
-    ).toContain('element-permitted-content');
+    expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
   });
 
   // Ecosystem regression: `<HdsInteractive>` (Element: HTMLAnchorElement |

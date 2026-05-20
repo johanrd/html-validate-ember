@@ -409,6 +409,155 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it('h32-dynamic-submit-type: wcag/h32 must NOT fire when the only candidate submit is <button type="{{dynamic}}">', async () => {
+    // The blanker can't determine the runtime button type; could be
+    // 'submit' (form valid) or 'button' (form invalid). Mel #38
+    // principle: suppress the technique-rule on uncertainty. Safe
+    // because the rule WILL fire on the blanked output (placeholder
+    // type isn't recognized as submit), so the directive is load-
+    // bearing and no-unused-disable doesn't cascade.
+    const r = await validate('h32-dynamic-submit-type.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      offenders,
+      `wcag/h32 must not fire on a form whose only submit candidate is <button type='{{dynamic}}'>; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('h32-input-dynamic-type: wcag/h32 must NOT fire when the only candidate submit is <input type="{{dynamic}}">', async () => {
+    const r = await validate('h32-input-dynamic-type.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      offenders,
+      `wcag/h32 must not fire on a form whose only submit candidate is <input type='{{dynamic}}'>; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('h32-yield-and-ambiguous-submit: wcag/h32 must NOT fire when a form has BOTH {{yield}} AND a dynamic-typed button', async () => {
+    // Composes the yield and ambiguous-submit suppression triggers.
+    // Pre-migration the ambiguous flag set hasStaticSubmit=true and
+    // blocked suppression even alongside yield; new logic keeps the
+    // two signals independent so either alone (or both) triggers.
+    const r = await validate('h32-yield-and-ambiguous-submit.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      offenders,
+      `wcag/h32 must not fire when a form has both yield and a dynamic-typed button; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('h32-input-splat-attrs: wcag/h32 must NOT fire when an <input ...attributes> may carry type=submit via the splat', async () => {
+    const r = await validate('h32-input-splat-attrs.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h32');
+    expect(
+      offenders,
+      `wcag/h32 must not fire on a form with <input ...attributes>; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('h67-img-dynamic-title-patterns: wcag/h67 must NOT fire on any <img alt=""> whose title is dynamic — bare-mustache, ConcatStatement w/ whitespace-only literals, or inside {{#if}}', async () => {
+    // H67: a decorative image (empty alt) must not carry a title
+    // attribute — the title would surface to AT, defeating the
+    // decorative declaration. When the title is dynamic in a way the
+    // blanker can't model (bare mustache, whitespace-only literals
+    // around a mustache, or inside a conditional), the runtime title
+    // may legitimately be empty. Suppress on uncertainty per Mel #38.
+    //
+    // Three patterns in one fixture, asserted together — if any
+    // imgHasDynamicTitle branch breaks, the count is non-zero and
+    // the diagnostic message lists the actual messages so you can
+    // tell which <img> fired.
+    const r = await validate('h67-img-dynamic-title-patterns.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h67');
+    expect(
+      offenders,
+      `wcag/h67 must not fire on any <img> with a dynamic title (bare mustache / whitespace-literal concat / inside {{#if}}); got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('multi-img-h67: wcag/h67 suppression is per-element — a dynamic-title img is suppressed but a sibling with a static-non-empty title still fires', async () => {
+    // Per-element disable scope guard for h67. The first img has
+    // title='{{tip}}' (runtime title may be empty) and gets
+    // suppressed. The second img has title='Some literal' (static
+    // non-empty) — a real H67 violation on a decorative image
+    // (alt='' + title='something'). With a file-level directive
+    // the real violation would be silenced; per-element keeps it.
+    const r = await validate('multi-img-h67.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h67');
+    expect(
+      offenders.length,
+      `wcag/h67 must fire on the second img with a static-non-empty title even though the first img's dynamic title is suppressed; got: ${JSON.stringify(r.messages)}`,
+    ).toBe(1);
+    // The fixture's second img is at line 19; the first at line 18.
+    expect(
+      offenders[0]?.line,
+      `h67 message must come from the second img (line 19), not the first (suppressed); got: ${JSON.stringify(offenders)}`,
+    ).toBe(19);
+  });
+
+  it('multi-table-mixed: wcag/h63 suppression is per-element — a cell-loop table is suppressed but a genuinely-irregular sibling table still fires', async () => {
+    // Per-element disable scope guard. The first table contains a
+    // cell-loop ({{#each}}<td>) and gets its <th>s individually
+    // disabled. The second table is plain static markup with a
+    // genuine row-width mismatch (4 <th> vs 3 <td>) — its <th>s
+    // should fire h63 normally. With a file-level directive the
+    // real bug would be silenced too; per-element keeps both rules.
+    const r = await validate('multi-table-mixed.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h63');
+    expect(
+      offenders.length,
+      `wcag/h63 must fire on the second (genuinely-irregular) table even though the first table's cell-loop is suppressed; got: ${JSON.stringify(r.messages)}`,
+    ).toBeGreaterThan(0);
+    // Locate the second table's <th></th> (line 41 in the fixture)
+    // and verify the message is reported there, not on the first
+    // table's <th></th> (line 25).
+    expect(
+      offenders.every((m) => m.line >= 38),
+      `h63 messages must come from the second table (line >= 38), not the first (suppressed); got: ${JSON.stringify(offenders)}`,
+    ).toBe(true);
+  });
+
+  it('table-component-rows: wcag/h63 must NOT fire when rows are rendered by PascalCase components resolving to <tr>', async () => {
+    // Same family as table-cell-each: the blanker can't see the
+    // runtime row content. Here, <MyRow @label='…' /> resolves via
+    // Glint to <tr>, so the blanker substitutes the tag — but the
+    // row's children (the <td> cells) live in MyRow's own template,
+    // not at the call site. The blanked output has empty <tr></tr>
+    // rows against a static <thead> of 4 <th>. `isSimpleTable`
+    // decides "not simple" → requires scope on every <th> → fires.
+    //
+    // Glimmer made the row content invisible → suppress the
+    // technique-rule. Same conditional-suppression principle as
+    // wcag/h32 / wcag/h71 here.
+    const r = await validate('table-component-rows.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h63');
+    expect(
+      offenders,
+      `wcag/h63 must not fire when the blanker has substituted row-component invocations into empty <tr> elements; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('table-cell-each: wcag/h63 must NOT fire when a row uses {{#each}} to generate cells', async () => {
+    // Mel #38 / our cell-loop FP. html-validate's H63 has a
+    // simple-table exemption but `isSimpleTable` compares raw cell
+    // counts across rows. The blanker leaves {{#each}}<td>…</td>
+    // {{/each}} as a single representative iteration, so a body
+    // row appears to have 2 cells against a static <thead> of 4
+    // — rule decides "not simple" → requires scope on every <th>
+    // → fires on the empty corner <th></th>.
+    //
+    // The runtime table is regular. Our blanker created the
+    // appearance of irregularity. Same shape as wcag/h32 / wcag/h71
+    // suppressions: Glimmer made structure invisible → suppress
+    // the technique-rule.
+    const r = await validate('table-cell-each.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h63');
+    expect(
+      offenders,
+      `wcag/h63 must not fire on a table whose row widths only mismatch because the blanker collapsed {{#each}} cells; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
   it('glint-resolved-form-consumer: wcag/h32 suppression fires when wrapper is Glint-resolved to <form>', async () => {
     // Regression for fd7fb2a: the `wcag/h32` heuristic in
     // `detectStructuralYieldRules` was checking `stmt.tag === 'form'`

@@ -150,6 +150,7 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
   attrInjections: ReadonlyMap<number, ReadonlyArray<{ attr: string; value: string | null }>>,
+  disablePerElement: ReadonlyMap<number, ReadonlySet<string>>,
   startOffset: number,
 ): SourceHooks {
   const processAttribute: ProcessAttributeCallback = (attr: AttributeData) => {
@@ -211,6 +212,20 @@ function makeHooks(
         const injected = value === null ? new DynamicValue('') : value;
         elWithAttrs.setAttribute(attr, injected, location, location);
       }
+    }
+    // Per-element rule disables. Surgical alternative to the file-
+    // level `disableForRules` directive — registered by blank.ts
+    // when a specific element triggers a Glimmer-opacity FP class
+    // (e.g., `<table>` with a cell-loop {{#each}}). Rule listeners
+    // (`element:ready`, `tag:end`, `dom:ready`, …) check
+    // `ruleEnabled(...)` inside their `report()` paths, so this
+    // disable lands before emission regardless of when the rule
+    // fires for this element.
+    const disables = disablePerElement.get(templateRelativeOffset);
+    if (disables && disables.size > 0) {
+      (el as unknown as { disableRules(rules: ReadonlyArray<string>): void }).disableRules([
+        ...disables,
+      ]);
     }
   };
 
@@ -278,6 +293,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
         result.attrInjections ?? new Map(),
+        result.disablePerElement ?? new Map(),
         0,
       ),
     };
@@ -441,6 +457,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         hooks: makeHooks(
           new Set(result.dynamicContentOffsets ?? []),
           result.attrInjections ?? new Map(),
+          result.disablePerElement ?? new Map(),
           startOffset,
         ),
       };
