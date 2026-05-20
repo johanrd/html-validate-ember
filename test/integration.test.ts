@@ -471,6 +471,35 @@ describe('end-to-end fixtures', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('table-component-th: wcag/h63 must NOT fire on a <th> produced by a PascalCase component resolved via Glint to <th>', async () => {
+    // tableHasGlimmerObscuredCells treats component-resolved <th>/
+    // <td>/<tr> as cell tags that trigger the table's suppression.
+    // The per-<th> disable collection must also recognize component-
+    // resolved <th>, not just literal ones — otherwise the
+    // substituted output fires h63 even though we detected the
+    // table as Glimmer-opaque.
+    const r = await validate('table-component-th.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'wcag/h63');
+    expect(
+      offenders,
+      `wcag/h63 must not fire on component-resolved <th>; got: ${JSON.stringify(r.messages)}`,
+    ).toHaveLength(0);
+  });
+
+  it('regression-sibling-structural-literal: element-permitted-content fires on a real-bug structural literal that sits beside an unrelated transparent dotted curried child', async () => {
+    // STRUCTURAL_CONTENT_PARENTS + transparent-dotted-child branch
+    // must scope its suppression to the dotted child's subtree only.
+    // A sibling structural-child literal (here, a <tr> directly under
+    // <select>) is a real bug regardless of the dotted child's
+    // yield-chain opacity and must still fire.
+    const r = await validate('regression-sibling-structural-literal-under-structural-wrapper.gts');
+    const offenders = r.messages.filter((m) => m.rule === 'element-permitted-content');
+    expect(
+      offenders.length,
+      `element-permitted-content must fire on the sibling <tr> under <select>; got: ${JSON.stringify(r.messages)}`,
+    ).toBeGreaterThan(0);
+  });
+
   it('h32-yield-and-ambiguous-submit: wcag/h32 must NOT fire when a form has BOTH {{yield}} AND a dynamic-typed button', async () => {
     // Composes the yield and ambiguous-submit suppression triggers.
     // Pre-migration the ambiguous flag set hasStaticSubmit=true and

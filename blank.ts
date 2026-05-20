@@ -1669,11 +1669,18 @@ function blankTemplateContent(
 // to suppress doesn't actually fire on the blanked output, since
 // substitution emits a real submit).
 //
-// Conservative on dynamic types: `<button type={{x}}>` and
-// `<input type={{x}}>` count as MAYBE-submit and disqualify the
-// suppression. Trade-off: a yield-bearing form whose only "submit-like"
-// element has a dynamic type stays unsuppressed (real h32 may fire) —
-// preferred to introducing a synthetic no-unused-disable.
+// Dynamic types as positive suppression signal. `<button type={{x}}>`
+// and `<input type={{x}}>` set `hasAmbiguousSubmit` in
+// `elementYieldsAndLacksSubmit`, triggering wcag/h32 suppression on
+// the form (per Mel #38: when the validator can't determine code
+// structure, the technique-rule shouldn't fire). The prior trade-off
+// — treating these as "MAYBE-submit" that DISqualifies suppression to
+// avoid `no-unused-disable` cascades — no longer applies under the
+// per-element migration: there's no directive comment to be "unused",
+// and the rule WOULD fire on the blanked output regardless (the
+// placeholder isn't recognized as 'submit'), so the per-element
+// `disableRules` is load-bearing.
+//
 // Detect per-element rule suppressions (the new path) AND any
 // remaining file-level rules (legacy / multipass-only). Returns both
 // in one walk to avoid double-traversing the AST.
@@ -1710,11 +1717,59 @@ function detectSuppressions(
         continue;
       }
       if (stmt.type === 'ElementNode') {
-        if (stmt.tag === 'th') into.push(startOffset(stmt));
+        if (stmt.tag === 'th') {
+          into.push(startOffset(stmt));
+        } else if (!isNativeTag(stmt.tag) && glintComponentTagMap && stmt.loc.start) {
+          // Component invocation resolving to `<th>` via Glint (e.g.
+          // `<MyHeaderCell />` with `Element: HTMLTableCellElement` and
+          // a `<th>` root). `tableHasGlimmerObscuredCells` treats these
+          // as cell tags that trigger suppression; without collecting
+          // their offsets here the per-`<th>` `disableRules` wouldn't
+          // land on the substituted output.
+          const key = `${stmt.loc.start.line}:${stmt.loc.start.column}`;
+          if (glintComponentTagMap.get(key) === 'th') into.push(startOffset(stmt));
+        }
         collectThOffsets(stmt.children, into);
       }
     }
   }
+  // For the STRUCTURAL_CONTENT_PARENT + transparent-dotted-child
+  // branch only: collect the transparent dotted children themselves
+  // PLUS any structural-child literals nested INSIDE them. Skips
+  // sibling structural-child literals elsewhere under the wrapper —
+  // those are not covered by the dotted child's yield chain and any
+  // rule fire on them is a real bug that must still surface.
+  function collectTransparentDottedChildOffsets(
+    node: AST.ElementNode,
+    into: number[],
+  ): void {
+    if (!glintComponentTagMap) return;
+    const tagMap = glintComponentTagMap;
+    function walk(stmts: ReadonlyArray<AST.Statement>): void {
+      for (const stmt of stmts) {
+        if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) walk(arm.body);
+          continue;
+        }
+        if (stmt.type !== 'ElementNode') continue;
+        const isDotted = stmt.tag.includes('.');
+        const key = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
+        const resolved = key ? tagMap.get(key) : undefined;
+        if (isDotted && resolved === 'transparent') {
+          // The transparent dotted child itself, plus its whole
+          // subtree (including structural-child literals inside it).
+          into.push(startOffset(stmt));
+          collectContentRestrictedChildOffsets(stmt, into);
+        }
+        // Recurse into siblings/descendants WITHOUT collecting their
+        // offsets — we only want offsets inside transparent dotted
+        // children.
+      }
+    }
+    walk(node.children);
+  }
+
   // For wrapper-with-content-restricted-children cases (element-
   // permitted-content / -parent): walk the wrapper's descendants and
   // record every child element that html-validate would flag. The
@@ -1853,9 +1908,12 @@ function detectSuppressions(
           // resolves to 'transparent' (curried-via-yield-hash —
           // `<HdsStepperList as |S|><S.Step>...`). Static blanking
           // can't see through `<S.Step>`. Per-child disable on the
-          // transparent dotted children.
+          // transparent dotted children themselves and on any
+          // structural-child descendants nested INSIDE them — never on
+          // sibling structural-child literals elsewhere under the
+          // wrapper (those are real-bug shapes that should still fire).
           const offsets: number[] = [];
-          collectContentRestrictedChildOffsets(stmt, offsets);
+          collectTransparentDottedChildOffsets(stmt, offsets);
           for (const off of offsets) {
             addPer(off, 'element-permitted-content');
             addPer(off, 'element-permitted-parent');
