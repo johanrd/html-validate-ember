@@ -1206,4 +1206,58 @@ describe('end-to-end fixtures', () => {
       expect(jsBleed).toHaveLength(0);
     });
   });
+
+  describe('issue #37: SVG / MathML element-name + element-case false positives', () => {
+    it('control: literal `<svg>` wrapper validates clean (foreign-body discard)', async () => {
+      const r = await validate('svg-inline.gts');
+      const offending = r.messages.filter(
+        (m) => m.rule === 'element-name' || m.rule === 'element-case',
+      );
+      expect(offending).toEqual([]);
+    });
+
+    it('svg-namespace fragment in `{{#if}}` with no in-template <svg> ancestor: silenced by the canonical svg-tags / mathml-tag-names allowlist', async () => {
+      const r = await validate('svg-foreign-content.gts');
+      const offending = r.messages.filter(
+        (m) => m.rule === 'element-name' || m.rule === 'element-case',
+      );
+      expect(offending).toEqual([]);
+    });
+
+    it('mathml fragment with no in-template <math> ancestor: silenced by the same allowlist', async () => {
+      const r = await validate('mathml-foreign-content.gts');
+      const offending = r.messages.filter(
+        (m) => m.rule === 'element-name' || m.rule === 'element-case',
+      );
+      expect(offending).toEqual([]);
+    });
+
+    // The allowlist is *canonical case* only — typos and miscased
+    // variants still fire. Locks in the case-discrimination contract
+    // so we don't regress to a case-insensitive allowlist (which
+    // would silence `<lineargradient>` etc. as a side effect).
+    it('non-canonical case still fires: `<lineargradient>` typo, `<LinearGradient>` wrong-case, `<dIv>` miscased HTML', async () => {
+      const hv = new HtmlValidate({
+        root: true,
+        extends: ['html-validate:recommended', 'html-validate-ember:recommended'],
+        plugins: [plugin],
+      });
+      const cases: Array<[string, string[]]> = [
+        ['<defs></defs>', []],
+        ['<linearGradient></linearGradient>', []],
+        ['<lineargradient></lineargradient>', ['element-name']],
+        ['<LinearGradient></LinearGradient>', ['element-case', 'element-name']],
+        ['<dIv></dIv>', ['element-case']],
+      ];
+      for (const [src, expected] of cases) {
+        const r = await hv.validateString(src);
+        const ids = r.results
+          .flatMap((x) => x.messages)
+          .map((m) => m.ruleId)
+          .filter((id) => id === 'element-name' || id === 'element-case')
+          .sort();
+        expect(ids, `for input ${src}`).toEqual(expected.sort());
+      }
+    });
+  });
 });
