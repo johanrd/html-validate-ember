@@ -405,8 +405,20 @@ async function main(): Promise<void> {
     const prevGlint = process.env['HVE_GLINT'];
     if (useGlint) {
       process.env['HVE_GLINT'] = '1';
-    } else if (process.env['HVE_GLINT']) {
-      delete process.env['HVE_GLINT'];
+    } else {
+      // Must be the literal string '0' — the plugin reads
+      // `process.env['HVE_GLINT'] !== '0'`, so an unset/deleted env var
+      // is treated as Glint-ON (default). The previous `delete` here
+      // silently re-enabled Glint for targets configured `glint: false`
+      // (and for targets where install failed), filling the discourse /
+      // super-rentals / cardstack-ui-components baselines with
+      // Glint-resolved findings that those targets opted out of —
+      // notably ~390 `<li>` substitutions from "ghost" service-driven
+      // components like `<DBreadcrumbsItem>` in discourse, which
+      // register with a service via `constructor()` and render nothing
+      // at the call site (the actual `<li>` is emitted by a sibling
+      // container component's `{{#each}}` over registered items).
+      process.env['HVE_GLINT'] = '0';
     }
     let result;
     try {
