@@ -1290,7 +1290,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
   // STRUCTURAL_CONTENT_PARENTS set) AND the wrapper has a
   // transparent dotted direct child. Same per-Source trade-off as
   // case (B).
-  it('suppresses element-permitted-content / -parent when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
+  it('suppresses element-permitted-content / -parent on the FLOATING <div> when wrapper resolves to <ol> and direct child is dotted+transparent', () => {
     const content = '<W as |S|>\n  <S.Step>\n    <div>step content</div>\n  </S.Step>\n</W>\n';
     const tagMap = new Map<string, string>([
       ['1:0', 'ol'], // <W>
@@ -1301,6 +1301,15 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
     const result = r as BlankResult;
     expect(suppressesRule(result, 'element-permitted-content')).toBe(true);
     expect(suppressesRule(result, 'element-permitted-parent')).toBe(true);
+    // Stronger offset assertion: the disable must land on the <div>
+    // that floats up under <ol> after transparent blanking — NOT on
+    // the transparent dotted <S.Step> itself (which gets blanked
+    // away and never reaches the processElement hook at parse time).
+    const divOffset = content.indexOf('<div>');
+    expect(
+      result.disablePerElement?.get(divOffset)?.has('element-permitted-content'),
+      `element-permitted-content must be disabled on the floating <div> at offset ${divOffset}; got: ${JSON.stringify([...(result.disablePerElement?.entries() ?? [])])}`,
+    ).toBe(true);
   });
 
   it('does NOT suppress when wrapper resolves to a permissive parent (e.g. <div>)', () => {

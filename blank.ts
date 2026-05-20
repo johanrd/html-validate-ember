@@ -1734,17 +1734,42 @@ function detectSuppressions(
     }
   }
   // For the STRUCTURAL_CONTENT_PARENT + transparent-dotted-child
-  // branch only: collect the transparent dotted children themselves
-  // PLUS any structural-child literals nested INSIDE them. Skips
-  // sibling structural-child literals elsewhere under the wrapper —
-  // those are not covered by the dotted child's yield chain and any
-  // rule fire on them is a real bug that must still surface.
+  // branch only: collect offsets of the element children of any
+  // transparent dotted node — these "float up" to the wrapper after
+  // the dotted node's open/close tags are blanked away, and the
+  // wrapper's content-model rule fires on them. The transparent
+  // dotted node itself is blanked away, so `disableRules` on its
+  // offset never runs at parse time — register on the floating
+  // children instead. Skips siblings of transparent dotted children
+  // (those stay as their own non-transparent parent's content; any
+  // rule fire on them is a real-bug shape that must still surface).
   function collectTransparentDottedChildOffsets(
     node: AST.ElementNode,
     into: number[],
   ): void {
     if (!glintComponentTagMap) return;
     const tagMap = glintComponentTagMap;
+    function isTransparentDotted(el: AST.ElementNode): boolean {
+      if (!el.tag.includes('.')) return false;
+      if (!el.loc.start) return false;
+      return tagMap.get(`${el.loc.start.line}:${el.loc.start.column}`) === 'transparent';
+    }
+    function collectFloatingChildren(stmts: ReadonlyArray<AST.Statement>): void {
+      // Direct element children of a transparent dotted node float
+      // up to the wrapper. If a floating child is ITSELF transparent
+      // dotted, its own direct children float further up to the same
+      // wrapper — recurse.
+      for (const stmt of stmts) {
+        if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) collectFloatingChildren(arm.body);
+          continue;
+        }
+        if (stmt.type !== 'ElementNode') continue;
+        into.push(startOffset(stmt));
+        if (isTransparentDotted(stmt)) collectFloatingChildren(stmt.children);
+      }
+    }
     function walk(stmts: ReadonlyArray<AST.Statement>): void {
       for (const stmt of stmts) {
         if (stmt.type === 'BlockStatement') {
@@ -1753,18 +1778,13 @@ function detectSuppressions(
           continue;
         }
         if (stmt.type !== 'ElementNode') continue;
-        const isDotted = stmt.tag.includes('.');
-        const key = stmt.loc.start ? `${stmt.loc.start.line}:${stmt.loc.start.column}` : null;
-        const resolved = key ? tagMap.get(key) : undefined;
-        if (isDotted && resolved === 'transparent') {
-          // The transparent dotted child itself, plus its whole
-          // subtree (including structural-child literals inside it).
-          into.push(startOffset(stmt));
-          collectContentRestrictedChildOffsets(stmt, into);
+        if (isTransparentDotted(stmt)) {
+          collectFloatingChildren(stmt.children);
         }
-        // Recurse into siblings/descendants WITHOUT collecting their
-        // offsets — we only want offsets inside transparent dotted
-        // children.
+        // Don't descend into non-transparent children — they keep
+        // their own non-transparent parent at runtime, so the
+        // wrapper's content-model concern doesn't apply to their
+        // descendants.
       }
     }
     walk(node.children);
