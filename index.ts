@@ -1,12 +1,50 @@
 import type { Plugin, RuleConfig } from 'html-validate';
+import svgTags from 'svg-tags';
+import { mathmlTagNames } from 'mathml-tag-names';
 
 import transform from './transform.js';
 
-// We extend html-validate's html5 element schema as-is. The transformer
-// no longer emits any synthetic placeholder element — components without
-// a Glint-resolved native tag get their open/close tags blanked entirely,
-// so children float to the actual parent for content-model checks.
 const ELEMENTS = ['html5'];
+
+// Issue #37: html-validate's `<svg>` is `foreign: true` — its parser
+// discards the body wholesale, so a literal `<svg>…</svg>` validates
+// clean today. But svg/mathml-namespace children that reach the parser
+// without an enclosing literal `<svg>` (e.g. fragment in `{{#if}}`,
+// fragment yielded into a wrapper whose root the resolver can't pin to
+// `<svg>`) get parsed as HTML and trip `element-name` / `element-case`
+// as false positives.
+//
+// Strategy: maintain a canonical-case allowlist of svg/mathml element
+// names and, via a parser `tag:start` listener registered in this
+// plugin's `setup` hook, call `target.disableRules(['element-name',
+// 'element-case'])` for any tag whose source-cased name exactly matches
+// the allowlist. Both rules check `target.ruleEnabled(ruleId)` inside
+// their `report()` paths, so the disable suppresses emission.
+//
+// html-validate's engine runs `setupPlugins` before `setupRules`, so
+// this listener fires first and the disable lands before either rule's
+// callback inspects the node.
+//
+// Why case-sensitive (no `.toLowerCase()`): SVG is case-sensitive per
+// spec — `linearGradient` is the canonical spelling, `<lineargradient>`
+// isn't a real SVG element name. By gating on canonical case:
+//   - `<linearGradient>`, `<defs>`, `<clipPath>`, …  → silenced
+//   - `<lineargradient>` (typo)                      → element-name fires (no hyphen, pattern fails)
+//   - `<LinearGradient>` (wrong case)                → both fire
+//   - `<dIv>` (miscased HTML)                        → element-case fires
+//
+// Why no meta-registration: registering svg-tag entries with html-
+// validate's `elements` would *also* silence `element-name` via the
+// `if (target.meta) return` shortcut in the rule — but the meta lookup
+// case-folds the key (it does `tagName.toLowerCase()` before indexing
+// into the `elements` map), so a lowercased meta key would silence
+// both `<linearGradient>` AND `<lineargradient>` indiscriminately,
+// regressing the typo signal. Hook-only with a canonical-case gate is
+// the only way to discriminate.
+const FOREIGN_NAMES = new Set<string>([...svgTags, ...mathmlTagNames]);
+
+// Hoisted: avoids allocating a new array on every `tag:start` event.
+const FOREIGN_DISABLED_RULES = ['element-name', 'element-case'] as const;
 
 // Rules that *must* be disabled for the transformer to behave correctly
 // against a typical Ember `.gts` template. These are not stylistic
@@ -69,6 +107,13 @@ const plugin: Plugin = {
   name: 'html-validate-ember',
   transformer: {
     default: transform,
+  },
+  setup(_source, handler) {
+    handler.on('tag:start', (_event, data) => {
+      if (FOREIGN_NAMES.has(data.target.tagName)) {
+        data.target.disableRules(FOREIGN_DISABLED_RULES);
+      }
+    });
   },
   configs: {
     // Recommended preset for Ember/Glimmer projects. Disables:
