@@ -2,8 +2,8 @@
   "solution": {
     "html-validate-ember": {
       "impact": "patch",
-      "oldVersion": "0.7.1",
-      "newVersion": "0.7.2",
+      "oldVersion": "0.7.2",
+      "newVersion": "0.7.3",
       "tagName": "latest",
       "constraints": [
         {
@@ -14,5 +14,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-20)\n\n* html-validate-ember 0.7.2 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#39](https://github.com/johanrd/html-validate-ember/pull/39) Fix for #37: SVG/MathML element-name + element-case false positives ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-20)\n\n* html-validate-ember 0.7.3 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#41](https://github.com/johanrd/html-validate-ember/pull/41) Closes [#38](https://github.com/johanrd/html-validate-ember/issues/38): suppress technique-rule FPs per-element, not file-wide ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }

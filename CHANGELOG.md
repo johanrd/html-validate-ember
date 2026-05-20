@@ -2,6 +2,17 @@
 
 ## Release (2026-05-20)
 
+* html-validate-ember 0.7.3 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#41](https://github.com/johanrd/html-validate-ember/pull/41) Closes [#38](https://github.com/johanrd/html-validate-ember/issues/38): suppress technique-rule FPs per-element, not file-wide ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
+## Release (2026-05-20)
+
 * html-validate-ember 0.7.2 (patch)
 
 #### :bug: Bug Fix
