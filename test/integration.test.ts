@@ -1210,10 +1210,10 @@ describe('end-to-end fixtures', () => {
   describe('issue #37: SVG / MathML element-name + element-case false positives', () => {
     it('control: literal `<svg>` wrapper validates clean (foreign-body discard)', async () => {
       const r = await validate('svg-inline.gts');
-      const offending = r.messages.filter(
-        (m) => m.rule === 'element-name' || m.rule === 'element-case',
-      );
-      expect(offending).toEqual([]);
+      // Broad assertion — this is the control case for the whole
+      // describe block, so any error (not just element-name /
+      // element-case) on this fixture should fail the test loudly.
+      expect(r.errorCount, JSON.stringify(r.messages)).toBe(0);
     });
 
     it('svg-namespace fragment in `{{#if}}` with no in-template <svg> ancestor: silenced by the canonical svg-tags / mathml-tag-names allowlist', async () => {

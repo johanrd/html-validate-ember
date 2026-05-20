@@ -36,11 +36,15 @@ const ELEMENTS = ['html5'];
 // Why no meta-registration: registering svg-tag entries with html-
 // validate's `elements` would *also* silence `element-name` via the
 // `if (target.meta) return` shortcut in the rule — but the meta lookup
-// is case-insensitive (`elements[tagName.toLowerCase()]`, core.js:1283)
-// so a lowercased meta key would silence both `<linearGradient>` AND
-// `<lineargradient>` indiscriminately, regressing the typo signal.
-// Hook-only with a canonical-case gate is the only way to discriminate.
+// case-folds the key (it does `tagName.toLowerCase()` before indexing
+// into the `elements` map), so a lowercased meta key would silence
+// both `<linearGradient>` AND `<lineargradient>` indiscriminately,
+// regressing the typo signal. Hook-only with a canonical-case gate is
+// the only way to discriminate.
 const FOREIGN_NAMES = new Set<string>([...svgTags, ...mathmlTagNames]);
+
+// Hoisted: avoids allocating a new array on every `tag:start` event.
+const FOREIGN_DISABLED_RULES = ['element-name', 'element-case'] as const;
 
 // Rules that *must* be disabled for the transformer to behave correctly
 // against a typical Ember `.gts` template. These are not stylistic
@@ -86,7 +90,7 @@ const plugin: Plugin = {
   setup(_source, handler) {
     handler.on('tag:start', (_event, data) => {
       if (FOREIGN_NAMES.has(data.target.tagName)) {
-        data.target.disableRules(['element-name', 'element-case']);
+        data.target.disableRules(FOREIGN_DISABLED_RULES);
       }
     });
   },
