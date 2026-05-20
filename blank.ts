@@ -2076,10 +2076,6 @@ const ELEMENTS_WITH_REQUIRED_CONTENT: ReadonlySet<string> = (() => {
   }
 })();
 
-// True when `node` has at least one direct child that is a dotted
-// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution is
-// 'transparent' — i.e. a curried-via-yield-hash component the resolver
-// couldn't pin to a specific native tag.
 // True when an `<img>` element has a `title` attribute whose value
 // is entirely dynamic in a way the blanker can't faithfully model.
 // Three shapes count:
@@ -2180,6 +2176,10 @@ function tableHasGlimmerObscuredCells(
   return inspect(table.children);
 }
 
+// True when `node` has at least one direct child that is a dotted
+// PascalCase invocation (`<S.Step>`, `<This.Foo>`) whose resolution
+// is 'transparent' — i.e. a curried-via-yield-hash component the
+// resolver couldn't pin to a specific native tag.
 function hasTransparentCurriedChild(
   node: AST.ElementNode,
   glintComponentTagMap: ReadonlyMap<string, string> | null | undefined,
