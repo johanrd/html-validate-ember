@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-05-20)
+
+* html-validate-ember 0.7.2 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#39](https://github.com/johanrd/html-validate-ember/pull/39) Fix for #37: SVG/MathML element-name + element-case false positives ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-19)
 
 * html-validate-ember 0.7.1 (patch)
