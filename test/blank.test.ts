@@ -23,16 +23,17 @@ function blank(content: string, scope?: ReadonlyMap<string, string>): BlankResul
   return result as BlankResult;
 }
 
-// Decouples shape-coupled detection-logic tests from the
-// disableForRules-vs-disablePerElement split. Tests for the
-// blanker's suppression DECISIONS (does the blanker recognize this
-// pattern as needing suppression?) use this helper; they don't care
-// whether the decision lands in the file-level list or the per-
-// element map. Behavior-driven tests for ACTUAL rule firing live in
-// integration.test.ts with real fixtures — that's the layer for
-// "does the rule message fire (or not) end-to-end."
+// Convenience for tests that verify the blanker's suppression
+// DECISIONS (does the blanker recognize this pattern as needing
+// suppression?) without caring which specific element offset
+// received the disable. Behavior-driven tests for ACTUAL rule
+// firing live in integration.test.ts with real fixtures — that's
+// the layer for "does the rule message fire (or not) end-to-end."
+//
+// For tests that need to verify the disable lands on a SPECIFIC
+// element (e.g. the floating `<div>` for case C), check
+// `result.disablePerElement.get(offset)?.has(rule)` directly.
 function suppressesRule(result: BlankResult, rule: string): boolean {
-  if (result.disableForRules?.includes(rule)) return true;
   if (result.disablePerElement) {
     for (const set of result.disablePerElement.values()) {
       if (set.has(rule)) return true;

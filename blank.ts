@@ -1488,14 +1488,6 @@ export interface BlankResult {
   // transform.ts's `processElement` hook via `setAttribute`. See
   // `Context.attrInjections` for rationale.
   attrInjections: Map<number, AttrInjection[]>;
-  // Rule IDs that the consumer should disable for this Source as a whole —
-  // populated when the template contains structural patterns the static
-  // blanker can't faithfully model. Today: `wcag/h32` when a `<form>` has
-  // `{{yield}}` in its body (consumer provides the submit button), and
-  // `wcag/h71` when a `<fieldset>` does (consumer provides the legend).
-  // Transform.ts prepends an inline `<!--html-validate-disable …-->`
-  // directive built from this list, with offset adjustment.
-  disableForRules: string[];
   // Per-element rule disables — applied at parse-time by transform.ts's
   // `processElement` hook via `el.disableRules(...)`. Keys are template-
   // relative source offsets of the element start (matching the
@@ -1504,6 +1496,12 @@ export interface BlankResult {
   // element suppression that doesn't bleed across siblings — e.g., one
   // `<table>` with a cell-loop FP doesn't silence a real `wcag/h63`
   // violation on a sibling `<table>`.
+  //
+  // All structural-rule suppressions (wcag/h32, wcag/h63, wcag/h67,
+  // wcag/h71, element-permitted-content, element-permitted-parent,
+  // element-required-content) currently land here, not as file-level
+  // disable directives. The non-multipass branched directive prefix is
+  // empty for these sources.
   //
   // For rules that fire on descendants (e.g. wcag/h63 reports on each
   // `<th>` inside a `<table>`), the entry is keyed by the DESCENDANT
@@ -1516,7 +1514,6 @@ export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
-  disableForRules?: undefined;
   attrInjections?: undefined;
   disablePerElement?: undefined;
 }
@@ -1609,27 +1606,26 @@ function blankTemplateContent(
     }
   }
 
-  const suppressions = detectSuppressions(
-    ast,
-    branchSelections,
-    glintComponentTagMap,
-    glintComponentAttrMap,
-  );
   return {
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
     attrInjections: ctx.attrInjections,
-    disableForRules: suppressions.fileLevel,
-    disablePerElement: suppressions.perElement,
+    disablePerElement: detectSuppressions(
+      ast,
+      branchSelections,
+      glintComponentTagMap,
+      glintComponentAttrMap,
+    ),
   };
 }
 
 // Detect cases where a structural rule would FP-fire on the blanked
-// output, and add the rule to `disableForRules` so the transformer can
-// inject a one-shot disable directive into this Source.
+// output, and register per-element `disableRules` entries so the
+// transformer's `processElement` hook calls them at parse time on the
+// specific nodes whose rule-firing would be a Glimmer-opacity FP.
 //
-// Three FP classes covered today:
+// FP classes covered today:
 //
 //   1. Yield-bearing `<form>`/`<fieldset>` that lacks a statically-
 //      detectable submit/legend (the suppression target rule fires
@@ -1646,20 +1642,33 @@ function blankTemplateContent(
 //      parent via a yield chain we can't statically follow (e.g.
 //      `(yield (hash X=PassThrough))` where PassThrough yields
 //      without producing an element). Suppress
-//      `element-permitted-content` / `element-permitted-parent` at
-//      the Source level. Same per-Source-suppression trade-off as
-//      cases 1 and 2; addressable case-by-case by extending the
-//      resolver to follow specific yield-chain shapes.
+//      `element-permitted-content` / `element-permitted-parent` on
+//      the affected children.
+//
+//   4. wcag/h63 on `<table>` shapes the blanker has flattened —
+//      cell-generating `{{#each}}` / `{{#if}}` blocks, or PascalCase
+//      row components Glint resolves to `<tr>`/`<td>`/`<th>`. The
+//      per-`<th>` disable lands on each header cell descendant.
+//
+//   5. wcag/h67 on `<img alt='' title='{{x}}'>`-shaped patterns
+//      (incl. ConcatStatement titles with whitespace-only literals).
+//      The per-`<img>` disable lands on the element itself.
+//
+//   6. wcag/h32 on `<form>`s whose only submit candidate is dynamic-
+//      typed or splatted. The per-`<form>` disable lands on the form.
+//
+//   7. element-required-content on self-closing component invocations
+//      that resolve to native elements with required content (e.g.
+//      `<details>` requires `<summary>`).
 //
 // Branch-aware. `{{#if}}/{{else}}` arms are NOT both walked — that
 // would let one arm's static submit hide the other arm's yield-only
 // FP. Instead we honor `branchSelections` (the same per-pass selection
-// `handleBlockStatement` uses) so each emitted Source's
-// `disableForRules` matches its own blanked content. When no
-// selection is present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass
-// mode) we mirror `handleBlockStatement`'s heuristic: prefer program,
-// switch to inverse only when inverse has a static submit and program
-// doesn't.
+// `handleBlockStatement` uses) so each emitted Source's per-element
+// disables match its own blanked content. When no selection is
+// present (HVE_MAX_CONDITIONAL_BRANCHES=0 single-pass mode) we mirror
+// `handleBlockStatement`'s heuristic: prefer program, switch to
+// inverse only when inverse has a static submit and program doesn't.
 //
 // Component-aware. Component invocations that resolve to native
 // `<button>`/`<input>` via Glint or builtin maps count as static
@@ -1681,22 +1690,18 @@ function blankTemplateContent(
 // placeholder isn't recognized as 'submit'), so the per-element
 // `disableRules` is load-bearing.
 //
-// Detect per-element rule suppressions (the new path) AND any
-// remaining file-level rules (legacy / multipass-only). Returns both
-// in one walk to avoid double-traversing the AST.
-//
-// Per-element scope is preferred wherever the rule fires on a
-// well-defined element (or set of descendants), so a Glimmer-opacity
-// FP on one element doesn't silence real violations on its siblings.
-// File-level remains only for rules where the firing element isn't
-// easily identifiable statically.
+// Returns the per-element suppression map (`Map<offset, Set<rule>>`)
+// — keys are template-relative source offsets, values are the rules
+// to disable on that element via `processElement → el.disableRules`.
+// Per-element scope is used for every FP class listed above; a
+// Glimmer-opacity FP on one element doesn't silence real violations
+// on its siblings.
 function detectSuppressions(
   ast: AST.Template,
   branchSelections?: ReadonlyMap<number, BranchChoice>,
   glintComponentTagMap?: ReadonlyMap<string, string> | null,
   glintComponentAttrMap?: ReadonlyMap<string, ComponentAttrs> | null,
-): { fileLevel: string[]; perElement: Map<number, Set<string>> } {
-  const fileLevel: string[] = [];
+): Map<number, Set<string>> {
   const perElement = new Map<number, Set<string>>();
   function addPer(offset: number, rule: string): void {
     const set = perElement.get(offset);
@@ -1825,11 +1830,10 @@ function detectSuppressions(
     }
     walk(node.children);
   }
-  const out = fileLevel; // keep variable name for the existing logic below
   // Custom walk — the off-the-shelf `traverse` would visit forms /
   // fieldsets that live entirely in a blanked-out branch for the
   // current pass, leaking their suppression rules into
-  // `disableForRules` and silently suppressing real violations on
+  // `disablePerElement` and silently suppressing real violations on
   // the actually-emitted output (false negatives). At every
   // BlockStatement we descend ONLY into the selected arm — the same
   // selection `handleBlockStatement` makes, so this matches what the
@@ -1956,7 +1960,7 @@ function detectSuppressions(
     }
   }
   walk(ast.body);
-  return { fileLevel: [...new Set(fileLevel)], perElement };
+  return perElement;
 }
 
 // Pick a single arm of `{{#if}}/{{else}}` to walk — mirrors the

@@ -628,16 +628,16 @@ describe('end-to-end fixtures', () => {
 
   it('glint-resolved-form-consumer: wcag/h32 suppression fires when wrapper is Glint-resolved to <form>', async () => {
     // Regression for fd7fb2a: the `wcag/h32` heuristic in
-    // `detectStructuralYieldRules` was checking `stmt.tag === 'form'`
-    // (only LITERAL `<form>`). Components like HDS's `<HdsForm>` that
-    // resolve to `<form>` via Glint were missed — substituted
-    // output had `<form>` but `disableForRules` didn't include
-    // wcag/h32, FP-firing on what's a yield-bearing form.
+    // `detectSuppressions` was checking `stmt.tag === 'form'` (only
+    // LITERAL `<form>`). Components like HDS's `<HdsForm>` that
+    // resolve to `<form>` via Glint were missed — substituted output
+    // had `<form>` but no per-element disable landed on it,
+    // FP-firing on what's a yield-bearing form.
     //
     // Post-fix: the heuristic uses `stmtResolved` (Glint-resolved
     // tag OR literal native tag). Both consumer-side `<form>` and
-    // `<MyForm>` substituted to `<form>` get wcag/h32 added to
-    // `disableForRules`.
+    // `<MyForm>` substituted to `<form>` get wcag/h32 registered in
+    // `disablePerElement` at the form's offset.
     const prevGlint = process.env['HVE_GLINT'];
     process.env['HVE_GLINT'] = '1';
     try {
@@ -837,12 +837,12 @@ describe('end-to-end fixtures', () => {
 
   it('yield-only-form: asymmetric {{#if}}/{{else}} branches — multipass passes get branch-correct suppression', async () => {
     // Program arm has `{{yield}}`, inverse arm has `<button type='submit'>`.
-    // Without per-branch detection, the program pass's `disableForRules`
-    // would skip wcag/h32 (because the walker saw the inverse arm's
-    // submit too) and the FP would surface. With per-branch detection,
-    // each pass's disable list matches its own blanked content. The
-    // inverse pass must NOT inject the disable (no-unused-disable
-    // cascade prevention).
+    // Without per-branch detection, the program pass's per-element
+    // disables would skip wcag/h32 (because the walker saw the inverse
+    // arm's submit too) and the FP would surface. With per-branch
+    // detection, each pass's `disablePerElement` map matches its own
+    // blanked content. The inverse pass must NOT register the disable
+    // (it'd target a form that wouldn't have fired wcag/h32 anyway).
     const r = await validate('yield-form-asymmetric-branches.gts');
     const h32 = r.messages.filter((m) => m.rule === 'wcag/h32');
     const unused = r.messages.filter((m) => m.rule === 'no-unused-disable');
@@ -885,8 +885,8 @@ describe('end-to-end fixtures', () => {
     //     this is a real wcag/h32 violation that must be reported)
     //
     // Without a branch-aware top-level traversal in
-    // `detectStructuralYieldRules`, both forms get visited and the
-    // walker adds wcag/h32 to disableForRules for BOTH passes —
+    // `detectSuppressions`, both forms get visited and the walker
+    // adds wcag/h32 to the per-element disable map for BOTH forms —
     // silently suppressing the inverse arm's real bug. The test
     // asserts the real bug surfaces, i.e. wcag/h32 is not silently
     // hidden by the program arm's legitimate suppression.
