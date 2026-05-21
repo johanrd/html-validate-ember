@@ -904,6 +904,76 @@ export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resoluti
   });
 }
 
+// Resolve a re-yielded block-param hash entry: `{{yield (hash
+// Legend=F.Legend)}}` where `F` is a block param from `<Binder as |F|>`
+// in this same template. The yielded sub-component is whatever `Binder`
+// itself yields under `Legend`, so resolve `Binder`'s source and recurse
+// into its yield-hash. Mirrors HDS's `HdsFormCheckboxGroup` re-yielding
+// `HdsFormFieldset`'s `F.Legend` — without this `<G.Legend>` fell back to
+// the binder's `<fieldset>` Element type and FP-fired `wcag/h71`.
+function resolveBlockParamReyield(
+  paramName: string,
+  hashKey: string,
+  parentSource: TemplateSource,
+  options: ResolveOptions,
+): Resolution {
+  const depth = options.depth ?? 0;
+  if (depth >= MAX_DEPTH) return TRANSPARENT;
+  let ast: AST.Template;
+  try {
+    ast = parseTemplate(parentSource.content);
+  } catch {
+    return TRANSPARENT;
+  }
+  const binderTag = findBlockParamBinder(ast, paramName);
+  if (!binderTag) return TRANSPARENT;
+
+  const importedFile = resolveImport(parentSource.origin, binderTag, options.ts ?? null);
+  let binderSource: TemplateSource | null = importedFile
+    ? findTemplateSource({ declFile: importedFile, ts: options.ts ?? null })
+    : null;
+  if (!binderSource) {
+    binderSource = findTemplateSource({
+      declFile: parentSource.origin,
+      componentName: binderTag,
+      ts: options.ts ?? null,
+    });
+  }
+  if (!binderSource) return TRANSPARENT;
+
+  return resolveYieldHashBinding({
+    parentSource: binderSource,
+    hashKey,
+    parentArgs: options.consumerArgs ?? new Map(),
+    ts: options.ts ?? null,
+    visited: options.visited,
+    depth: depth + 1,
+  });
+}
+
+// Find the PascalCase element that introduces block param `paramName`
+// via `<Tag as |…paramName…|>`, returning its tag name.
+function findBlockParamBinder(ast: AST.Template, paramName: string): string | null {
+  let result: string | null = null;
+  function visit(node: AST.Node): void {
+    if (result) return;
+    if (node.type === 'ElementNode') {
+      if (/^[A-Z]/.test(node.tag) && node.blockParams.includes(paramName)) {
+        result = node.tag;
+        return;
+      }
+      for (const child of node.children) visit(child);
+    } else if (node.type === 'BlockStatement') {
+      for (const child of node.program.body) visit(child);
+      if (node.inverse) for (const child of node.inverse.body) visit(child);
+    } else if (node.type === 'Template') {
+      for (const child of node.body) visit(child);
+    }
+  }
+  visit(ast);
+  return result;
+}
+
 // Like `resolveYieldHashBinding` but returns the underlying
 // `TemplateSource` (plus any curried `@arg` additions from a
 // `(component Inner …)` wrapper) instead of the leaf `Resolution`.
@@ -1061,6 +1131,13 @@ function resolveBinding(
   if (!expr.head) return TRANSPARENT;
 
   if (expr.head.type === 'VarHead') {
+    // `F.Legend` — `F` is a block param introduced by `<Binder as |F|>`
+    // in THIS template, so the yielded sub-component is whatever Binder
+    // re-yields under `Legend`. (A bare `Foo` with no tail is a local
+    // import / in-scope component → resolveByName.)
+    if (expr.tail.length > 0) {
+      return resolveBlockParamReyield(expr.head.name, expr.tail[0]!, parentSource, options);
+    }
     return resolveByName(expr.head.name, parentSource, options);
   }
 
