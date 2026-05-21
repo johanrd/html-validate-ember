@@ -79,6 +79,12 @@ export interface FindOptions {
 }
 
 const cache = new Map<string, TemplateSource | null>();
+// Memoizes `resolveSubpathViaExports` by `pkgRoot\0subpath`. The fallback
+// resolver runs per PascalCase invocation during wrapper walking, so many
+// components imported from one package (e.g. HDS) would otherwise re-read
+// + re-parse the same (large) package.json and re-probe the filesystem on
+// every call. Process-lifetime, like `cache`; cleared by `_clearCache`.
+const exportsResolveCache = new Map<string, string | null>();
 
 export function findTemplateSource(opts: FindOptions): TemplateSource | null {
   const { declFile, declRange, componentName, consumerFile, ts } = opts;
@@ -831,6 +837,15 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
 // Default conditions resolve the ESM runtime (import/default), matching
 // our `.gts`/`.gjs` consumers.
 function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | null {
+  const cacheKey = `${pkgRoot}\0${subpath}`;
+  const cached = exportsResolveCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const result = computeSubpathViaExports(pkgRoot, subpath);
+  exportsResolveCache.set(cacheKey, result);
+  return result;
+}
+
+function computeSubpathViaExports(pkgRoot: string, subpath: string): string | null {
   let pkgJson: { name?: string; exports?: unknown };
   try {
     pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
@@ -868,5 +883,6 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
 
 export function _clearCache(): void {
   cache.clear();
+  exportsResolveCache.clear();
   sharedCache = null;
 }
