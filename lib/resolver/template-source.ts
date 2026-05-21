@@ -830,8 +830,14 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
       resolved = target;
     }
     if (resolved === null) continue;
+    // `resolved` is an exports target from a dependency's package.json —
+    // untrusted input. Use `path.resolve` and confirm the result stays
+    // within the package root so an absolute path or `..` segment can't
+    // escape it.
+    const baseDir = path.resolve(pkgRoot);
     for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
-      const abs = path.join(pkgRoot, resolved + ext);
+      const abs = path.resolve(pkgRoot, resolved + ext);
+      if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) continue;
       if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
     }
   }
