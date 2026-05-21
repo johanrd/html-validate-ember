@@ -321,4 +321,25 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('section');
   });
+
+  test('binder tag with an underscore resolves (matches the wrapper predicate)', async () => {
+    // `<My_Binder>` is a resolvable wrapper everywhere else in the
+    // resolver, but the old `/^[A-Z][A-Za-z0-9]*$/` binder regex rejected
+    // the underscore, dropping the re-yield chain to TRANSPARENT. With the
+    // shared `isResolvableWrapperTag` predicate it resolves → `<aside>`.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-underscore-binder.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<My_Binder as |F|>{{yield (hash Thing=F.Item)}}</My_Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('aside');
+  });
 });

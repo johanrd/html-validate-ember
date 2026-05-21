@@ -218,7 +218,7 @@ function resolveElement(
   }
 
   // PascalCase wrapper → recurse.
-  if (/^[A-Z]/.test(node.tag) && !node.tag.includes('.') && !node.tag.startsWith(':')) {
+  if (isResolvableWrapperTag(node.tag)) {
     const resolution = resolvePascalRecursion(node, source, options);
     if (resolution.kind !== 'transparent') return resolution;
     // Pure-yield wrappers (template body is `{{yield (...)}}` only,
@@ -1022,8 +1022,8 @@ function resolveBlockParamReyield(
 // we track the element-ancestor stack while walking and, on reaching the
 // matching re-yield entry, pick the closest ancestor that binds the param.
 //
-// Restricted to resolvable PascalCase tags (`/^[A-Z][A-Za-z0-9]*$/`):
-// dotted (`F.Foo`) and colon (`:slot`) tags can't be resolved via
+// Restricted to resolvable wrapper tags (`isResolvableWrapperTag`):
+// dotted (`F.Foo`) and named-block (`:body`) tags can't be resolved via
 // import/by-name, so matching them would only yield a useless TRANSPARENT.
 function findBlockParamBinder(
   ast: AST.Template,
@@ -1036,7 +1036,7 @@ function findBlockParamBinder(
   function nearestBinder(): AST.ElementNode | null {
     for (let i = stack.length - 1; i >= 0; i--) {
       const el = stack[i]!;
-      if (/^[A-Z][A-Za-z0-9]*$/.test(el.tag) && el.blockParams.includes(paramName)) {
+      if (isResolvableWrapperTag(el.tag) && el.blockParams.includes(paramName)) {
         return el;
       }
     }
@@ -1506,4 +1506,14 @@ const NATIVE_TAGS = new Set<string>([...htmlTags, ...svgTags, ...mathmlTagNames]
 
 function isNativeTagName(tag: string): boolean {
   return NATIVE_TAGS.has(tag);
+}
+
+// A tag we attempt to resolve as a component wrapper: PascalCase, not
+// dotted (`F.Item` is a yield-binding/curried path), not a named-block
+// slot (`:body`). Deliberately broader than `/^[A-Z][A-Za-z0-9]*$/` so it
+// also covers namespaced (`Foo::Bar`) and underscore identifiers — the
+// same set the wrapper-recursion and block-param-binder lookups treat as
+// resolvable, kept in one place so the two can't drift apart.
+function isResolvableWrapperTag(tag: string): boolean {
+  return /^[A-Z]/.test(tag) && !tag.includes('.') && !tag.startsWith(':');
 }
