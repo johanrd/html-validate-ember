@@ -817,29 +817,45 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
   }
   if (exportsMap == null || typeof exportsMap !== 'object') return null;
   const relImport = subpath ? './' + subpath : '.';
+  // Pick the MOST SPECIFIC matching entry, mirroring Node's exports
+  // resolution: an exact subpath beats any pattern, and among `*`
+  // patterns the one with the longest static prefix wins. First-match-
+  // in-object-order would mis-resolve a package with overlapping entries
+  // (e.g. `"./components/*"` alongside `"./*"`).
+  let bestTarget: string | null = null;
+  let bestScore = -1;
   for (const [pattern, conditions] of Object.entries(exportsMap as Record<string, unknown>)) {
     if (typeof conditions !== 'object' || conditions === null) continue;
     const c = conditions as Record<string, unknown>;
     const target = c['default'] ?? c['import'] ?? c['require'];
     if (typeof target !== 'string') continue;
     let resolved: string | null = null;
-    if (pattern.includes('*')) {
-      const wild = matchWildcardPattern(pattern, relImport);
-      if (wild !== null) resolved = target.replace('*', wild);
-    } else if (pattern === relImport) {
+    let score = -1;
+    if (pattern === relImport) {
       resolved = target;
+      score = Infinity; // exact match always wins
+    } else if (pattern.includes('*')) {
+      const wild = matchWildcardPattern(pattern, relImport);
+      if (wild !== null) {
+        resolved = target.replace('*', wild);
+        score = pattern.indexOf('*'); // longer static prefix = more specific
+      }
     }
-    if (resolved === null) continue;
-    // `resolved` is an exports target from a dependency's package.json —
-    // untrusted input. Use `path.resolve` and confirm the result stays
-    // within the package root so an absolute path or `..` segment can't
-    // escape it.
-    const baseDir = path.resolve(pkgRoot);
-    for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
-      const abs = path.resolve(pkgRoot, resolved + ext);
-      if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) continue;
-      if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
+    if (resolved !== null && score > bestScore) {
+      bestScore = score;
+      bestTarget = resolved;
     }
+  }
+  if (bestTarget === null) return null;
+  // `bestTarget` is an exports target from a dependency's package.json —
+  // untrusted input. Use `path.resolve` and confirm the result stays
+  // within the package root so an absolute path or `..` segment can't
+  // escape it.
+  const baseDir = path.resolve(pkgRoot);
+  for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
+    const abs = path.resolve(pkgRoot, bestTarget + ext);
+    if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) continue;
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
   }
   return null;
 }
