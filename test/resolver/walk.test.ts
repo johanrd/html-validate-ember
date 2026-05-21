@@ -279,4 +279,24 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('section');
   });
+
+  test('reused block-param name picks the binder enclosing the re-yield, not the first', async () => {
+    // Two sibling binders both bind `F`. The `F.Item` re-yield lives in
+    // BinderB (→ `<article>`); resolution must scope to that binder, not
+    // return the first `F`-binding element BinderA (→ `<section>`).
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-sibling-binder-shadow.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<BinderA as |F|>x</BinderA><BinderB as |F|>{{yield (hash Thing=F.Item)}}</BinderB>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
 });

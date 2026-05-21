@@ -5,6 +5,7 @@ import type { TOC } from '@ember/component/template-only';
 // The binder's yielded hash entry is driven by an `@arg` (`@elementTag`).
 interface BinderSig {
   Element: HTMLElement;
+  Args: { elementTag: string };
   Blocks: { default: [{ Item: unknown }] };
 }
 const Binder: TOC<BinderSig> = <template>{{yield (hash Item=@elementTag)}}</template>;

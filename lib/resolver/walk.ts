@@ -930,7 +930,7 @@ function resolveBlockParamReyield(
   } catch {
     return TRANSPARENT;
   }
-  const binderNode = findBlockParamBinder(ast, paramName);
+  const binderNode = findBlockParamBinder(ast, paramName, hashKey);
   if (!binderNode) return null;
   const binderTag = binderNode.tag;
 
@@ -1006,21 +1006,76 @@ function resolveBlockParamReyield(
   });
 }
 
-// Find the element that introduces block param `paramName` via
-// `<Tag as |…paramName…|>`, returning the element node. Restricted to
-// resolvable PascalCase tags (`/^[A-Z][A-Za-z0-9]*$/`): dotted (`F.Foo`)
-// and colon (`:slot`) tags can't be resolved via import/by-name, so
-// matching them would only yield a useless TRANSPARENT.
-function findBlockParamBinder(ast: AST.Template, paramName: string): AST.ElementNode | null {
+// Find the in-scope binder for a re-yielded reference `paramName.hashKey`:
+// the NEAREST enclosing `<Tag as |…paramName…|>` ancestor of the
+// `{{yield (hash <key>=paramName.hashKey)}}` statement that produces it.
+//
+// Scoping to the actual reference — rather than returning the first
+// element in the template whose block params happen to include
+// `paramName` — keeps resolution correct when a short param name (like
+// `F`) is reused across sibling blocks or shadowed by a nested binder:
+// we track the element-ancestor stack while walking and, on reaching the
+// matching re-yield entry, pick the closest ancestor that binds the param.
+//
+// Restricted to resolvable PascalCase tags (`/^[A-Z][A-Za-z0-9]*$/`):
+// dotted (`F.Foo`) and colon (`:slot`) tags can't be resolved via
+// import/by-name, so matching them would only yield a useless TRANSPARENT.
+function findBlockParamBinder(
+  ast: AST.Template,
+  paramName: string,
+  hashKey: string,
+): AST.ElementNode | null {
+  const stack: AST.ElementNode[] = [];
+
+  // Nearest enclosing element on the stack that binds `paramName`.
+  function nearestBinder(): AST.ElementNode | null {
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const el = stack[i]!;
+      if (/^[A-Z][A-Za-z0-9]*$/.test(el.tag) && el.blockParams.includes(paramName)) {
+        return el;
+      }
+    }
+    return null;
+  }
+
+  // Is `node` a `{{yield (hash <anyKey>=paramName.hashKey)}}` re-yield
+  // entry? We match on the entry's VALUE (`paramName.hashKey` — the
+  // re-yielded reference) rather than the outer hash key it's bound
+  // under, which is arbitrary and unrelated to which binder is in scope.
+  function isReyieldEntry(node: AST.Node): boolean {
+    if (node.type !== 'MustacheStatement' && node.type !== 'SubExpression') return false;
+    const mu = node as AST.MustacheStatement | AST.SubExpression;
+    if (mu.path.type !== 'PathExpression' || mu.path.original !== 'yield') return false;
+    for (const param of mu.params) {
+      if (param.type !== 'SubExpression') continue;
+      if (param.path.type !== 'PathExpression' || param.path.original !== 'hash') continue;
+      for (const pair of param.hash.pairs) {
+        const v = pair.value;
+        if (
+          v.type === 'PathExpression'
+          && v.head?.type === 'VarHead'
+          && v.head.name === paramName
+          && v.tail[0] === hashKey
+        ) return true;
+      }
+    }
+    return false;
+  }
+
   let result: AST.ElementNode | null = null;
   function visit(node: AST.Node): void {
     if (result) return;
-    if (node.type === 'ElementNode') {
-      if (/^[A-Z][A-Za-z0-9]*$/.test(node.tag) && node.blockParams.includes(paramName)) {
-        result = node;
+    if (isReyieldEntry(node)) {
+      const binder = nearestBinder();
+      if (binder) {
+        result = binder;
         return;
       }
+    }
+    if (node.type === 'ElementNode') {
+      stack.push(node);
       for (const child of node.children) visit(child);
+      stack.pop();
     } else if (node.type === 'BlockStatement') {
       for (const child of node.program.body) visit(child);
       if (node.inverse) for (const child of node.inverse.body) visit(child);
