@@ -773,6 +773,19 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
   for (;;) {
     const pkgRoot = path.join(dir, 'node_modules', pkgName);
     if (fs.existsSync(pkgRoot)) {
+      // Built package: resolve the subpath through the `exports` map and
+      // probe extensions. Node's resolver (require.resolve, tried first
+      // by the caller) rejects extensionless subpath-pattern targets
+      // like `"./*": { "default": "./dist/*" }` — ESM exports don't
+      // auto-append `.js`. A built v2-addon (HDS-style: `dist/` present,
+      // `src/` stripped by its `files` allowlist) would otherwise fail
+      // to resolve here, dropping the template-override and letting
+      // Glint's splatted `Element` tag win → `element-permitted-content`
+      // false positives.
+      const viaExports = resolveSubpathViaExports(pkgRoot, subpath);
+      if (viaExports) return viaExports;
+      // Source-only package (in-development monorepo): `dist/` absent,
+      // `src/` present.
       for (const ext of ['.ts', '.gts', '.gjs', '.js', '.d.ts']) {
         const candidate = path.join(pkgRoot, 'src', subpath + ext);
         if (fs.existsSync(candidate)) return candidate;
@@ -783,6 +796,46 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
     if (parent === dir) return null;
     dir = parent;
   }
+}
+
+// Resolve a package subpath through its `exports` map to an on-disk
+// file, probing extensions. Handles extensionless subpath-pattern
+// targets (`"./*": { "default": "./dist/*" }`) that Node's exports
+// resolver rejects. Prefers the runtime condition (default/import/
+// require): the compiled `.js` carries the template inline via
+// `precompileTemplate(...)` / `template(...)`.
+function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | null {
+  let exportsMap: unknown;
+  try {
+    exportsMap = (
+      JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
+        exports?: unknown;
+      }
+    ).exports;
+  } catch {
+    return null;
+  }
+  if (exportsMap == null || typeof exportsMap !== 'object') return null;
+  const relImport = subpath ? './' + subpath : '.';
+  for (const [pattern, conditions] of Object.entries(exportsMap as Record<string, unknown>)) {
+    if (typeof conditions !== 'object' || conditions === null) continue;
+    const c = conditions as Record<string, unknown>;
+    const target = c['default'] ?? c['import'] ?? c['require'];
+    if (typeof target !== 'string') continue;
+    let resolved: string | null = null;
+    if (pattern.includes('*')) {
+      const wild = matchWildcardPattern(pattern, relImport);
+      if (wild !== null) resolved = target.replace('*', wild);
+    } else if (pattern === relImport) {
+      resolved = target;
+    }
+    if (resolved === null) continue;
+    for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
+      const abs = path.join(pkgRoot, resolved + ext);
+      if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
+    }
+  }
+  return null;
 }
 
 // --- test hook -----------------------------------------------------------
