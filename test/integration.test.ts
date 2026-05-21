@@ -1489,10 +1489,15 @@ describe('end-to-end fixtures', () => {
       // render `<tr>`/`<td>`. Regression guard for the ~78 HDS no-Glint
       // `<X> under <table>` false positives.
       const result = await validate('no-glint-table-named-block.gts');
-      const epc = result.messages.filter((m) => m.rule === 'element-permitted-content');
+      // Case D suppresses BOTH element-permitted-content and
+      // element-permitted-parent — html-validate can report either/both
+      // for an invalid parent/child combination, so guard against both.
+      const contentModelFps = result.messages.filter(
+        (m) => m.rule === 'element-permitted-content' || m.rule === 'element-permitted-parent',
+      );
       expect(
-        epc,
-        `unexpected element-permitted-content FPs: ${JSON.stringify(epc)}`,
+        contentModelFps,
+        `unexpected content-model FPs: ${JSON.stringify(contentModelFps)}`,
       ).toHaveLength(0);
     });
   });
