@@ -212,14 +212,6 @@
     },
     {
       "file": "apps/repl/app/templates/docs/support/api.gts",
-      "line": 140,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h32",
-      "message": "<form> element must have a submit button"
-    },
-    {
-      "file": "apps/repl/app/templates/docs/support/api.gts",
       "line": 175,
       "column": 18,
       "severity": "error",

@@ -43,14 +43,6 @@
       "message": "Stray end tag '</p>'"
     },
     {
-      "file": "app/templates/index.hbs",
-      "line": 137,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "element-name",
-      "message": "<image> is not a valid element name"
-    },
-    {
       "file": "app/templates/learn/index.hbs",
       "line": 3,
       "column": 24,

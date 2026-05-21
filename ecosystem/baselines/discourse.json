@@ -11,46 +11,6 @@
       "message": "Prefer to use the native <button> element"
     },
     {
-      "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
-      "line": 40,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
-      "line": 41,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
-      "line": 42,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
-      "line": 43,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/emojis-list.gjs",
-      "line": 56,
-      "column": 21,
-      "severity": "error",
-      "ruleId": "wcag/h67",
-      "message": "<img> with empty alt text cannot have title attribute"
-    },
-    {
       "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
       "line": 70,
       "column": 12,
@@ -78,38 +38,6 @@
       "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
       "line": 73,
       "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/webhooks-list.gjs",
-      "line": 37,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/webhooks-list.gjs",
-      "line": 40,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/webhooks-list.gjs",
-      "line": 43,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-config-areas/webhooks-list.gjs",
-      "line": 46,
-      "column": 18,
       "severity": "error",
       "ruleId": "wcag/h63",
       "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
@@ -137,14 +65,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <label>"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-report-table.gjs",
-      "line": 221,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/components/admin-section-landing-item.gjs",
@@ -188,31 +108,7 @@
     },
     {
       "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
-      "line": 43,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
       "line": 44,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
-      "line": 44,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
-      "line": 45,
       "column": 14,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -223,8 +119,8 @@
       "line": 45,
       "column": 14,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/admin/components/edit-category-tab.gjs",
@@ -233,22 +129,6 @@
       "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"href\" is missing value"
-    },
-    {
-      "file": "frontend/discourse/admin/components/email-logs-list.gjs",
-      "line": 164,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/components/email-logs-list.gjs",
-      "line": 166,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/components/emoji-uploader.gjs",
@@ -313,14 +193,6 @@
       "severity": "error",
       "ruleId": "attribute-allowed-values",
       "message": "Attribute \"readonly\" has invalid value \"true\""
-    },
-    {
-      "file": "frontend/discourse/admin/components/modal/form-template-validation-options.gjs",
-      "line": 45,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/components/modal/install-theme.gjs",
@@ -548,27 +420,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 46,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
       "line": 47,
       "column": 10,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 47,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
@@ -580,27 +436,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 50,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
       "line": 53,
       "column": 10,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 53,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
@@ -612,27 +452,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 55,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
       "line": 60,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
-      "line": 60,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
@@ -644,27 +468,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 30,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
       "line": 33,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 33,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
@@ -676,27 +484,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 34,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
       "line": 35,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 35,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
@@ -708,31 +500,7 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 36,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
       "line": 37,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 37,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
-      "line": 38,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -743,8 +511,8 @@
       "line": 38,
       "column": 12,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
@@ -756,27 +524,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 44,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
       "line": 47,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 47,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
@@ -788,27 +540,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 48,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
       "line": 51,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 51,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
@@ -820,27 +556,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 54,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
       "line": 57,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
-      "line": 57,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
@@ -852,27 +572,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
-      "line": 27,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
       "line": 30,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
-      "line": 30,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
@@ -884,31 +588,7 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
-      "line": 31,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
       "line": 32,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
-      "line": 32,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
-      "line": 33,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -919,8 +599,8 @@
       "line": 33,
       "column": 12,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
@@ -932,27 +612,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 114,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
       "line": 115,
       "column": 14,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 115,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
@@ -964,27 +628,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 116,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
       "line": 117,
       "column": 14,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 117,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
@@ -996,27 +644,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 118,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
       "line": 119,
       "column": 14,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
-      "line": 119,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
@@ -1059,36 +691,12 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
-      "file": "frontend/discourse/admin/templates/admin-permalinks/index.gjs",
-      "line": 34,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-permalinks/index.gjs",
-      "line": 37,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
       "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
       "line": 27,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
-      "line": 27,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
@@ -1100,27 +708,11 @@
     },
     {
       "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
-      "line": 30,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
       "line": 33,
       "column": 12,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
-      "line": 33,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-site-text/index.gjs",
@@ -1137,46 +729,6 @@
       "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 78,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 79,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 80,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 81,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/admin/templates/admin-user/badges.gjs",
-      "line": 82,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
@@ -1396,51 +948,27 @@
     },
     {
       "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 220,
+      "line": 234,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 309,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 330,
       "column": 22,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 229,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 268,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 269,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 272,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/bookmark-list.gjs",
-      "line": 275,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
     },
     {
       "file": "frontend/discourse/app/components/bookmark-list.gjs",
@@ -1564,7 +1092,7 @@
     },
     {
       "file": "frontend/discourse/app/components/d-otp/index.gjs",
-      "line": 176,
+      "line": 172,
       "column": 10,
       "severity": "error",
       "ruleId": "no-implicit-input-type",
@@ -1660,35 +1188,11 @@
     },
     {
       "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
-      "line": 547,
-      "column": 23,
-      "severity": "error",
-      "ruleId": "wcag/h67",
-      "message": "<img> with empty alt text cannot have title attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
       "line": 575,
       "column": 23,
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <section> element"
-    },
-    {
-      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
-      "line": 611,
-      "column": 29,
-      "severity": "error",
-      "ruleId": "wcag/h67",
-      "message": "<img> with empty alt text cannot have title attribute"
-    },
-    {
-      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
-      "line": 635,
-      "column": 33,
-      "severity": "error",
-      "ruleId": "wcag/h67",
-      "message": "<img> with empty alt text cannot have title attribute"
     },
     {
       "file": "frontend/discourse/app/components/flag-action-type.gjs",
@@ -1828,7 +1332,7 @@
     },
     {
       "file": "frontend/discourse/app/components/header/contents.gjs",
-      "line": 125,
+      "line": 121,
       "column": 26,
       "severity": "warning",
       "ruleId": "prefer-native-element",
@@ -2019,40 +1523,8 @@
       "message": "Redundant \"for\" attribute"
     },
     {
-      "file": "frontend/discourse/app/components/modal/post-translations.gjs",
-      "line": 123,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/post-translations.gjs",
-      "line": 124,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
       "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
       "line": 199,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "element-permitted-content",
-      "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
-      "line": 199,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
-      "line": 200,
       "column": 14,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -2063,8 +1535,8 @@
       "line": 200,
       "column": 14,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/app/components/modal/second-factor-add-totp.gjs",
@@ -2113,6 +1585,22 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<h4> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/nested.gjs",
+      "line": 77,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/nested/context-view.gjs",
+      "line": 108,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
     },
     {
       "file": "frontend/discourse/app/components/nested/sort-selector.gjs",
@@ -2283,6 +1771,22 @@
       "message": "Attribute \"href\" is missing value"
     },
     {
+      "file": "frontend/discourse/app/components/sidebar/common/custom-section.gjs",
+      "line": 70,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/common/custom-section.gjs",
+      "line": 86,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ul>"
+    },
+    {
       "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/categories-modal.gjs",
       "line": 270,
       "column": 10,
@@ -2331,6 +1835,22 @@
       "message": "<p> element is not permitted as content under <label>"
     },
     {
+      "file": "frontend/discourse/app/components/sidebar/more-section-links.gjs",
+      "line": 84,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/more-section-links.gjs",
+      "line": 111,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
       "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
       "line": 103,
       "column": 32,
@@ -2356,7 +1876,7 @@
     },
     {
       "file": "frontend/discourse/app/components/sidebar/section-link.gjs",
-      "line": 252,
+      "line": 246,
       "column": 18,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -2364,7 +1884,7 @@
     },
     {
       "file": "frontend/discourse/app/components/sidebar/section-link.gjs",
-      "line": 319,
+      "line": 313,
       "column": 18,
       "severity": "error",
       "ruleId": "element-permitted-content",
@@ -2668,14 +2188,6 @@
     },
     {
       "file": "frontend/discourse/app/static/prosemirror/components/image-node-view.gjs",
-      "line": 598,
-      "column": 7,
-      "severity": "error",
-      "ruleId": "wcag/h67",
-      "message": "<img> with empty alt text cannot have title attribute"
-    },
-    {
-      "file": "frontend/discourse/app/static/prosemirror/components/image-node-view.gjs",
       "line": 605,
       "column": 7,
       "severity": "warning",
@@ -2956,27 +2468,11 @@
     },
     {
       "file": "frontend/discourse/app/templates/review/topics.gjs",
-      "line": 27,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/templates/review/topics.gjs",
       "line": 28,
       "column": 10,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/review/topics.gjs",
-      "line": 28,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/app/templates/review/topics.gjs",
@@ -2988,27 +2484,11 @@
     },
     {
       "file": "frontend/discourse/app/templates/review/topics.gjs",
-      "line": 29,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
-    },
-    {
-      "file": "frontend/discourse/app/templates/review/topics.gjs",
       "line": 30,
       "column": 10,
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<th> element is not permitted as content under <thead>"
-    },
-    {
-      "file": "frontend/discourse/app/templates/review/topics.gjs",
-      "line": 30,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
     },
     {
       "file": "frontend/discourse/app/templates/second-factor-auth.gjs",
@@ -3079,24 +2559,24 @@
       "line": 290,
       "column": 16,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/app/templates/user/summary.gjs",
       "line": 291,
       "column": 16,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/app/templates/user/summary.gjs",
       "line": 292,
       "column": 16,
       "severity": "error",
-      "ruleId": "wcag/h63",
-      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
     },
     {
       "file": "frontend/discourse/select-kit/components/selected-choice.gjs",
