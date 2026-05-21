@@ -299,4 +299,26 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('article');
   });
+
+  test('single-template parent: binder resolves via sibling probe, not self-match', async () => {
+    // Parent.gts is a single-`<template>` file, so the same-file decl
+    // lookup returns the parent itself for any componentName. The binder
+    // `<Binder>` (no import) must instead resolve via the sibling
+    // `Binder.gts` → `<Sec>` → `<section>`, rather than self-recursing to
+    // MAX_DEPTH → TRANSPARENT. Load the parent via `findTemplateSource`
+    // (as the real pipeline does) so its content matches the file exactly
+    // — the self-match guard compares `{origin, content}`.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'single-template-reyield', 'Parent.gts');
+    const parentSource = findTemplateSource({ declFile: origin, ts });
+    expect(parentSource).not.toBeNull();
+    const r = resolveYieldHashBinding({
+      parentSource: parentSource!,
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('section');
+  });
 });

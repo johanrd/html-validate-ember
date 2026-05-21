@@ -896,7 +896,7 @@ export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resoluti
   const binding = findYieldHashEntry(ast, hashKey);
   if (!binding) return TRANSPARENT;
 
-  return resolveBinding(binding, parentSource, {
+  return resolveBinding(binding, parentSource, ast, {
     consumerArgs: parentArgs,
     ts: ts ?? null,
     visited,
@@ -920,17 +920,12 @@ function resolveBlockParamReyield(
   paramName: string,
   hashKey: string,
   parentSource: TemplateSource,
+  parentAst: AST.Template,
   options: ResolveOptions,
 ): Resolution | null {
   const depth = options.depth ?? 0;
   if (depth >= MAX_DEPTH) return TRANSPARENT;
-  let ast: AST.Template;
-  try {
-    ast = parseTemplate(parentSource.content);
-  } catch {
-    return TRANSPARENT;
-  }
-  const binderNode = findBlockParamBinder(ast, paramName, hashKey);
+  const binderNode = findBlockParamBinder(parentAst, paramName, hashKey);
   if (!binderNode) return null;
   const binderTag = binderNode.tag;
 
@@ -978,11 +973,21 @@ function resolveBlockParamReyield(
     ? findTemplateSource({ declFile: importedFile, ts: options.ts ?? null })
     : null;
   if (!binderSource) {
-    binderSource = findTemplateSource({
+    const sameFile = findTemplateSource({
       declFile: parentSource.origin,
       componentName: binderTag,
       ts: options.ts ?? null,
     });
+    // `findTemplateSource` returns a file's sole `<template>` regardless
+    // of `componentName` for single-template files (every `.hbs`, many
+    // `.gts`/`.gjs`). That would be the PARENT itself — recursing on it
+    // self-matches until MAX_DEPTH → TRANSPARENT, AND short-circuits the
+    // by-name / sibling probes below. Accept the same-file decl only when
+    // it selected a DIFFERENT `<template>` block (the multi-template case
+    // where the binder really is a sibling declaration in this file).
+    if (sameFile && !(sameFile.origin === parentSource.origin && sameFile.content === parentSource.content)) {
+      binderSource = sameFile;
+    }
   }
   if (!binderSource) {
     binderSource = findTemplateSource({
@@ -1212,6 +1217,7 @@ function findYieldHashEntry(
 function resolveBinding(
   expr: AST.Expression,
   parentSource: TemplateSource,
+  parentAst: AST.Template,
   options: ResolveOptions,
 ): Resolution {
   // `Title=(component HdsFormHeaderTitle size="300")` — the hash
@@ -1234,7 +1240,7 @@ function resolveBinding(
         curriedArgs.set(pair.key, pair.value.value);
       }
     }
-    return resolveBinding(componentRef, parentSource, {
+    return resolveBinding(componentRef, parentSource, parentAst, {
       ...options,
       consumerArgs: curriedArgs,
     });
@@ -1252,7 +1258,7 @@ function resolveBinding(
     // back to resolving the head name directly (the prior behavior).
     // (A bare `Foo` with no tail is a local import / in-scope component.)
     if (expr.tail.length > 0) {
-      const reyield = resolveBlockParamReyield(expr.head.name, expr.tail[0]!, parentSource, options);
+      const reyield = resolveBlockParamReyield(expr.head.name, expr.tail[0]!, parentSource, parentAst, options);
       if (reyield !== null) return reyield;
     }
     return resolveByName(expr.head.name, parentSource, options);
