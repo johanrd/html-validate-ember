@@ -62,6 +62,7 @@
     "content-tag": "^4.1.1",
     "html-tags": "^5.1.0",
     "mathml-tag-names": "^4.0.0",
+    "resolve.exports": "^2.0.3",
     "svg-tags": "^1.0.0"
   },
   "devDependencies": {

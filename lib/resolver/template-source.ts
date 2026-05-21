@@ -28,6 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { Preprocessor } from 'content-tag';
+import * as resolveExports from 'resolve.exports';
 import type * as TS from 'typescript';
 // `@embroider/shared-internals` is lazy-imported via `loadEmbroider`
 // below — it's a 344KB dep (plus lodash, fs-extra, resolve-package-path,
@@ -78,6 +79,12 @@ export interface FindOptions {
 }
 
 const cache = new Map<string, TemplateSource | null>();
+// Memoizes `resolveSubpathViaExports` by `pkgRoot\0subpath`. The fallback
+// resolver runs per PascalCase invocation during wrapper walking, so many
+// components imported from one package (e.g. HDS) would otherwise re-read
+// + re-parse the same (large) package.json and re-probe the filesystem on
+// every call. Process-lifetime, like `cache`; cleared by `_clearCache`.
+const exportsResolveCache = new Map<string, string | null>();
 
 export function findTemplateSource(opts: FindOptions): TemplateSource | null {
   const { declFile, declRange, componentName, consumerFile, ts } = opts;
@@ -444,13 +451,37 @@ function findCompanionViaExports(declFile: string, pkg: Package): string | null 
     if (subpath.includes('*')) {
       const wildcardValue = matchWildcardPattern(types, relDecl);
       if (wildcardValue !== null) {
-        const abs = path.join(pkg.root, def.replace('*', wildcardValue));
-        if (fs.existsSync(abs)) return abs;
+        const abs = probeTemplateFile(pkg.root, def.replace('*', wildcardValue));
+        if (abs) return abs;
       }
     } else if (types === relDecl) {
-      const abs = path.join(pkg.root, def);
-      if (fs.existsSync(abs)) return abs;
+      const abs = probeTemplateFile(pkg.root, def);
+      if (abs) return abs;
     }
+  }
+  return null;
+}
+
+// Resolve an exports target (untrusted — from a dependency's
+// package.json) against the package root, returning the absolute path
+// only if it stays within the root. Guards against absolute paths and
+// `..` segments escaping the package directory.
+function withinPackage(pkgRoot: string, target: string): string | null {
+  const baseDir = path.resolve(pkgRoot);
+  const abs = path.resolve(pkgRoot, target);
+  if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) return null;
+  return abs;
+}
+
+// Resolve an `exports` target (possibly extensionless, e.g. HDS's
+// `"./dist/*"`) to a concrete file within the package, probing the
+// extensions a template can live in. Used by both the forward
+// (subpath→runtime) and reverse (.d.ts→companion) exports resolvers, so
+// both handle built v2-addons that ship extensionless targets.
+function probeTemplateFile(pkgRoot: string, target: string): string | null {
+  for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
+    const abs = withinPackage(pkgRoot, target + ext);
+    if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
   }
   return null;
 }
@@ -600,20 +631,28 @@ function pascalToKebab(name: string): string {
 let sharedCache: PackageCache | null = null;
 let embroiderModule: { PackageCache: PackageCacheCtor } | null | undefined;
 
-// Lazy import. Eagerly requiring `@embroider/shared-internals` at
-// module load (its 344KB JS + transitive lodash / fs-extra /
-// resolve-package-path / babel-import-util) showed up as noticeable
-// VS Code html-validate language-server startup + shutdown lag in
-// 0.4.2. Only the v1-addon by-name lookup path actually needs it,
-// so defer until the first `getCache()` call — projects with no v1
-// addons (or whose resolver never falls through to by-name) skip
-// the load entirely.
+// Lazy import. Eagerly requiring `@embroider/shared-internals` at module
+// load showed up as noticeable VS Code html-validate language-server
+// startup + shutdown lag in 0.4.2. Only the v1-addon by-name lookup path
+// actually needs it, so defer until the first `getCache()` call —
+// projects with no v1 addons (or whose resolver never falls through to
+// by-name) skip the load entirely.
+//
+// Deep-import just the `package-cache` module (blessed by the package's
+// `"./src/*"` exports entry) rather than the barrel: the barrel pulls
+// ~15 unrelated submodules (babel plugins, hbs-to-js, colocation, …) and
+// their transitive lodash / fs-extra / babel-import-util deps, whereas
+// `package-cache` needs only `./package` + `resolve-package-path`. We
+// use nothing else from the package. The classic-resolver tests exercise
+// this path, so a future rename of the file surfaces in CI rather than
+// silently disabling the lookup.
 function loadEmbroider(): { PackageCache: PackageCacheCtor } | null {
   if (embroiderModule !== undefined) return embroiderModule;
   try {
-    embroiderModule = createRequire(import.meta.url)('@embroider/shared-internals') as {
-      PackageCache: PackageCacheCtor;
-    };
+    const mod = createRequire(import.meta.url)(
+      '@embroider/shared-internals/src/package-cache',
+    ) as { default: PackageCacheCtor };
+    embroiderModule = { PackageCache: mod.default };
   } catch {
     embroiderModule = null;
   }
@@ -773,6 +812,19 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
   for (;;) {
     const pkgRoot = path.join(dir, 'node_modules', pkgName);
     if (fs.existsSync(pkgRoot)) {
+      // Built package: resolve the subpath through the `exports` map and
+      // probe extensions. Node's resolver (require.resolve, tried first
+      // by the caller) rejects extensionless subpath-pattern targets
+      // like `"./*": { "default": "./dist/*" }` — ESM exports don't
+      // auto-append `.js`. A built v2-addon (HDS-style: `dist/` present,
+      // `src/` stripped by its `files` allowlist) would otherwise fail
+      // to resolve here, dropping the template-override and letting
+      // Glint's splatted `Element` tag win → `element-permitted-content`
+      // false positives.
+      const viaExports = resolveSubpathViaExports(pkgRoot, subpath);
+      if (viaExports) return viaExports;
+      // Source-only package (in-development monorepo): `dist/` absent,
+      // `src/` present.
       for (const ext of ['.ts', '.gts', '.gjs', '.js', '.d.ts']) {
         const candidate = path.join(pkgRoot, 'src', subpath + ext);
         if (fs.existsSync(candidate)) return candidate;
@@ -785,9 +837,63 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
   }
 }
 
+// Resolve a package subpath through its `exports` map to an on-disk
+// file. `resolve.exports` does the spec-faithful map parsing (condition
+// priority by the package's own key order, `*` patterns, specificity,
+// nested/array values, string/non-map shapes); we keep the parts that
+// are specific to reading a *template file*:
+//   - extension probing — built v2-addons (HDS) ship EXTENSIONLESS
+//     targets (`"./dist/*"`), so the spec-parsed target is `./dist/X`
+//     and we must find the concrete `.js`/`.gts` on disk to read its
+//     inline `precompileTemplate(...)` / `template(...)`;
+//   - a containment guard, since the target is untrusted package input.
+// Default conditions resolve the ESM runtime (import/default), matching
+// our `.gts`/`.gjs` consumers.
+function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | null {
+  const cacheKey = `${pkgRoot}\0${subpath}`;
+  const cached = exportsResolveCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const result = computeSubpathViaExports(pkgRoot, subpath);
+  exportsResolveCache.set(cacheKey, result);
+  return result;
+}
+
+function computeSubpathViaExports(pkgRoot: string, subpath: string): string | null {
+  let pkgJson: { name?: string; exports?: unknown };
+  try {
+    pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
+      name?: string;
+      exports?: unknown;
+    };
+  } catch {
+    return null;
+  }
+  if (pkgJson.exports == null) return null;
+
+  let targets: string[] | undefined;
+  try {
+    targets =
+      resolveExports.exports(
+        pkgJson as { name: string; exports: unknown },
+        subpath ? './' + subpath : '.',
+      ) ?? undefined;
+  } catch {
+    // resolve.exports throws on a subpath the package doesn't export.
+    return null;
+  }
+  if (!targets || targets.length === 0) return null;
+
+  for (const target of targets) {
+    const abs = probeTemplateFile(pkgRoot, target);
+    if (abs) return abs;
+  }
+  return null;
+}
+
 // --- test hook -----------------------------------------------------------
 
 export function _clearCache(): void {
   cache.clear();
+  exportsResolveCache.clear();
   sharedCache = null;
 }

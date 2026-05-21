@@ -343,6 +343,39 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves a wrapper to its structural root <li> through a built package with extensionless exports', () => {
+    // Regression for the HDS element-permitted-content flood. A
+    // published, BUILT package ships compiled `dist/*.js` + `.d.ts`
+    // with an extensionless subpath-pattern exports map
+    // (`"./*": { "default": "./dist/*" }`) — note no `.js` in the
+    // target. `<ListLink>` declares `Element: HTMLAnchorElement` but
+    // its compiled template wraps the `<a>` inside `<ListItem>`
+    // (→ `<li>`); the structural root is `<li>`.
+    //
+    // The bug: `resolveModuleSpec` resolves the import via
+    // `require.resolve`, which throws for an extensionless exports
+    // target (ESM exports don't auto-append `.js`); the catch-fallback
+    // only probed `<pkg>/src/`, which a built package doesn't ship.
+    // So import resolution returned null, the template-override never
+    // ran, and Glint's splatted `Element` tag `<a>` won — FP-firing
+    // `element-permitted-content` (`<a>` not permitted under `<ul>`)
+    // across HDS (~280 findings). The fix resolves the exports target
+    // with extension probing so the wrapper chain (ListLink → ListItem
+    // → `<li>`) is walked.
+    const { filename, contents } = readFixture('compiled-list-wrapper-consumer.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const entries = [...componentTagMap.entries()];
+    const tags = entries.map(([, t]) => t);
+    expect(
+      tags.includes('a'),
+      `ListLink must resolve to its structural root <li>, not the splatted <a>; got: ${JSON.stringify(entries)}`,
+    ).toBe(false);
+    expect(
+      entries.filter(([, t]) => t === 'li').length,
+      `expected both wrappers to resolve to <li>; got: ${JSON.stringify(entries)}`,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
   it('resolves a yielded curried sub-component to its declared Element', () => {
     // `<SelectBase as |C|><C.Options><option/></C.Options></SelectBase>`:
     // the parent yields a curried sub-component as a block-param. Glint's
