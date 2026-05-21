@@ -612,20 +612,28 @@ function pascalToKebab(name: string): string {
 let sharedCache: PackageCache | null = null;
 let embroiderModule: { PackageCache: PackageCacheCtor } | null | undefined;
 
-// Lazy import. Eagerly requiring `@embroider/shared-internals` at
-// module load (its 344KB JS + transitive lodash / fs-extra /
-// resolve-package-path / babel-import-util) showed up as noticeable
-// VS Code html-validate language-server startup + shutdown lag in
-// 0.4.2. Only the v1-addon by-name lookup path actually needs it,
-// so defer until the first `getCache()` call — projects with no v1
-// addons (or whose resolver never falls through to by-name) skip
-// the load entirely.
+// Lazy import. Eagerly requiring `@embroider/shared-internals` at module
+// load showed up as noticeable VS Code html-validate language-server
+// startup + shutdown lag in 0.4.2. Only the v1-addon by-name lookup path
+// actually needs it, so defer until the first `getCache()` call —
+// projects with no v1 addons (or whose resolver never falls through to
+// by-name) skip the load entirely.
+//
+// Deep-import just the `package-cache` module (blessed by the package's
+// `"./src/*"` exports entry) rather than the barrel: the barrel pulls
+// ~15 unrelated submodules (babel plugins, hbs-to-js, colocation, …) and
+// their transitive lodash / fs-extra / babel-import-util deps, whereas
+// `package-cache` needs only `./package` + `resolve-package-path`. We
+// use nothing else from the package. The classic-resolver tests exercise
+// this path, so a future rename of the file surfaces in CI rather than
+// silently disabling the lookup.
 function loadEmbroider(): { PackageCache: PackageCacheCtor } | null {
   if (embroiderModule !== undefined) return embroiderModule;
   try {
-    embroiderModule = createRequire(import.meta.url)('@embroider/shared-internals') as {
-      PackageCache: PackageCacheCtor;
-    };
+    const mod = createRequire(import.meta.url)(
+      '@embroider/shared-internals/src/package-cache',
+    ) as { default: PackageCacheCtor };
+    embroiderModule = { PackageCache: mod.default };
   } catch {
     embroiderModule = null;
   }
