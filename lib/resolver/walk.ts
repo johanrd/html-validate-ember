@@ -960,13 +960,18 @@ function collectBinderArgs(
       && attr.value.path.type === 'PathExpression'
     ) {
       const expr = attr.value.path;
-      if (expr.head?.type === 'AtHead') {
+      // Only the simple forms are statically pinnable: `@foo` (no tail)
+      // and `this.foo` (single tail segment). `@foo.bar` is property
+      // access on an arg, and `this.a.b` walks past a single getter —
+      // treating either as the bare `@foo` / `this.a` would set a wrong
+      // binderArg, so skip them.
+      if (expr.head?.type === 'AtHead' && expr.tail.length === 0) {
         const caller = expr.head.name.replace(/^@/, '');
         const v = options.consumerArgs?.get(caller);
         if (v !== undefined) binderArgs.set(argName, v);
-      } else if (expr.head?.type === 'ThisHead') {
-        const propName = expr.tail[0];
-        if (propName && options.ts) {
+      } else if (expr.head?.type === 'ThisHead' && expr.tail.length === 1) {
+        const propName = expr.tail[0]!;
+        if (options.ts) {
           const v = resolveThisProp(parentSource, propName, options);
           if (v !== null) binderArgs.set(argName, v);
         }
@@ -1034,7 +1039,9 @@ export function resolveYieldHashBindingSource(
   // source level — resolve the binder's source and follow ITS yield-hash
   // for the inner key — so deeper dotted chains off a re-yielded component
   // can be followed (the leaf resolver and the source chainer stay in
-  // sync). Falls back to the bare-identifier path when `F` isn't a binder.
+  // sync). When `F` is NOT a binder, fall through to the bare-identifier
+  // path below (resolves the head, ignoring the tail — matching the leaf
+  // resolver's `resolveByName(head)` fallback).
   if (target.tail.length > 0) {
     const d = depth ?? 0;
     const binderNode = d < MAX_DEPTH ? nearestBinderFor(entry.ancestors, target.head.name) : null;
@@ -1051,7 +1058,6 @@ export function resolveYieldHashBindingSource(
       if (!nested) return null;
       return { source: nested.source, curriedArgs: new Map([...curriedArgs, ...nested.curriedArgs]) };
     }
-    return null;
   }
 
   const name = target.head.name;
@@ -1483,7 +1489,9 @@ function isNativeTagName(tag: string): boolean {
 // slot (`:body`). Deliberately broader than `/^[A-Z][A-Za-z0-9]*$/` so it
 // also covers namespaced (`Foo::Bar`) and underscore identifiers — the
 // same set the wrapper-recursion and block-param-binder lookups treat as
-// resolvable, kept in one place so the two can't drift apart.
-function isResolvableWrapperTag(tag: string): boolean {
+// resolvable, kept in one place so the resolver entry points (this file's
+// wrapper recursion + re-yield binder lookup, and the no-Glint
+// `buildResolutionMaps`) can't drift apart on wrapper eligibility.
+export function isResolvableWrapperTag(tag: string): boolean {
   return /^[A-Z]/.test(tag) && !tag.includes('.') && !tag.startsWith(':');
 }

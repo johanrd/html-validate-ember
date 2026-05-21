@@ -239,8 +239,8 @@ describe('resolveYieldHashBinding', () => {
   test('VarHead+tail whose head is NOT a block param falls back to resolveByName', async () => {
     // `NavList.Item` is property access on an in-scope const, not a
     // block-param re-yield (`NavList` is never bound via `as |NavList|`).
-    // `resolveBlockParamReyield` returns null for the missing binder, so
-    // the caller falls back to resolving the head (`NavList`) by name —
+    // No enclosing binder matches, so the re-yield path is skipped and
+    // resolution falls back to resolving the head (`NavList`) by name —
     // restoring the pre-re-yield behavior instead of bailing TRANSPARENT.
     const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
     const origin = path.join(FIXTURES, 'dotted-nonblockparam-binding.gts');
@@ -386,5 +386,25 @@ describe('resolveYieldHashBinding', () => {
     const r = resolveTemplate(res!.source, { ts });
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('article');
+  });
+
+  test('binder @arg with a tail segment (@cfg.tag) is not mistaken for an @cfg passthrough', async () => {
+    // The binder's `Item=@elementTag`. Passing `@elementTag={{@cfg.tag}}`
+    // is property access on `@cfg`, NOT the bare `@cfg` arg — so it must
+    // not bind `elementTag` to `@cfg`'s value ('section'). With the arg
+    // left unresolved, the binder's `Item` stays TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-binder-thisprop-arg.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<Binder @elementTag={{@cfg.tag}} as |F|>{{yield (hash Thing=F.Item)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map([['cfg', 'section']]),
+      ts,
+    });
+    expect(r.kind).toBe('transparent');
   });
 });

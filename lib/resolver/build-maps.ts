@@ -13,7 +13,7 @@ import { BUILTIN_COMPONENTS } from '../builtin-components.js';
 import type { ComponentAttrs } from '../builtin-components.js';
 import { isComponentTag } from '../../blank.js';
 import { findTemplateSource } from './template-source.js';
-import { chooseSubstitution, resolveTemplate } from './walk.js';
+import { chooseSubstitution, resolveTemplate, isResolvableWrapperTag } from './walk.js';
 
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set(BUILTIN_COMPONENTS.keys());
 
@@ -64,7 +64,10 @@ export function buildResolutionMaps(
   traverse(ast, {
     ElementNode(node) {
       const tag = node.tag;
-      if (!/^[A-Z][A-Za-z0-9]*$/.test(tag)) return;
+      // Same wrapper-eligibility predicate as walk.ts's resolution paths
+      // (covers underscore/namespaced tags), so no-Glint resolution stays
+      // consistent with the Glint path.
+      if (!isResolvableWrapperTag(tag)) return;
       if (BUILTIN_COMPONENT_NAMES.has(tag)) return;
       if (!node.loc.start) return;
       const source = findTemplateSource({
