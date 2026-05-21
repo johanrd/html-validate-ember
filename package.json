@@ -1,6 +1,6 @@
 {
   "name": "html-validate-ember",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "html-validate transformer for Ember .gts (Glimmer) templates",
   "keywords": [
     "html-validate",
@@ -64,6 +64,7 @@
     "content-tag": "^4.1.1",
     "html-tags": "^5.1.0",
     "mathml-tag-names": "^4.0.0",
+    "resolve.exports": "^2.0.3",
     "svg-tags": "^1.0.0"
   },
   "devDependencies": {

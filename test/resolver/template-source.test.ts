@@ -82,6 +82,23 @@ describe('findTemplateSource', () => {
     expect(result?.origin).toMatch(/\/dist\/components\/poly-list-item\.js$/);
   });
 
+  test('.d.ts → companion .js via EXTENSIONLESS exports target', () => {
+    // list-link-addon-js mirrors HDS: exports `"./*": { "default":
+    // "./dist/*" }` — no `.js` in the target — and ships no `src/`.
+    // The reverse .d.ts→companion bridge must probe extensions to find
+    // `dist/components/list-link.js`; without it, declaration-driven
+    // resolution returns null and only the consumer-import fallback
+    // saves it. Regression guard for that gap.
+    const declFile = path.join(
+      FIXTURES,
+      'node_modules/list-link-addon-js/declarations/components/list-link.d.ts',
+    );
+    const result = findTemplateSource({ declFile, ts });
+    expect(result?.kind).toBe('js');
+    expect(result?.origin).toMatch(/\/dist\/components\/list-link\.js$/);
+    expect(result?.content).toContain('ListItem');
+  });
+
   test('.d.ts → polymorphic-addon-js-only (poly-text uses element helper)', () => {
     const declFile = path.join(FIXTURES, 'node_modules/polymorphic-addon-js-only/declarations/components/poly-text.d.ts');
     const result = findTemplateSource({ declFile, ts });
