@@ -809,11 +809,34 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
   }
 }
 
+// Extract a string target from an `exports` entry value. Handles the
+// three valid Node shapes: a bare string (`"./*": "./dist/*"`), a
+// conditions object (`{ "import": …, "require": …, "default": … }`),
+// and a fallback array (first resolvable wins). For the conditions
+// object we read specific conditions before `default` — `default` is
+// Node's catch-all and must be tried last, not first — and prefer the
+// ESM `import` condition since the consumer module (.gts/.gjs) is ESM.
+// Any of them carries the inline `precompileTemplate(...)` / `template
+// (...)` string, so the choice only matters for dual-build packages.
+function exportsTarget(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const t = exportsTarget(entry);
+      if (t !== null) return t;
+    }
+    return null;
+  }
+  if (typeof value !== 'object' || value === null) return null;
+  const c = value as Record<string, unknown>;
+  const t = c['import'] ?? c['require'] ?? c['default'];
+  return typeof t === 'string' ? t : null;
+}
+
 // Resolve a package subpath through its `exports` map to an on-disk
 // file, probing extensions. Handles extensionless subpath-pattern
 // targets (`"./*": { "default": "./dist/*" }`) that Node's exports
-// resolver rejects. Prefers the runtime condition (default/import/
-// require): the compiled `.js` carries the template inline via
+// resolver rejects. The compiled `.js` carries the template inline via
 // `precompileTemplate(...)` / `template(...)`.
 function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | null {
   let exportsMap: unknown;
@@ -836,10 +859,8 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
   let bestTarget: string | null = null;
   let bestScore = -1;
   for (const [pattern, conditions] of Object.entries(exportsMap as Record<string, unknown>)) {
-    if (typeof conditions !== 'object' || conditions === null) continue;
-    const c = conditions as Record<string, unknown>;
-    const target = c['default'] ?? c['import'] ?? c['require'];
-    if (typeof target !== 'string') continue;
+    const target = exportsTarget(conditions);
+    if (target === null) continue;
     let resolved: string | null = null;
     let score = -1;
     if (pattern === relImport) {
