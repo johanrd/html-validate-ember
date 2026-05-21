@@ -235,4 +235,26 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('div');
   });
+
+  test('VarHead+tail whose head is NOT a block param falls back to resolveByName', async () => {
+    // `NavList.Item` is property access on an in-scope const, not a
+    // block-param re-yield (`NavList` is never bound via `as |NavList|`).
+    // `resolveBlockParamReyield` returns null for the missing binder, so
+    // the caller falls back to resolving the head (`NavList`) by name —
+    // restoring the pre-re-yield behavior instead of bailing TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'dotted-nonblockparam-binding.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `{{yield (hash Thing=NavList.Item)}}`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('nav');
+  });
 });

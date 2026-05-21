@@ -911,12 +911,17 @@ export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resoluti
 // into its yield-hash. Mirrors HDS's `HdsFormCheckboxGroup` re-yielding
 // `HdsFormFieldset`'s `F.Legend` — without this `<G.Legend>` fell back to
 // the binder's `<fieldset>` Element type and FP-fired `wcag/h71`.
+// Returns `null` (rather than TRANSPARENT) when `paramName` is not a
+// block param introduced in this template — i.e. the `VarHead`+tail was
+// general property access, not a re-yield. The caller then falls back to
+// the prior `resolveByName(head)` behavior. A binder that IS found but
+// fails to resolve still returns TRANSPARENT (the FP-safe answer).
 function resolveBlockParamReyield(
   paramName: string,
   hashKey: string,
   parentSource: TemplateSource,
   options: ResolveOptions,
-): Resolution {
+): Resolution | null {
   const depth = options.depth ?? 0;
   if (depth >= MAX_DEPTH) return TRANSPARENT;
   let ast: AST.Template;
@@ -926,7 +931,7 @@ function resolveBlockParamReyield(
     return TRANSPARENT;
   }
   const binderNode = findBlockParamBinder(ast, paramName);
-  if (!binderNode) return TRANSPARENT;
+  if (!binderNode) return null;
   const binderTag = binderNode.tag;
 
   // The binder is invoked WITHIN this template (`<Binder @x="y" as |F|>`),
@@ -950,6 +955,12 @@ function resolveBlockParamReyield(
     }
   }
 
+  // Resolve the binder's source, mirroring `resolvePascalRecursion`'s
+  // lookup order so re-yield chains resolve under every consumer style:
+  //   1. `import Binder from '...'` in this template's origin.
+  //   2. Same-file declaration (`const Binder = <template>…` in this .gts).
+  //   3. v1-addon by-name resolution (`.hbs` consumers — no imports).
+  //   4. Sibling-file probe (same dir as origin) as a last resort.
   const importedFile = resolveImport(parentSource.origin, binderTag, options.ts ?? null);
   let binderSource: TemplateSource | null = importedFile
     ? findTemplateSource({ declFile: importedFile, ts: options.ts ?? null })
@@ -960,6 +971,16 @@ function resolveBlockParamReyield(
       componentName: binderTag,
       ts: options.ts ?? null,
     });
+  }
+  if (!binderSource) {
+    binderSource = findTemplateSource({
+      consumerFile: parentSource.origin,
+      componentName: binderTag,
+      ts: options.ts ?? null,
+    });
+  }
+  if (!binderSource) {
+    binderSource = trySiblingProbe(parentSource.origin, binderTag);
   }
   if (!binderSource) return TRANSPARENT;
 
@@ -1156,12 +1177,16 @@ function resolveBinding(
   if (!expr.head) return TRANSPARENT;
 
   if (expr.head.type === 'VarHead') {
-    // `F.Legend` — `F` is a block param introduced by `<Binder as |F|>`
-    // in THIS template, so the yielded sub-component is whatever Binder
-    // re-yields under `Legend`. (A bare `Foo` with no tail is a local
-    // import / in-scope component → resolveByName.)
+    // `F.Legend` — when `F` is a block param introduced by `<Binder as
+    // |F|>` in THIS template, the yielded sub-component is whatever Binder
+    // re-yields under `Legend`. But `VarHead`+tail is also the general
+    // shape for property access on any in-scope value; when `F` is not a
+    // block param, `resolveBlockParamReyield` returns null and we fall
+    // back to resolving the head name directly (the prior behavior).
+    // (A bare `Foo` with no tail is a local import / in-scope component.)
     if (expr.tail.length > 0) {
-      return resolveBlockParamReyield(expr.head.name, expr.tail[0]!, parentSource, options);
+      const reyield = resolveBlockParamReyield(expr.head.name, expr.tail[0]!, parentSource, options);
+      if (reyield !== null) return reyield;
     }
     return resolveByName(expr.head.name, parentSource, options);
   }
