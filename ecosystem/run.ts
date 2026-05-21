@@ -38,6 +38,19 @@ interface Target {
   // doesn't work cleanly. On install failure the runner falls back to no-Glint
   // and prints a warning rather than failing the target.
   glint?: boolean;
+  // Optional build command(s) run after a fresh install, before validation.
+  // Needed for targets whose workspace packages must be built so the plugin
+  // can resolve cross-package component templates: an unbuilt source-only
+  // workspace dep (e.g. HDS's `@hashicorp/design-system-components`, whose
+  // `files` allowlist ships only `dist`/`declarations` — absent until the
+  // package's `rollup` build runs) resolves to nothing, so PascalCase
+  // components blank transparently and structural rules (prefer-tbody,
+  // no-implicit-close, unique-landmark, …) can't see the rendered DOM.
+  // Each entry is an argv array run from the repo root. After building, the
+  // runner re-installs to re-inject the freshly-built workspace packages
+  // into pnpm's virtual store (workspace deps are injected by content, not
+  // symlinked, so the store copy is stale until reinstall).
+  build?: string[][];
 }
 
 interface Finding {
@@ -72,16 +85,22 @@ const TARGETS_FILE = path.join(__dirname, 'targets.json');
 interface ParsedArgs {
   update: boolean;
   noClone: boolean;
+  // Force Glint OFF for every target while still installing + building
+  // deps (so the canonical resolver has built packages to read). Used to
+  // measure Glint's contribution vs the no-Glint canonical resolver.
+  noGlint: boolean;
   targetFilter: Set<string> | null;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
   let update = false;
   let noClone = false;
+  let noGlint = false;
   let targetFilter: Set<string> | null = null;
   for (const a of argv) {
     if (a === '--update') update = true;
     else if (a === '--no-clone') noClone = true;
+    else if (a === '--no-glint') noGlint = true;
     else if (a.startsWith('--target=')) {
       const val = a.slice('--target='.length);
       if (val) targetFilter = new Set(val.split(',').map((s) => s.trim()).filter(Boolean));
@@ -92,7 +111,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       process.exit(2);
     }
   }
-  return { update, noClone, targetFilter };
+  return { update, noClone, noGlint, targetFilter };
 }
 
 function loadTargets(): Target[] {
@@ -174,6 +193,38 @@ function installDeps(repoDir: string, target: Target): boolean {
     );
     return false;
   }
+}
+
+// Build a target's workspace packages so the plugin can resolve
+// cross-package component templates. Runs each configured `build` argv
+// from the repo root with a wall-clock timeout. Build failure is
+// non-fatal: we warn and continue (the affected components just blank
+// transparently, as they did before — same as a missing dep). Like
+// `installDeps`, this runs cloned third-party build scripts, so it's
+// gated on an explicit per-target `build` config rather than run for
+// every target.
+function runBuild(repoDir: string, target: Target): boolean {
+  if (!target.build || target.build.length === 0) return true;
+  for (const argv of target.build) {
+    const [cmd, ...rest] = argv;
+    if (!cmd) continue;
+    process.stderr.write(`  [build] ${argv.join(' ')} (in ${target.name})\n`);
+    try {
+      execFileSync(cmd, rest, {
+        cwd: repoDir,
+        stdio: 'inherit',
+        timeout: 10 * 60 * 1000,
+      });
+    } catch (err) {
+      process.stderr.write(
+        `  [build] build failed for ${target.name}: ${
+          err instanceof Error ? err.message : String(err)
+        }\n  [build] continuing — affected components blank transparently\n`,
+      );
+      return false;
+    }
+  }
+  return true;
 }
 
 // Convert a minimatch-ish glob to a RegExp. We intentionally support a small
@@ -400,8 +451,26 @@ async function main(): Promise<void> {
     const repoDir = ensureClone(target, args.noClone);
     const wantGlint = target.glint !== false;
     const haveDeps = wantGlint && fs.existsSync(path.join(repoDir, 'node_modules'));
-    const installed = wantGlint && !haveDeps && !args.noClone ? installDeps(repoDir, target) : haveDeps;
-    const useGlint = wantGlint && installed;
+    let didInstall = false;
+    let installed = haveDeps;
+    if (wantGlint && !haveDeps && !args.noClone) {
+      installed = installDeps(repoDir, target);
+      didInstall = installed;
+    }
+    // Build workspace packages so cross-package component templates
+    // resolve. Only after a *fresh* install (didInstall) — on a warm
+    // `.cache` the build artifacts already persist, and the Glint disk
+    // cache, populated from the post-build state, stays consistent. The
+    // build runs before any validation, so the freshly-built output is
+    // what extraction sees (no stale-cache window). Re-inject afterward
+    // so pnpm copies the built `dist`/`declarations` into the store.
+    if (didInstall && runBuild(repoDir, target)) {
+      installDeps(repoDir, target);
+    }
+    // `wantGlint` still gates install + build above, so `--no-glint`
+    // keeps deps/dist present for the canonical resolver and only
+    // disables Glint type extraction here.
+    const useGlint = wantGlint && installed && !args.noGlint;
     const prevGlint = process.env['HVE_GLINT'];
     if (useGlint) {
       process.env['HVE_GLINT'] = '1';

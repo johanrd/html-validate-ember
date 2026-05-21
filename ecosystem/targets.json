@@ -49,7 +49,10 @@
         "showcase/app/**/*.{gts,gjs,hbs}",
         "website/app/**/*.{gts,gjs,hbs}"
       ],
-      "exclude": []
+      "exclude": [],
+      "build": [
+        ["pnpm", "--filter", "@hashicorp/design-system-components", "build"]
+      ]
     },
     {
       "name": "ember-primitives",
