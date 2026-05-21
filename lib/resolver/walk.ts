@@ -937,7 +937,11 @@ function resolveBlockParamReyield(
   // The binder is invoked WITHIN this template (`<Binder @x="y" as |F|>`),
   // so any `@arg`-driven yield-hash entry inside Binder must resolve
   // against the args passed HERE — not the outer component's consumer
-  // args. Collect literal `@arg="lit"` and `@arg={{@caller}}` passthrough.
+  // args. Collect:
+  //   - literal `@arg="lit"`,
+  //   - `@arg={{@caller}}` passthrough (look up in this component's args),
+  //   - `@arg={{this.prop}}` class-derived literal (walk this component's
+  //     getter, mirroring `resolvePascalRecursionWith`).
   const binderArgs = new Map<string, string>();
   for (const attr of binderNode.attributes) {
     if (!attr.name.startsWith('@')) continue;
@@ -947,11 +951,19 @@ function resolveBlockParamReyield(
     } else if (
       attr.value.type === 'MustacheStatement'
       && attr.value.path.type === 'PathExpression'
-      && attr.value.path.head?.type === 'AtHead'
     ) {
-      const caller = attr.value.path.head.name.replace(/^@/, '');
-      const v = options.consumerArgs?.get(caller);
-      if (v !== undefined) binderArgs.set(argName, v);
+      const expr = attr.value.path;
+      if (expr.head?.type === 'AtHead') {
+        const caller = expr.head.name.replace(/^@/, '');
+        const v = options.consumerArgs?.get(caller);
+        if (v !== undefined) binderArgs.set(argName, v);
+      } else if (expr.head?.type === 'ThisHead') {
+        const propName = expr.tail[0];
+        if (propName && options.ts) {
+          const v = resolveThisProp(parentSource, propName, options);
+          if (v !== null) binderArgs.set(argName, v);
+        }
+      }
     }
   }
 

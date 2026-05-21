@@ -257,4 +257,26 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('nav');
   });
+
+  test('re-yield binder @arg driven by {{this.prop}} resolves via class getter', async () => {
+    // `<Binder @elementTag={{this.tag}} as |F|>` — the binder's yielded
+    // hash entry depends on `@elementTag`, passed from the re-yielding
+    // component's class getter. `binderArgs` must resolve `this.tag` to
+    // its literal (`'section'`) — parity with `resolvePascalRecursionWith`
+    // — or the binder's `@elementTag` lookup bails TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-binder-thisprop-arg.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<Binder @elementTag={{this.tag}} as |F|>{{yield (hash Thing=F.Item)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('section');
+  });
 });
