@@ -451,12 +451,12 @@ function findCompanionViaExports(declFile: string, pkg: Package): string | null 
     if (subpath.includes('*')) {
       const wildcardValue = matchWildcardPattern(types, relDecl);
       if (wildcardValue !== null) {
-        const abs = withinPackage(pkg.root, def.replace('*', wildcardValue));
-        if (abs && fs.existsSync(abs)) return abs;
+        const abs = probeTemplateFile(pkg.root, def.replace('*', wildcardValue));
+        if (abs) return abs;
       }
     } else if (types === relDecl) {
-      const abs = withinPackage(pkg.root, def);
-      if (abs && fs.existsSync(abs)) return abs;
+      const abs = probeTemplateFile(pkg.root, def);
+      if (abs) return abs;
     }
   }
   return null;
@@ -471,6 +471,19 @@ function withinPackage(pkgRoot: string, target: string): string | null {
   const abs = path.resolve(pkgRoot, target);
   if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) return null;
   return abs;
+}
+
+// Resolve an `exports` target (possibly extensionless, e.g. HDS's
+// `"./dist/*"`) to a concrete file within the package, probing the
+// extensions a template can live in. Used by both the forward
+// (subpath→runtime) and reverse (.d.ts→companion) exports resolvers, so
+// both handle built v2-addons that ship extensionless targets.
+function probeTemplateFile(pkgRoot: string, target: string): string | null {
+  for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
+    const abs = withinPackage(pkgRoot, target + ext);
+    if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
+  }
+  return null;
 }
 
 // Pattern `./declarations/*.d.ts` against `./declarations/foo/bar.d.ts` → 'foo/bar'.
@@ -871,10 +884,8 @@ function computeSubpathViaExports(pkgRoot: string, subpath: string): string | nu
   if (!targets || targets.length === 0) return null;
 
   for (const target of targets) {
-    for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
-      const abs = withinPackage(pkgRoot, target + ext);
-      if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
-    }
+    const abs = probeTemplateFile(pkgRoot, target);
+    if (abs) return abs;
   }
   return null;
 }
