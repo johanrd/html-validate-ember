@@ -397,6 +397,25 @@ describe('Glint integration: cross-file .gts type resolution', () => {
     ).toBeDefined();
   });
 
+  it('resolves a RE-YIELDED curried sub-component through the chain (group → fieldset → legend)', () => {
+    // HdsFormCheckboxGroup shape: the group renders `<HdsFormFieldset as
+    // |F|>` and re-yields `{{yield (hash Legend=F.Legend)}}`, so
+    // `<G.Legend>` chains through the nested fieldset's yielded Legend to
+    // `<legend>`. Single-level yield-hash (yielded-curried-component.gts)
+    // already resolves; this multi-level RE-YIELD did not — `<G.Legend>`
+    // fell back to the binder's `<fieldset>` Element type (cross-package)
+    // / transparent (local) instead of `<legend>`, so the substituted
+    // `<fieldset>` looked legend-less and `wcag/h71` ("fieldset must have
+    // a legend as first child") FP-fired ~74× across HDS.
+    const { filename, contents } = readFixture('fieldset-group-reyield.gts');
+    const { componentTagMap } = extractAttrTypeMap(filename, contents)!;
+    const tags = [...componentTagMap.values()];
+    expect(
+      tags.includes('legend'),
+      `<G.Legend> must resolve to <legend> through the re-yield chain; got: ${JSON.stringify([...componentTagMap.entries()])}`,
+    ).toBe(true);
+  });
+
   it('does not crash when the imported .gts does not exist', () => {
     // Negative-path: the shim's path-existence check has to fail gracefully
     // rather than throwing. broken-import.gts imports './does-not-exist.gts'
