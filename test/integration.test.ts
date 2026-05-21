@@ -1477,4 +1477,23 @@ describe('end-to-end fixtures', () => {
       }
     });
   });
+
+  describe('no-Glint: dotted table cells in a named block', () => {
+    it('does not FP element-permitted-content under <table> (canonical resolver)', async () => {
+      // <MyTable><:body as |B|><B.Tr><B.Td><div></B.Td></B.Tr></:body></MyTable>.
+      // Validated without Glint (examples/ drives the canonical resolver).
+      // The dotted `<B.Tr>`/`<B.Td>` resolve transparent, so the `<div>`
+      // blanks up toward `<table>`. With dotted invocations recorded as
+      // transparent + named-block descent in detectSuppressions, the
+      // element-permitted-content FP is suppressed; at runtime the cells
+      // render `<tr>`/`<td>`. Regression guard for the ~78 HDS no-Glint
+      // `<X> under <table>` false positives.
+      const result = await validate('no-glint-table-named-block.gts');
+      const epc = result.messages.filter((m) => m.rule === 'element-permitted-content');
+      expect(
+        epc,
+        `unexpected element-permitted-content FPs: ${JSON.stringify(epc)}`,
+      ).toHaveLength(0);
+    });
+  });
 });
