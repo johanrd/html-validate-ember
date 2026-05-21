@@ -342,4 +342,49 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('aside');
   });
+
+  test('same re-yield value under two binders resolves against the matched entry', async () => {
+    // `F.Item` appears under BinderA (`Other=F.Item`) and BinderB
+    // (`Thing=F.Item`). Resolving `Thing` must bind to BinderB's binder
+    // (→ `<article>`), tied to the entry `findYieldHashEntry` returned —
+    // not the first `F.Item` occurrence (BinderA → `<section>`).
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-dup-value-binders.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content:
+          `<BinderA as |F|>{{yield (hash Other=F.Item)}}</BinderA>` +
+          `<BinderB as |F|>{{yield (hash Thing=F.Item)}}</BinderB>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
+
+  test('resolveYieldHashBindingSource follows a re-yielded binding (source-level parity)', async () => {
+    // `Section=F.Inner` is a re-yield; the source chainer must resolve the
+    // binder (`<Binder as |F|>`) and follow its `Inner` to Leaf, instead of
+    // treating the name as `F` and returning null. Verifies leaf resolver
+    // and source chainer stay in sync for deeper dotted chains.
+    const { resolveYieldHashBindingSource, resolveTemplate } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-source-chain.gts');
+    const res = resolveYieldHashBindingSource({
+      parentSource: {
+        content: `<Binder as |F|>{{yield (hash Section=F.Inner)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Section',
+      ts,
+    });
+    expect(res).not.toBeNull();
+    const r = resolveTemplate(res!.source, { ts });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
 });
