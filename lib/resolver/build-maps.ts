@@ -11,8 +11,9 @@ import type * as TS from 'typescript';
 
 import { BUILTIN_COMPONENTS } from '../builtin-components.js';
 import type { ComponentAttrs } from '../builtin-components.js';
+import { isComponentTag } from '../../blank.js';
 import { findTemplateSource } from './template-source.js';
-import { chooseSubstitution, resolveTemplate } from './walk.js';
+import { chooseSubstitution, resolveTemplate, isResolvableWrapperTag } from './walk.js';
 
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set(BUILTIN_COMPONENTS.keys());
 
@@ -63,7 +64,10 @@ export function buildResolutionMaps(
   traverse(ast, {
     ElementNode(node) {
       const tag = node.tag;
-      if (!/^[A-Z][A-Za-z0-9]*$/.test(tag)) return;
+      // Same wrapper-eligibility predicate as walk.ts's resolution paths
+      // (covers underscore/namespaced tags), so no-Glint resolution stays
+      // consistent with the Glint path.
+      if (!isResolvableWrapperTag(tag)) return;
       if (BUILTIN_COMPONENT_NAMES.has(tag)) return;
       if (!node.loc.start) return;
       const source = findTemplateSource({
@@ -90,6 +94,31 @@ export function buildResolutionMaps(
         hasSplat: chosen.hasSplat,
         fromYieldAncestor: chosen.fromYieldAncestor,
       });
+    },
+  });
+
+  // Record dotted invocations (`<B.Tr>`, `<F.Legend>`) as 'transparent'.
+  // The canonical resolver (walk.ts) returns TRANSPARENT for every dotted
+  // tag, and the Glint path (lib/glint.ts:applyResolution) records
+  // transparent resolutions as 'transparent'. Mirroring that here lets
+  // detectSuppressions' transparent-dotted-child cases fire identically
+  // in no-Glint mode — e.g. suppressing element-permitted-content on
+  // cells floating under a component-resolved `<table>` (HDS advanced
+  // table: `<HdsAdvancedTable as |B|>…<B.Tr><B.Td>…`). Without it the
+  // dotted children were absent from the map (not 'transparent'), so the
+  // suppression never triggered (~78 HDS `<X> under <table>` FPs).
+  // Gate on `isComponentTag` (matches the Glint producer's gate, and
+  // covers lowercase-binder dotted like `b.Tr`); never clobber a real-tag
+  // entry; don't write componentAttrMap (applyResolution deletes it on
+  // transparent).
+  traverse(ast, {
+    ElementNode(node) {
+      const tag = node.tag;
+      if (!tag.includes('.')) return;
+      if (!isComponentTag(tag)) return;
+      if (!node.loc.start) return;
+      const key = `${node.loc.start.line}:${node.loc.start.column}`;
+      if (!componentTagMap.has(key)) componentTagMap.set(key, 'transparent');
     },
   });
 

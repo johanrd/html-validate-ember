@@ -1771,6 +1771,12 @@ function detectSuppressions(
           continue;
         }
         if (stmt.type !== 'ElementNode') continue;
+        if (stmt.tag.startsWith(':')) {
+          // Named block (`<:body>`) renders nothing itself; its content
+          // floats into the parent slot — descend without recording it.
+          collectFloatingChildren(stmt.children);
+          continue;
+        }
         into.push(startOffset(stmt));
         if (isTransparentDotted(stmt)) collectFloatingChildren(stmt.children);
       }
@@ -1783,6 +1789,12 @@ function detectSuppressions(
           continue;
         }
         if (stmt.type !== 'ElementNode') continue;
+        if (stmt.tag.startsWith(':')) {
+          // Named block (`<:body as |B|>`) — descend to find the
+          // transparent dotted cells (`<B.Tr>`) nested inside.
+          walk(stmt.children);
+          continue;
+        }
         if (isTransparentDotted(stmt)) {
           collectFloatingChildren(stmt.children);
         }
@@ -2190,6 +2202,12 @@ function hasTransparentCurriedChild(
   function check(stmts: ReadonlyArray<AST.Statement>): boolean {
     for (const stmt of stmts) {
       if (stmt.type === 'ElementNode') {
+        // Named block (`<:body as |B|>`) renders nothing itself; descend
+        // to find transparent dotted cells (`<B.Tr>`) nested inside.
+        if (stmt.tag.startsWith(':')) {
+          if (check(stmt.children)) return true;
+          continue;
+        }
         if (!stmt.tag.includes('.')) continue;
         if (!stmt.loc.start) continue;
         const childKey = `${stmt.loc.start.line}:${stmt.loc.start.column}`;

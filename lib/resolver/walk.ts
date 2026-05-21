@@ -218,7 +218,7 @@ function resolveElement(
   }
 
   // PascalCase wrapper → recurse.
-  if (/^[A-Z]/.test(node.tag) && !node.tag.includes('.') && !node.tag.startsWith(':')) {
+  if (isResolvableWrapperTag(node.tag)) {
     const resolution = resolvePascalRecursion(node, source, options);
     if (resolution.kind !== 'transparent') return resolution;
     // Pure-yield wrappers (template body is `{{yield (...)}}` only,
@@ -893,15 +893,92 @@ export function resolveYieldHashBinding(opts: YieldHashBindingOptions): Resoluti
     return TRANSPARENT;
   }
 
-  const binding = findYieldHashEntry(ast, hashKey);
-  if (!binding) return TRANSPARENT;
+  const entry = findYieldHashEntry(ast, hashKey);
+  if (!entry) return TRANSPARENT;
 
-  return resolveBinding(binding, parentSource, {
+  return resolveBinding(entry.value, parentSource, entry.ancestors, {
     consumerArgs: parentArgs,
     ts: ts ?? null,
     visited,
     depth,
   });
+}
+
+// Resolve a re-yielded block-param hash entry: `{{yield (hash
+// Legend=F.Legend)}}` where `F` is the block param of the enclosing
+// `<Binder as |F|>` (`binderNode`). The yielded sub-component is whatever
+// `Binder` itself yields under `Legend`, so resolve `Binder`'s source and
+// recurse into its yield-hash. Mirrors HDS's `HdsFormCheckboxGroup`
+// re-yielding `HdsFormFieldset`'s `F.Legend` — without this `<G.Legend>`
+// fell back to the binder's `<fieldset>` Element type and FP-fired
+// `wcag/h71`. `binderNode` is the EXACT in-scope binder for the resolved
+// entry (from its ancestor stack), so a re-yield value reused under
+// several binders resolves against the right one.
+function resolveBlockParamReyield(
+  binderNode: AST.ElementNode,
+  hashKey: string,
+  parentSource: TemplateSource,
+  options: ResolveOptions,
+): Resolution {
+  const depth = options.depth ?? 0;
+  if (depth >= MAX_DEPTH) return TRANSPARENT;
+
+  const binderArgs = collectBinderArgs(binderNode, parentSource, options);
+  const binderSource = resolveBinderSource(binderNode.tag, parentSource, options.ts ?? null);
+  if (!binderSource) return TRANSPARENT;
+
+  return resolveYieldHashBinding({
+    parentSource: binderSource,
+    hashKey,
+    parentArgs: binderArgs,
+    ts: options.ts ?? null,
+    visited: options.visited,
+    depth: depth + 1,
+  });
+}
+
+// The binder is invoked WITHIN this template (`<Binder @x="y" as |F|>`),
+// so any `@arg`-driven yield-hash entry inside Binder must resolve against
+// the args passed HERE — not the outer component's consumer args. Collect:
+//   - literal `@arg="lit"`,
+//   - `@arg={{@caller}}` passthrough (look up in this component's args),
+//   - `@arg={{this.prop}}` class-derived literal (walk this component's
+//     getter, mirroring `resolvePascalRecursionWith`).
+function collectBinderArgs(
+  binderNode: AST.ElementNode,
+  parentSource: TemplateSource,
+  options: ResolveOptions,
+): Map<string, string> {
+  const binderArgs = new Map<string, string>();
+  for (const attr of binderNode.attributes) {
+    if (!attr.name.startsWith('@')) continue;
+    const argName = attr.name.slice(1);
+    if (attr.value.type === 'TextNode') {
+      binderArgs.set(argName, attr.value.chars);
+    } else if (
+      attr.value.type === 'MustacheStatement'
+      && attr.value.path.type === 'PathExpression'
+    ) {
+      const expr = attr.value.path;
+      // Only the simple forms are statically pinnable: `@foo` (no tail)
+      // and `this.foo` (single tail segment). `@foo.bar` is property
+      // access on an arg, and `this.a.b` walks past a single getter —
+      // treating either as the bare `@foo` / `this.a` would set a wrong
+      // binderArg, so skip them.
+      if (expr.head?.type === 'AtHead' && expr.tail.length === 0) {
+        const caller = expr.head.name.replace(/^@/, '');
+        const v = options.consumerArgs?.get(caller);
+        if (v !== undefined) binderArgs.set(argName, v);
+      } else if (expr.head?.type === 'ThisHead' && expr.tail.length === 1) {
+        const propName = expr.tail[0]!;
+        if (options.ts) {
+          const v = resolveThisProp(parentSource, propName, options);
+          if (v !== null) binderArgs.set(argName, v);
+        }
+      }
+    }
+  }
+  return binderArgs;
 }
 
 // Like `resolveYieldHashBinding` but returns the underlying
@@ -933,12 +1010,12 @@ export function resolveYieldHashBindingSource(
     return null;
   }
 
-  const binding = findYieldHashEntry(ast, hashKey);
-  if (!binding) return null;
+  const entry = findYieldHashEntry(ast, hashKey);
+  if (!entry) return null;
 
   // Unwrap `(component Inner @arg="lit" …)` to extract the inner
   // identifier + curried args.
-  let target: AST.Expression = binding;
+  let target: AST.Expression = entry.value;
   const curriedArgs = new Map<string, string>();
   if (
     target.type === 'SubExpression'
@@ -954,9 +1031,35 @@ export function resolveYieldHashBindingSource(
     target = target.params[0];
   }
 
-  // Now `target` should be a bare identifier (VarHead PathExpression).
   if (target.type !== 'PathExpression') return null;
   if (target.head?.type !== 'VarHead') return null;
+
+  // Re-yield: `Header=F.Header` where `F` is the block param of an
+  // enclosing `<Binder as |F|>`. Mirror `resolveBlockParamReyield` at the
+  // source level — resolve the binder's source and follow ITS yield-hash
+  // for the inner key — so deeper dotted chains off a re-yielded component
+  // can be followed (the leaf resolver and the source chainer stay in
+  // sync). When `F` is NOT a binder, fall through to the bare-identifier
+  // path below (resolves the head, ignoring the tail — matching the leaf
+  // resolver's `resolveByName(head)` fallback).
+  if (target.tail.length > 0) {
+    const d = depth ?? 0;
+    const binderNode = d < MAX_DEPTH ? nearestBinderFor(entry.ancestors, target.head.name) : null;
+    if (binderNode) {
+      const binderSource = resolveBinderSource(binderNode.tag, parentSource, ts ?? null);
+      if (!binderSource) return null;
+      const nested = resolveYieldHashBindingSource({
+        parentSource: binderSource,
+        hashKey: target.tail[0]!,
+        ts: ts ?? null,
+        visited,
+        depth: d + 1,
+      });
+      if (!nested) return null;
+      return { source: nested.source, curriedArgs: new Map([...curriedArgs, ...nested.curriedArgs]) };
+    }
+  }
+
   const name = target.head.name;
 
   // Reuse `resolveImport` + `findTemplateSource` directly so we get
@@ -974,19 +1077,29 @@ export function resolveYieldHashBindingSource(
     });
   }
   if (!source) return null;
-  // Track visited / depth in case the caller chains multiple hops.
+  // Track visited in case the caller chains multiple hops.
   void visited;
-  void depth;
   return { source, curriedArgs };
 }
 
-// Walk the parent template for `{{yield (hash <hashKey>=<expr>)}}` and
-// return <expr>, or null when not found.
+interface YieldHashEntry {
+  /** The `{{yield (hash <hashKey>=<value>)}}` entry's value expression. */
+  value: AST.Expression;
+  /** ElementNode ancestors of the matched entry, outermost first. Lets a
+   *  re-yield value (`F.Legend`) resolve its in-scope binder (`<Binder as
+   *  |F|>`) to the one actually wrapping THIS entry — not merely the first
+   *  binder in the template that binds the same param name. */
+  ancestors: AST.ElementNode[];
+}
+
+// Walk the parent template for the FIRST `{{yield (hash <hashKey>=<expr>)}}`
+// and return its value + enclosing element ancestors, or null when absent.
 function findYieldHashEntry(
   ast: AST.Template,
   hashKey: string,
-): AST.Expression | null {
-  let result: AST.Expression | null = null;
+): YieldHashEntry | null {
+  let result: YieldHashEntry | null = null;
+  const stack: AST.ElementNode[] = [];
   function visit(node: AST.Node): void {
     if (result) return;
     if (node.type === 'MustacheStatement' || node.type === 'SubExpression') {
@@ -998,7 +1111,7 @@ function findYieldHashEntry(
           if (param.path.original !== 'hash') continue;
           for (const pair of param.hash.pairs) {
             if (pair.key === hashKey) {
-              result = pair.value;
+              result = { value: pair.value, ancestors: [...stack] };
               return;
             }
           }
@@ -1006,7 +1119,9 @@ function findYieldHashEntry(
       }
     }
     if (node.type === 'ElementNode') {
+      stack.push(node);
       for (const child of node.children) visit(child);
+      stack.pop();
     } else if (node.type === 'BlockStatement') {
       for (const child of node.program.body) visit(child);
       if (node.inverse) for (const child of node.inverse.body) visit(child);
@@ -1016,6 +1131,53 @@ function findYieldHashEntry(
   }
   visit(ast);
   return result;
+}
+
+// Nearest enclosing binder (`<Tag as |…paramName…|>`) among an entry's
+// element ancestors — the in-scope binder for a re-yielded `paramName.key`
+// reference. Restricted to resolvable wrapper tags (`isResolvableWrapperTag`):
+// dotted (`F.Foo`) / named-block (`:body`) binders can't be name-resolved.
+function nearestBinderFor(
+  ancestors: ReadonlyArray<AST.ElementNode>,
+  paramName: string,
+): AST.ElementNode | null {
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    const el = ancestors[i]!;
+    if (isResolvableWrapperTag(el.tag) && el.blockParams.includes(paramName)) return el;
+  }
+  return null;
+}
+
+// Resolve the TemplateSource of a binder element (`<Binder …>`) invoked
+// within `parentSource`'s template, mirroring resolvePascalRecursion's
+// lookup order. Shared by both the leaf (resolveBlockParamReyield) and the
+// source (resolveYieldHashBindingSource) re-yield paths so they stay in
+// sync. The same-file lookup is gated against the degenerate self-match:
+// single-template files (every `.hbs`, many `.gts/.gjs`) return their sole
+// `<template>` regardless of the requested name, which would be the parent
+// itself — accept it only when it picked a DIFFERENT block.
+function resolveBinderSource(
+  binderTag: string,
+  parentSource: TemplateSource,
+  ts: typeof TS | null,
+): TemplateSource | null {
+  const importedFile = resolveImport(parentSource.origin, binderTag, ts);
+  let binderSource: TemplateSource | null = importedFile
+    ? findTemplateSource({ declFile: importedFile, ts })
+    : null;
+  if (!binderSource) {
+    const sameFile = findTemplateSource({ declFile: parentSource.origin, componentName: binderTag, ts });
+    if (sameFile && !(sameFile.origin === parentSource.origin && sameFile.content === parentSource.content)) {
+      binderSource = sameFile;
+    }
+  }
+  if (!binderSource) {
+    binderSource = findTemplateSource({ consumerFile: parentSource.origin, componentName: binderTag, ts });
+  }
+  if (!binderSource) {
+    binderSource = trySiblingProbe(parentSource.origin, binderTag);
+  }
+  return binderSource;
 }
 
 // Resolve a binding expression (the value of a hash entry) to a
@@ -1029,6 +1191,7 @@ function findYieldHashEntry(
 function resolveBinding(
   expr: AST.Expression,
   parentSource: TemplateSource,
+  ancestors: ReadonlyArray<AST.ElementNode>,
   options: ResolveOptions,
 ): Resolution {
   // `Title=(component HdsFormHeaderTitle size="300")` — the hash
@@ -1051,7 +1214,7 @@ function resolveBinding(
         curriedArgs.set(pair.key, pair.value.value);
       }
     }
-    return resolveBinding(componentRef, parentSource, {
+    return resolveBinding(componentRef, parentSource, ancestors, {
       ...options,
       consumerArgs: curriedArgs,
     });
@@ -1061,6 +1224,19 @@ function resolveBinding(
   if (!expr.head) return TRANSPARENT;
 
   if (expr.head.type === 'VarHead') {
+    // `F.Legend` — when `F` is the block param of an enclosing `<Binder as
+    // |F|>`, the yielded sub-component is whatever Binder re-yields under
+    // `Legend`. But `VarHead`+tail is also the general shape for property
+    // access on any in-scope value; when `F` is not a binder block param
+    // (no matching ancestor), fall back to resolving the head name
+    // directly (the prior behavior). A bare `Foo` with no tail is a local
+    // import / in-scope component.
+    if (expr.tail.length > 0) {
+      const binderNode = nearestBinderFor(ancestors, expr.head.name);
+      if (binderNode) {
+        return resolveBlockParamReyield(binderNode, expr.tail[0]!, parentSource, options);
+      }
+    }
     return resolveByName(expr.head.name, parentSource, options);
   }
 
@@ -1306,4 +1482,16 @@ const NATIVE_TAGS = new Set<string>([...htmlTags, ...svgTags, ...mathmlTagNames]
 
 function isNativeTagName(tag: string): boolean {
   return NATIVE_TAGS.has(tag);
+}
+
+// A tag we attempt to resolve as a component wrapper: PascalCase, not
+// dotted (`F.Item` is a yield-binding/curried path), not a named-block
+// slot (`:body`). Deliberately broader than `/^[A-Z][A-Za-z0-9]*$/` so it
+// also covers namespaced (`Foo::Bar`) and underscore identifiers — the
+// same set the wrapper-recursion and block-param-binder lookups treat as
+// resolvable, kept in one place so the resolver entry points (this file's
+// wrapper recursion + re-yield binder lookup, and the no-Glint
+// `buildResolutionMaps`) can't drift apart on wrapper eligibility.
+export function isResolvableWrapperTag(tag: string): boolean {
+  return /^[A-Z]/.test(tag) && !tag.includes('.') && !tag.startsWith(':');
 }

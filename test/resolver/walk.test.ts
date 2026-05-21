@@ -235,4 +235,176 @@ describe('resolveYieldHashBinding', () => {
     expect(r.kind).toBe('tag');
     expect((r as { tag: string }).tag).toBe('div');
   });
+
+  test('VarHead+tail whose head is NOT a block param falls back to resolveByName', async () => {
+    // `NavList.Item` is property access on an in-scope const, not a
+    // block-param re-yield (`NavList` is never bound via `as |NavList|`).
+    // No enclosing binder matches, so the re-yield path is skipped and
+    // resolution falls back to resolving the head (`NavList`) by name —
+    // restoring the pre-re-yield behavior instead of bailing TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'dotted-nonblockparam-binding.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `{{yield (hash Thing=NavList.Item)}}`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('nav');
+  });
+
+  test('re-yield binder @arg driven by {{this.prop}} resolves via class getter', async () => {
+    // `<Binder @elementTag={{this.tag}} as |F|>` — the binder's yielded
+    // hash entry depends on `@elementTag`, passed from the re-yielding
+    // component's class getter. `binderArgs` must resolve `this.tag` to
+    // its literal (`'section'`) — parity with `resolvePascalRecursionWith`
+    // — or the binder's `@elementTag` lookup bails TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-binder-thisprop-arg.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<Binder @elementTag={{this.tag}} as |F|>{{yield (hash Thing=F.Item)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('section');
+  });
+
+  test('reused block-param name picks the binder enclosing the re-yield, not the first', async () => {
+    // Two sibling binders both bind `F`. The `F.Item` re-yield lives in
+    // BinderB (→ `<article>`); resolution must scope to that binder, not
+    // return the first `F`-binding element BinderA (→ `<section>`).
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-sibling-binder-shadow.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<BinderA as |F|>x</BinderA><BinderB as |F|>{{yield (hash Thing=F.Item)}}</BinderB>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
+
+  test('single-template parent: binder resolves via sibling probe, not self-match', async () => {
+    // Parent.gts is a single-`<template>` file, so the same-file decl
+    // lookup returns the parent itself for any componentName. The binder
+    // `<Binder>` (no import) must instead resolve via the sibling
+    // `Binder.gts` → `<Sec>` → `<section>`, rather than self-recursing to
+    // MAX_DEPTH → TRANSPARENT. Load the parent via `findTemplateSource`
+    // (as the real pipeline does) so its content matches the file exactly
+    // — the self-match guard compares `{origin, content}`.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'single-template-reyield', 'Parent.gts');
+    const parentSource = findTemplateSource({ declFile: origin, ts });
+    expect(parentSource).not.toBeNull();
+    const r = resolveYieldHashBinding({
+      parentSource: parentSource!,
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('section');
+  });
+
+  test('binder tag with an underscore resolves (matches the wrapper predicate)', async () => {
+    // `<My_Binder>` is a resolvable wrapper everywhere else in the
+    // resolver, but the old `/^[A-Z][A-Za-z0-9]*$/` binder regex rejected
+    // the underscore, dropping the re-yield chain to TRANSPARENT. With the
+    // shared `isResolvableWrapperTag` predicate it resolves → `<aside>`.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-underscore-binder.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<My_Binder as |F|>{{yield (hash Thing=F.Item)}}</My_Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('aside');
+  });
+
+  test('same re-yield value under two binders resolves against the matched entry', async () => {
+    // `F.Item` appears under BinderA (`Other=F.Item`) and BinderB
+    // (`Thing=F.Item`). Resolving `Thing` must bind to BinderB's binder
+    // (→ `<article>`), tied to the entry `findYieldHashEntry` returned —
+    // not the first `F.Item` occurrence (BinderA → `<section>`).
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-dup-value-binders.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content:
+          `<BinderA as |F|>{{yield (hash Other=F.Item)}}</BinderA>` +
+          `<BinderB as |F|>{{yield (hash Thing=F.Item)}}</BinderB>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map(),
+      ts,
+    });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
+
+  test('resolveYieldHashBindingSource follows a re-yielded binding (source-level parity)', async () => {
+    // `Section=F.Inner` is a re-yield; the source chainer must resolve the
+    // binder (`<Binder as |F|>`) and follow its `Inner` to Leaf, instead of
+    // treating the name as `F` and returning null. Verifies leaf resolver
+    // and source chainer stay in sync for deeper dotted chains.
+    const { resolveYieldHashBindingSource, resolveTemplate } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-source-chain.gts');
+    const res = resolveYieldHashBindingSource({
+      parentSource: {
+        content: `<Binder as |F|>{{yield (hash Section=F.Inner)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Section',
+      ts,
+    });
+    expect(res).not.toBeNull();
+    const r = resolveTemplate(res!.source, { ts });
+    expect(r.kind).toBe('tag');
+    expect((r as { tag: string }).tag).toBe('article');
+  });
+
+  test('binder @arg with a tail segment (@cfg.tag) is not mistaken for an @cfg passthrough', async () => {
+    // The binder's `Item=@elementTag`. Passing `@elementTag={{@cfg.tag}}`
+    // is property access on `@cfg`, NOT the bare `@cfg` arg — so it must
+    // not bind `elementTag` to `@cfg`'s value ('section'). With the arg
+    // left unresolved, the binder's `Item` stays TRANSPARENT.
+    const { resolveYieldHashBinding } = await import('../../lib/resolver/walk.js');
+    const origin = path.join(FIXTURES, 'reyield-binder-thisprop-arg.gts');
+    const r = resolveYieldHashBinding({
+      parentSource: {
+        content: `<Binder @elementTag={{@cfg.tag}} as |F|>{{yield (hash Thing=F.Item)}}</Binder>`,
+        origin,
+        kind: 'gts',
+      },
+      hashKey: 'Thing',
+      parentArgs: new Map([['cfg', 'section']]),
+      ts,
+    });
+    expect(r.kind).toBe('transparent');
+  });
 });
