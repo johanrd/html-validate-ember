@@ -28,6 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { Preprocessor } from 'content-tag';
+import * as resolveExports from 'resolve.exports';
 import type * as TS from 'typescript';
 // `@embroider/shared-internals` is lazy-imported via `loadEmbroider`
 // below — it's a 344KB dep (plus lodash, fs-extra, resolve-package-path,
@@ -809,103 +810,48 @@ function resolveBareSpecToSource(originFile: string, spec: string): string | nul
   }
 }
 
-// Extract a string target from an `exports` entry value. Handles the
-// three valid Node shapes: a bare string (`"./*": "./dist/*"`), a
-// conditions object (`{ "import": …, "require": …, "default": … }`),
-// and a fallback array (first resolvable wins). For the conditions
-// object we read specific conditions before `default` — `default` is
-// Node's catch-all and must be tried last, not first — and prefer the
-// ESM `import` condition since the consumer module (.gts/.gjs) is ESM.
-// Any of them carries the inline `precompileTemplate(...)` / `template
-// (...)` string, so the choice only matters for dual-build packages.
-function exportsTarget(value: unknown): string | null {
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const t = exportsTarget(entry);
-      if (t !== null) return t;
-    }
-    return null;
-  }
-  if (typeof value !== 'object' || value === null) return null;
-  const c = value as Record<string, unknown>;
-  // Try each condition in order and recurse — a condition's value can
-  // itself be a nested conditions object (`"import": { "types": …,
-  // "default": … }`, common in modern dual packages) or an array. A
-  // non-string `import` must fall through to `require`/`default` rather
-  // than aborting.
-  for (const key of ['import', 'require', 'default']) {
-    if (!(key in c)) continue;
-    const t = exportsTarget(c[key]);
-    if (t !== null) return t;
-  }
-  return null;
-}
-
 // Resolve a package subpath through its `exports` map to an on-disk
-// file, probing extensions. Handles extensionless subpath-pattern
-// targets (`"./*": { "default": "./dist/*" }`) that Node's exports
-// resolver rejects. The compiled `.js` carries the template inline via
-// `precompileTemplate(...)` / `template(...)`.
+// file. `resolve.exports` does the spec-faithful map parsing (condition
+// priority by the package's own key order, `*` patterns, specificity,
+// nested/array values, string/non-map shapes); we keep the parts that
+// are specific to reading a *template file*:
+//   - extension probing — built v2-addons (HDS) ship EXTENSIONLESS
+//     targets (`"./dist/*"`), so the spec-parsed target is `./dist/X`
+//     and we must find the concrete `.js`/`.gts` on disk to read its
+//     inline `precompileTemplate(...)` / `template(...)`;
+//   - a containment guard, since the target is untrusted package input.
+// Default conditions resolve the ESM runtime (import/default), matching
+// our `.gts`/`.gjs` consumers.
 function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | null {
-  let exportsMap: unknown;
+  let pkgJson: { name?: string; exports?: unknown };
   try {
-    exportsMap = (
-      JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
-        exports?: unknown;
-      }
-    ).exports;
+    pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')) as {
+      name?: string;
+      exports?: unknown;
+    };
   } catch {
     return null;
   }
-  if (exportsMap == null) return null;
-  const relImport = subpath ? './' + subpath : '.';
-  // Normalize the three top-level `exports` shapes into a subpath map.
-  // A string, an array, or a conditions object with no `"./"` keys
-  // (e.g. `"exports": "./dist/index"` or `{ "import": "./dist/index" }`)
-  // describes only the package's main `"."` entry.
-  let subpathMap: Record<string, unknown>;
-  if (typeof exportsMap === 'string' || Array.isArray(exportsMap)) {
-    subpathMap = { '.': exportsMap };
-  } else if (typeof exportsMap === 'object') {
-    const keys = Object.keys(exportsMap as Record<string, unknown>);
-    subpathMap = keys.length > 0 && keys.every((k) => k.startsWith('.'))
-      ? (exportsMap as Record<string, unknown>)
-      : { '.': exportsMap };
-  } else {
+  if (pkgJson.exports == null) return null;
+
+  let targets: string[] | undefined;
+  try {
+    targets =
+      resolveExports.exports(
+        pkgJson as { name: string; exports: unknown },
+        subpath ? './' + subpath : '.',
+      ) ?? undefined;
+  } catch {
+    // resolve.exports throws on a subpath the package doesn't export.
     return null;
   }
-  // Pick the MOST SPECIFIC matching entry, mirroring Node's exports
-  // resolution: an exact subpath beats any pattern, and among `*`
-  // patterns the one with the longest static prefix wins. First-match-
-  // in-object-order would mis-resolve a package with overlapping entries
-  // (e.g. `"./components/*"` alongside `"./*"`).
-  let bestTarget: string | null = null;
-  let bestScore = -1;
-  for (const [pattern, conditions] of Object.entries(subpathMap)) {
-    const target = exportsTarget(conditions);
-    if (target === null) continue;
-    let resolved: string | null = null;
-    let score = -1;
-    if (pattern === relImport) {
-      resolved = target;
-      score = Infinity; // exact match always wins
-    } else if (pattern.includes('*')) {
-      const wild = matchWildcardPattern(pattern, relImport);
-      if (wild !== null) {
-        resolved = target.replace('*', wild);
-        score = pattern.indexOf('*'); // longer static prefix = more specific
-      }
+  if (!targets || targets.length === 0) return null;
+
+  for (const target of targets) {
+    for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
+      const abs = withinPackage(pkgRoot, target + ext);
+      if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
     }
-    if (resolved !== null && score > bestScore) {
-      bestScore = score;
-      bestTarget = resolved;
-    }
-  }
-  if (bestTarget === null) return null;
-  for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
-    const abs = withinPackage(pkgRoot, bestTarget + ext);
-    if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
   }
   return null;
 }
