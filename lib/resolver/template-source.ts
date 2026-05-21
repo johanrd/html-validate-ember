@@ -444,15 +444,26 @@ function findCompanionViaExports(declFile: string, pkg: Package): string | null 
     if (subpath.includes('*')) {
       const wildcardValue = matchWildcardPattern(types, relDecl);
       if (wildcardValue !== null) {
-        const abs = path.join(pkg.root, def.replace('*', wildcardValue));
-        if (fs.existsSync(abs)) return abs;
+        const abs = withinPackage(pkg.root, def.replace('*', wildcardValue));
+        if (abs && fs.existsSync(abs)) return abs;
       }
     } else if (types === relDecl) {
-      const abs = path.join(pkg.root, def);
-      if (fs.existsSync(abs)) return abs;
+      const abs = withinPackage(pkg.root, def);
+      if (abs && fs.existsSync(abs)) return abs;
     }
   }
   return null;
+}
+
+// Resolve an exports target (untrusted — from a dependency's
+// package.json) against the package root, returning the absolute path
+// only if it stays within the root. Guards against absolute paths and
+// `..` segments escaping the package directory.
+function withinPackage(pkgRoot: string, target: string): string | null {
+  const baseDir = path.resolve(pkgRoot);
+  const abs = path.resolve(pkgRoot, target);
+  if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) return null;
+  return abs;
 }
 
 // Pattern `./declarations/*.d.ts` against `./declarations/foo/bar.d.ts` → 'foo/bar'.
@@ -847,15 +858,9 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
     }
   }
   if (bestTarget === null) return null;
-  // `bestTarget` is an exports target from a dependency's package.json —
-  // untrusted input. Use `path.resolve` and confirm the result stays
-  // within the package root so an absolute path or `..` segment can't
-  // escape it.
-  const baseDir = path.resolve(pkgRoot);
   for (const ext of ['', '.js', '.gts', '.gjs', '.ts', '.d.ts']) {
-    const abs = path.resolve(pkgRoot, bestTarget + ext);
-    if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) continue;
-    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
+    const abs = withinPackage(pkgRoot, bestTarget + ext);
+    if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) return abs;
   }
   return null;
 }
