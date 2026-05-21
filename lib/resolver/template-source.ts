@@ -829,8 +829,17 @@ function exportsTarget(value: unknown): string | null {
   }
   if (typeof value !== 'object' || value === null) return null;
   const c = value as Record<string, unknown>;
-  const t = c['import'] ?? c['require'] ?? c['default'];
-  return typeof t === 'string' ? t : null;
+  // Try each condition in order and recurse — a condition's value can
+  // itself be a nested conditions object (`"import": { "types": …,
+  // "default": … }`, common in modern dual packages) or an array. A
+  // non-string `import` must fall through to `require`/`default` rather
+  // than aborting.
+  for (const key of ['import', 'require', 'default']) {
+    if (!(key in c)) continue;
+    const t = exportsTarget(c[key]);
+    if (t !== null) return t;
+  }
+  return null;
 }
 
 // Resolve a package subpath through its `exports` map to an on-disk
@@ -849,8 +858,23 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
   } catch {
     return null;
   }
-  if (exportsMap == null || typeof exportsMap !== 'object') return null;
+  if (exportsMap == null) return null;
   const relImport = subpath ? './' + subpath : '.';
+  // Normalize the three top-level `exports` shapes into a subpath map.
+  // A string, an array, or a conditions object with no `"./"` keys
+  // (e.g. `"exports": "./dist/index"` or `{ "import": "./dist/index" }`)
+  // describes only the package's main `"."` entry.
+  let subpathMap: Record<string, unknown>;
+  if (typeof exportsMap === 'string' || Array.isArray(exportsMap)) {
+    subpathMap = { '.': exportsMap };
+  } else if (typeof exportsMap === 'object') {
+    const keys = Object.keys(exportsMap as Record<string, unknown>);
+    subpathMap = keys.length > 0 && keys.every((k) => k.startsWith('.'))
+      ? (exportsMap as Record<string, unknown>)
+      : { '.': exportsMap };
+  } else {
+    return null;
+  }
   // Pick the MOST SPECIFIC matching entry, mirroring Node's exports
   // resolution: an exact subpath beats any pattern, and among `*`
   // patterns the one with the longest static prefix wins. First-match-
@@ -858,7 +882,7 @@ function resolveSubpathViaExports(pkgRoot: string, subpath: string): string | nu
   // (e.g. `"./components/*"` alongside `"./*"`).
   let bestTarget: string | null = null;
   let bestScore = -1;
-  for (const [pattern, conditions] of Object.entries(exportsMap as Record<string, unknown>)) {
+  for (const [pattern, conditions] of Object.entries(subpathMap)) {
     const target = exportsTarget(conditions);
     if (target === null) continue;
     let resolved: string | null = null;
