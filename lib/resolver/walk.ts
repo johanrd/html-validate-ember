@@ -925,8 +925,30 @@ function resolveBlockParamReyield(
   } catch {
     return TRANSPARENT;
   }
-  const binderTag = findBlockParamBinder(ast, paramName);
-  if (!binderTag) return TRANSPARENT;
+  const binderNode = findBlockParamBinder(ast, paramName);
+  if (!binderNode) return TRANSPARENT;
+  const binderTag = binderNode.tag;
+
+  // The binder is invoked WITHIN this template (`<Binder @x="y" as |F|>`),
+  // so any `@arg`-driven yield-hash entry inside Binder must resolve
+  // against the args passed HERE — not the outer component's consumer
+  // args. Collect literal `@arg="lit"` and `@arg={{@caller}}` passthrough.
+  const binderArgs = new Map<string, string>();
+  for (const attr of binderNode.attributes) {
+    if (!attr.name.startsWith('@')) continue;
+    const argName = attr.name.slice(1);
+    if (attr.value.type === 'TextNode') {
+      binderArgs.set(argName, attr.value.chars);
+    } else if (
+      attr.value.type === 'MustacheStatement'
+      && attr.value.path.type === 'PathExpression'
+      && attr.value.path.head?.type === 'AtHead'
+    ) {
+      const caller = attr.value.path.head.name.replace(/^@/, '');
+      const v = options.consumerArgs?.get(caller);
+      if (v !== undefined) binderArgs.set(argName, v);
+    }
+  }
 
   const importedFile = resolveImport(parentSource.origin, binderTag, options.ts ?? null);
   let binderSource: TemplateSource | null = importedFile
@@ -944,22 +966,25 @@ function resolveBlockParamReyield(
   return resolveYieldHashBinding({
     parentSource: binderSource,
     hashKey,
-    parentArgs: options.consumerArgs ?? new Map(),
+    parentArgs: binderArgs,
     ts: options.ts ?? null,
     visited: options.visited,
     depth: depth + 1,
   });
 }
 
-// Find the PascalCase element that introduces block param `paramName`
-// via `<Tag as |…paramName…|>`, returning its tag name.
-function findBlockParamBinder(ast: AST.Template, paramName: string): string | null {
-  let result: string | null = null;
+// Find the element that introduces block param `paramName` via
+// `<Tag as |…paramName…|>`, returning the element node. Restricted to
+// resolvable PascalCase tags (`/^[A-Z][A-Za-z0-9]*$/`): dotted (`F.Foo`)
+// and colon (`:slot`) tags can't be resolved via import/by-name, so
+// matching them would only yield a useless TRANSPARENT.
+function findBlockParamBinder(ast: AST.Template, paramName: string): AST.ElementNode | null {
+  let result: AST.ElementNode | null = null;
   function visit(node: AST.Node): void {
     if (result) return;
     if (node.type === 'ElementNode') {
-      if (/^[A-Z]/.test(node.tag) && node.blockParams.includes(paramName)) {
-        result = node.tag;
+      if (/^[A-Z][A-Za-z0-9]*$/.test(node.tag) && node.blockParams.includes(paramName)) {
+        result = node;
         return;
       }
       for (const child of node.children) visit(child);
