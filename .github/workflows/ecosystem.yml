@@ -36,6 +36,14 @@ jobs:
           node-version: '22'
           cache: pnpm
 
+      # Targets pin their package manager via package.json#packageManager
+      # (e.g. cardstack-ui-components → yarn). Corepack routes the `yarn`
+      # / `pnpm` shims to the pinned version instead of the runner's
+      # global yarn 1.x — without it, `installDeps` falls back to
+      # no-Glint validation for those targets and the baseline silently
+      # loses Glint-resolved findings.
+      - run: corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       # Cache target repo clones AND their installed node_modules across runs.
