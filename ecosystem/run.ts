@@ -298,15 +298,37 @@ function listFiles(repoDir: string, target: Target): string[] {
   return out;
 }
 
-// Match the calibrated config that the bundled `validate-gts` CLI ships
-// with — `:gts-recommended` is currently identical to `:recommended`
-// (transformer-artifact suppressions plus stylistic-noise suppressions
-// including `void-style: off`), and `attribute-allowed-values: 'error'`
-// matches the CLI's promotion. We intentionally do NOT honor the target
-// repo's `.htmlvalidate.json`: ecosystem CI exists to catch *plugin*-
-// side regressions, and a stable fixed config keeps the signal apples-
-// to-apples across PRs (otherwise a target-side rule-toggle would
-// silently change baseline output).
+// Stylistic rules from `html-validate:recommended` that fire constantly on
+// legitimate Ember/Glimmer code without flagging a real bug. We suppress them
+// for the ecosystem run so the regression signal we actually care about
+// (content-model, a11y, required-attribute changes) isn't drowned in style
+// noise across a dozen large real-world repos.
+//
+// Deliberately applied HERE, in the ecosystem config — NOT in the plugin's
+// shipped `:recommended` / `:gts-recommended` presets, which stay unchanged for
+// real users. The sheer volume these rules generate across the targets is
+// itself an argument that the plugin's recommended set might want the same
+// treatment; that question is tracked in PR #47
+// (https://github.com/johanrd/html-validate-ember/pull/47), not decided here.
+//   - no-inline-style: bans `style=`, breaks runtime style-binding
+//     (`<div style={{this.computedStyle}}>`)
+//   - void-style: omit-vs-selfclosing is a harmless house-style choice
+//   - prefer-native-element: real a11y signal, but design systems wrap generic
+//     elements on purpose — demoted to warn, not silenced
+const ECOSYSTEM_RULE_OVERRIDES: RuleConfig = {
+  'no-inline-style': 'off',
+  'void-style': 'off',
+  'prefer-native-element': 'warn',
+};
+
+// Config the ecosystem run validates against. We extend the plugin's shipped
+// `:gts-recommended` preset (so we exercise the real preset users get) and then
+// layer ECOSYSTEM_RULE_OVERRIDES on top; `attribute-allowed-values: 'error'`
+// matches the bundled `validate-gts` CLI's promotion. We intentionally do NOT
+// honor the target repo's `.htmlvalidate.json`: ecosystem CI exists to catch
+// *plugin*-side regressions, and a stable fixed config keeps the signal
+// apples-to-apples across PRs (otherwise a target-side rule-toggle would
+// silently change baseline output). Per-target `rules` still win (spread last).
 //
 // Glint is enabled per-target (default on, opt-out via `glint: false`
 // in targets.json). `main()` installs the target's deps before running
@@ -316,7 +338,11 @@ function makeValidator(target: Target): HtmlValidate {
   return new HtmlValidate({
     root: true,
     extends: ['html-validate:recommended', 'html-validate-ember:gts-recommended'],
-    rules: { 'attribute-allowed-values': 'error', ...(target.rules ?? {}) },
+    rules: {
+      'attribute-allowed-values': 'error',
+      ...ECOSYSTEM_RULE_OVERRIDES,
+      ...(target.rules ?? {}),
+    },
     plugins: [plugin],
     transform: { '^.*\\.(gts|gjs|hbs)$': 'html-validate-ember' },
   });
