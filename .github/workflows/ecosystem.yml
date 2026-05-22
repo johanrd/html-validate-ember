@@ -2,7 +2,7 @@ name: ecosystem
 
 on:
   pull_request:
-    # `labeled` is included so that adding the `ecosystem` label *after* a PR is
+    # `labeled` is included so that adding the `run-ecosystem-ci` label *after* a PR is
     # opened kicks off a run — the label does NOT need to exist at creation time.
     # `opened`/`synchronize`/`reopened` are the defaults; with the label gate in
     # the job's `if:` below, an unlabeled PR triggers the event but skips the job.
@@ -24,11 +24,11 @@ jobs:
   ecosystem:
     # This is a ~20-min clone-and-install marathon (12 real-world targets get
     # cloned + their deps installed for Glint type-aware extraction), so we
-    # don't pay it on every PR. Opt in per-PR with the `ecosystem` label, or
-    # run it by hand via the Actions tab (workflow_dispatch).
+    # don't pay it on every PR. Opt in per-PR with the `run-ecosystem-ci`
+    # label, or run it by hand via the Actions tab (workflow_dispatch).
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.labels.*.name, 'ecosystem')
+      contains(github.event.pull_request.labels.*.name, 'run-ecosystem-ci')
     runs-on: ubuntu-latest
     # Generous because targets get cloned + their deps installed for Glint
     # type-aware extraction. First run is the slow path (cold caches);
@@ -42,7 +42,7 @@ jobs:
           # workflow_dispatch, where checkout falls back to the default branch.
           # Note: the auto-commit path assumes a same-repo PR — fork PRs get a
           # read-only token and can't be pushed to (a non-issue for this repo,
-          # where only the maintainer applies the `ecosystem` label).
+          # where only the maintainer applies the `run-ecosystem-ci` label).
           ref: ${{ github.head_ref }}
 
       - uses: pnpm/action-setup@v4
