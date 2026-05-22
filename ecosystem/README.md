@@ -1,14 +1,23 @@
 # Ecosystem CI
 
-Runs `html-validate-ember` against pinned snapshots of public Ember repos and diffs the findings against committed baselines. A non-empty diff fails the workflow.
+Runs `html-validate-ember` against pinned snapshots of public Ember repos and diffs the findings against committed baselines. Locally a non-empty diff fails `ecosystem:check`; in CI the run is opt-in and refreshes the baselines on drift (see [Running in CI](#running-in-ci)).
 
 ## What's here
 
 - `targets.json` — the list of pinned repos (owner/repo + SHA + globs + per-target options).
-- `run.ts` — the runner. Clones, installs deps, validates with Glint, diffs.
+- `run.ts` — the runner. Clones, installs deps, validates with Glint, diffs. The validation config (`makeValidator`) extends the plugin's shipped `:gts-recommended` preset and then layers `ECOSYSTEM_RULE_OVERRIDES` on top — a few stylistic rules (`void-style`, `no-inline-style`, `prefer-native-element`) suppressed *here, in the CI config, not in the plugin* so style noise doesn't drown the regression signal across the targets.
 - `baselines/<name>.json` — committed expected output per target. The runner refuses to diff if the baseline's pinned SHA disagrees with `targets.json`.
 
 Cached clones (with their installed `node_modules`) live in `.cache/` (gitignored).
+
+## Running in CI
+
+The `ecosystem` workflow is **opt-in** — it clones a dozen real-world repos and installs their deps (~20 min cold), so it doesn't run on every PR. Trigger it by:
+
+- adding the **`run-ecosystem-ci`** label to a PR — the label can be added *after* the PR is opened and still kicks off a run; remove it to stop re-running on pushes; or
+- dispatching it manually from the Actions tab (`workflow_dispatch`).
+
+On a labeled PR the job runs `ecosystem:check`. If findings drift from the committed baselines it **refreshes the baselines, commits them back to the PR branch**, and fails the job — so the baseline JSON diff lands inline in the PR's *Files changed* for review. Merge if the change is intended (the refreshed baselines are already committed); if it's an unintended regression, fix the plugin instead. The bot's commit uses `GITHUB_TOKEN`, which doesn't re-trigger CI, so it can't loop.
 
 ## Glint
 
