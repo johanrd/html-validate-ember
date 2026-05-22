@@ -1,6 +1,6 @@
 # ember-power-select — triage
 
-Pinned at `bf21b6c08ff87c1921f9fb19d200f994fdfea28c`. 114 files validated, 34 findings. Glouped by rule (counts add to 34).
+Pinned at `bf21b6c08ff87c1921f9fb19d200f994fdfea28c`. 114 files validated, 34 findings. Grouped by rule (counts add to 34).
 
 ## prefer-native-element ×12 — `<div role="button">` tabs in `code-example.gts`
 

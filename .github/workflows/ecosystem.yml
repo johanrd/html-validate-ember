@@ -116,9 +116,14 @@ jobs:
 
       # Commit the refreshed baselines onto the PR branch so the diff lands in
       # the PR's "Files changed". Pushes made with the default GITHUB_TOKEN do
-      # NOT trigger a new workflow run, so this can't loop.
+      # NOT trigger a new workflow run, so this can't loop. Gated to same-repo
+      # PRs: fork PRs get a read-only token and can't be pushed to, and making
+      # the condition explicit keeps the workflow's trust model clear.
       - name: Commit refreshed baselines to PR
-        if: steps.check.outcome == 'failure' && github.event_name == 'pull_request'
+        if: >-
+          steps.check.outcome == 'failure' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         run: |
           git diff --quiet -- ecosystem/baselines && exit 0
           git config user.name  "github-actions[bot]"
