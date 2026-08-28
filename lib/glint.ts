@@ -676,6 +676,11 @@ function findInnerTypeAtRange(
     // wrapper's full range so both mappings resolve the same node.
     let wrapper: TS.Node | undefined;
     for (let node = innermost; node && !wrapper; node = node.parent) {
+      // A value inside a named-args object (`{ size: "lg" }`) belongs to
+      // the enclosing component invocation, not to a wrapper of its own.
+      if (node.kind === ts.SyntaxKind.ObjectLiteralExpression) {
+        return null;
+      }
       // `resolve(eq)(a, b)`: the DSL call is the callee, not an ancestor.
       let callee: TS.Node = node;
       while (ts.isCallExpression(callee) && ts.isCallExpression(callee.expression)) {

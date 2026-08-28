@@ -165,6 +165,7 @@ function tsgoSyntax(mods: TsgoModules, parseFile: TsSyntax['parseFile']): TsSynt
       ExportAssignment: kind('ExportAssignment'),
       FunctionDeclaration: kind('FunctionDeclaration'),
       InterfaceDeclaration: kind('InterfaceDeclaration'),
+      ObjectLiteralExpression: kind('ObjectLiteralExpression'),
       QuestionQuestionToken: kind('QuestionQuestionToken'),
       SourceFile: kind('SourceFile'),
       ThisKeyword: kind('ThisKeyword'),
@@ -266,13 +267,11 @@ function locKey(line: number, column: number): string {
 // Sites in document order: an element before its attributes, parents
 // before children — the order Glint's mapping tree visits them.
 function collectSites(
-  contents: string,
-  filename: string,
+  blocks: ReturnType<Preprocessor['parse']>,
   spanMap: TsgoSpanMap,
   verbatim: number,
 ): TemplateSite[] {
   const sites: TemplateSite[] = [];
-  const blocks = preprocessor.parse(contents, { filename });
   for (const block of blocks) {
     if (block.tagName !== 'template' || !block.contentRange) continue;
     const base = block.contentRange.startUtf16Codepoint;
@@ -335,11 +334,11 @@ function collectSites(
   return sites;
 }
 
-function hasTemplate(contents: string, filename: string): boolean {
+function templateBlocks(contents: string, filename: string): ReturnType<Preprocessor['parse']> {
   try {
-    return preprocessor.parse(contents, { filename }).some((b) => b.tagName === 'template');
+    return preprocessor.parse(contents, { filename }).filter((b) => b.tagName === 'template');
   } catch {
-    return false;
+    return [];
   }
 }
 
@@ -418,15 +417,15 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     return current;
   }
 
-  const parsedFiles = new Map<string, TS.SourceFile>();
+  // One parse per virtual file name; a changed buffer replaces the entry.
+  const parsedFiles = new Map<string, { contents: string; sourceFile: TS.SourceFile }>();
 
   function parseFile(fileName: string, contents: string, kind: 'ts' | 'js'): TS.SourceFile {
     // The name keeps the origin visible in diagnostics but must not be a
     // `.gts`/`.gjs` path, or the content mapper would transform it.
     const virtualName = `${fileName}.__hve.${kind}`;
-    const cacheKey = `${virtualName}\0${contents}`;
-    const cached = parsedFiles.get(cacheKey);
-    if (cached) return cached;
+    const cached = parsedFiles.get(virtualName);
+    if (cached?.contents === contents) return cached.sourceFile;
     overlay.set(virtualName, contents);
     const snapshot = ensureApi().updateSnapshot({ openFiles: [virtualName] });
     const project = snapshot.getDefaultProjectForFile(virtualName);
@@ -442,7 +441,7 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     // the boundary between typescript-go's AST and the `typescript` types
     // the walks are written against (same member names).
     const result = sourceFile as unknown as TS.SourceFile;
-    parsedFiles.set(cacheKey, result);
+    parsedFiles.set(virtualName, { contents, sourceFile: result });
     return result;
   }
 
@@ -481,7 +480,7 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
         cached++;
         continue;
       }
-      if (!hasTemplate(contents, filename)) {
+      if (templateBlocks(contents, filename).length === 0) {
         writeCache(filename, contents, tsconfigPath, 'tsgo', {
           attrTypeMap: new Map(),
           componentTagMap: new Map(),
@@ -500,7 +499,8 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
 
   function open(filename: string, contents: string): OpenedFile | 'no-template' | null {
     for (const snapshot of retired.splice(0)) snapshot.dispose();
-    if (!hasTemplate(contents, filename)) {
+    const blocks = templateBlocks(contents, filename);
+    if (blocks.length === 0) {
       return 'no-template';
     }
     let onDisk: string | null = null;
@@ -543,13 +543,22 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
       // shapes match the `typescript`-typed interfaces member for member.
       checker: project.checker as CheckerLike,
       program,
-      sites: collectSites(contents, filename, spanMap, verbatim),
+      sites: collectSites(blocks, spanMap, verbatim),
       originalRange: (node) => {
         const virtual = { start: node.getStart(), end: node.getEnd() };
         const file = node.getSourceFile() as unknown as TsgoSourceFile;
         return (file.spanMap && toOriginal(file.spanMap.segments, verbatim, virtual)) ?? virtual;
       },
     };
+  }
+
+  function dispose(): void {
+    for (const snapshot of retired.splice(0)) snapshot.dispose();
+    current?.dispose();
+    current = null;
+    parsedFiles.clear();
+    api?.close();
+    api = null;
   }
 
   return {
@@ -559,5 +568,6 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     syntax,
     preload,
     open,
+    dispose,
   };
 }

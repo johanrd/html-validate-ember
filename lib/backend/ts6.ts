@@ -562,5 +562,9 @@ export function createTs6Backend(deps: Ts6Deps, tsconfigPath: string): TypeBacke
     syntax: ts6Syntax(ts),
     preload,
     open,
+    dispose: () => {
+      ctx.program = null;
+      virtualFiles.clear();
+    },
   };
 }

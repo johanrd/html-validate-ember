@@ -757,3 +757,14 @@ describe('type backend selection', () => {
     expect(backendFor(filename)?.kind).toBe(process.env['HVE_TS_BACKEND'] ?? 'tsgo');
   });
 });
+
+describe('attribute mustache sites', () => {
+  it('does not attribute a sibling argument type to a literal mustache', () => {
+    const { filename, contents } = readFixture('literal-arg-sibling.gts');
+    const { attrTypeMap } = extractAttrTypeMap(filename, contents)!;
+    // `{{"lg"}}` is emitted bare inside the named-args object and
+    // `{{this.text}}` is its sibling argument: neither is a site of its
+    // own. Only the inner template's `class={{@size}}` is typed.
+    expect([...attrTypeMap.keys()]).toEqual(['1:12']);
+  });
+});

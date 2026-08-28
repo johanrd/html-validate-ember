@@ -23,6 +23,7 @@ export interface SyntaxTables {
     readonly ExportAssignment: number;
     readonly FunctionDeclaration: number;
     readonly InterfaceDeclaration: number;
+    readonly ObjectLiteralExpression: number;
     readonly QuestionQuestionToken: number;
     readonly SourceFile: number;
     readonly ThisKeyword: number;
@@ -159,4 +160,6 @@ export interface TypeBackend {
    * `<template>` (nothing to extract).
    */
   open(filename: string, contents: string): OpenedFile | 'no-template' | null;
+  /** Release the compiler process and its snapshots. A CLI run can rely on process exit instead. */
+  dispose(): void;
 }

@@ -122,3 +122,9 @@ function ownTs6Syntax(): TsSyntax | null {
 export function syntaxFor(filename: string): TsSyntax | null {
   return backendFor(filename)?.syntax ?? ownTs6Syntax();
 }
+
+/** Dispose every backend created so far — for hosts that outlive one run. */
+export function closeBackends(): void {
+  for (const backend of backendByTsconfig.values()) backend?.dispose();
+  backendByTsconfig.clear();
+}
