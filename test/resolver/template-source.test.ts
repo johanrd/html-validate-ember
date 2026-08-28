@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type * as TS from 'typescript';
+import { ts6Syntax } from '../../lib/backend/ts6.js';
 
 import {
   findTemplateSource,
@@ -10,7 +11,7 @@ import {
 } from '../../lib/resolver/template-source.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'glint-fixtures');
-const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+const ts = ts6Syntax(createRequire(import.meta.url)('typescript') as typeof TS);
 
 afterEach(() => {
   _clearCache();
@@ -54,6 +55,14 @@ describe('findTemplateSource', () => {
     expect(result?.kind).toBe('gts');
     expect(result?.content).toContain('<li');
     expect(result?.content).not.toContain('<div ...attributes');
+  });
+
+  test('multi-template file: expression-form TOCs without semicolons resolve by name', () => {
+    const declFile = path.join(FIXTURES, 'toc-expression-no-semicolon.gts');
+    const bar = findTemplateSource({ declFile, componentName: 'Bar', ts });
+    expect(bar?.content).toContain("<div class='bar'>");
+    const baz = findTemplateSource({ declFile, componentName: 'Baz', ts });
+    expect(baz?.content).toContain("<span class='baz'>");
   });
 
   test('reads .hbs source directly', () => {

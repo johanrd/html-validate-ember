@@ -49,8 +49,8 @@ describe('cache: write/read roundtrip', () => {
     const file = path.join(templatesDir, 'a.gts');
     const contents = '<template><div /></template>';
     fs.writeFileSync(file, contents);
-    writeCache(file, contents, tsconfigPath, makeResult());
-    const got = readCache(file, contents, tsconfigPath);
+    writeCache(file, contents, tsconfigPath, 'ts6', makeResult());
+    const got = readCache(file, contents, tsconfigPath, 'ts6');
     expect(got).not.toBeNull();
     expect(got!.attrTypeMap.get('1:5')).toEqual({ kind: 'string-literal', values: ['auto'] });
     expect(got!.componentTagMap.get('2:3')).toBe('button');
@@ -63,7 +63,7 @@ describe('cache: write/read roundtrip', () => {
   it('returns null on read miss (no entry written yet)', () => {
     const file = path.join(templatesDir, 'never-written.gts');
     fs.writeFileSync(file, '<template></template>');
-    expect(readCache(file, '<template></template>', tsconfigPath)).toBeNull();
+    expect(readCache(file, '<template></template>', tsconfigPath, 'ts6')).toBeNull();
   });
 });
 
@@ -71,23 +71,23 @@ describe('cache: staleness detection', () => {
   it('treats a content-SHA mismatch as a miss', () => {
     const file = path.join(templatesDir, 'changed.gts');
     fs.writeFileSync(file, 'v1');
-    writeCache(file, 'v1', tsconfigPath, makeResult());
+    writeCache(file, 'v1', tsconfigPath, 'ts6', makeResult());
     // Read with different content — stored fileSha doesn't match.
-    expect(readCache(file, 'v2', tsconfigPath)).toBeNull();
+    expect(readCache(file, 'v2', tsconfigPath, 'ts6')).toBeNull();
     // Original content still hits.
-    expect(readCache(file, 'v1', tsconfigPath)).not.toBeNull();
+    expect(readCache(file, 'v1', tsconfigPath, 'ts6')).not.toBeNull();
   });
 
   it('treats a tsconfig-SHA mismatch as a miss', () => {
     const file = path.join(templatesDir, 'b.gts');
     fs.writeFileSync(file, 'x');
-    writeCache(file, 'x', tsconfigPath, makeResult());
+    writeCache(file, 'x', tsconfigPath, 'ts6', makeResult());
     fs.writeFileSync(tsconfigPath, '{"compilerOptions":{"target":"es5"}}');
     // The in-memory tsconfigShaCache memoizes per-process — to exercise
     // staleness we need a fresh tsconfigPath. Use a sibling.
     const altTsconfig = path.join(projectRoot, 'tsconfig.alt.json');
     fs.writeFileSync(altTsconfig, '{"compilerOptions":{"target":"es5"}}');
-    expect(readCache(file, 'x', altTsconfig)).toBeNull();
+    expect(readCache(file, 'x', altTsconfig, 'ts6')).toBeNull();
   });
 
   it('treats a pluginSourceSha mismatch as a miss', () => {
@@ -97,7 +97,7 @@ describe('cache: staleness detection', () => {
     // doesn't bump between every dev iteration).
     const file = path.join(templatesDir, 'plugin-changed.gts');
     fs.writeFileSync(file, 'x');
-    writeCache(file, 'x', tsconfigPath, makeResult());
+    writeCache(file, 'x', tsconfigPath, 'ts6', makeResult());
 
     // Tamper with the stored entry's pluginSourceSha as if the plugin's
     // source had changed between writeCache and readCache. We can't
@@ -113,7 +113,7 @@ describe('cache: staleness detection', () => {
     stored['pluginSourceSha'] = sha256('different-build');
     fs.writeFileSync(entryPath, JSON.stringify(stored));
 
-    expect(readCache(file, 'x', tsconfigPath)).toBeNull();
+    expect(readCache(file, 'x', tsconfigPath, 'ts6')).toBeNull();
   });
 });
 
@@ -121,15 +121,15 @@ describe('cache: one entry per file path (no accumulation)', () => {
   it('overwrites the same cache file on repeat writes for one source file', () => {
     const file = path.join(templatesDir, 'edit-me.gts');
     fs.writeFileSync(file, 'v1');
-    writeCache(file, 'v1', tsconfigPath, makeResult());
+    writeCache(file, 'v1', tsconfigPath, 'ts6', makeResult());
     expect(fs.readdirSync(cacheDir())).toHaveLength(1);
     // Simulate an edit: write again with new content.
-    writeCache(file, 'v2', tsconfigPath, makeResult());
+    writeCache(file, 'v2', tsconfigPath, 'ts6', makeResult());
     // Still one entry (path-keyed), not two.
     expect(fs.readdirSync(cacheDir())).toHaveLength(1);
     // And it now reflects v2, not v1.
-    expect(readCache(file, 'v2', tsconfigPath)).not.toBeNull();
-    expect(readCache(file, 'v1', tsconfigPath)).toBeNull();
+    expect(readCache(file, 'v2', tsconfigPath, 'ts6')).not.toBeNull();
+    expect(readCache(file, 'v1', tsconfigPath, 'ts6')).toBeNull();
   });
 
   it('uses distinct entries for distinct file paths', () => {
@@ -137,8 +137,8 @@ describe('cache: one entry per file path (no accumulation)', () => {
     const b = path.join(templatesDir, 'b.gts');
     fs.writeFileSync(a, 'same');
     fs.writeFileSync(b, 'same');
-    writeCache(a, 'same', tsconfigPath, makeResult());
-    writeCache(b, 'same', tsconfigPath, makeResult());
+    writeCache(a, 'same', tsconfigPath, 'ts6', makeResult());
+    writeCache(b, 'same', tsconfigPath, 'ts6', makeResult());
     expect(fs.readdirSync(cacheDir())).toHaveLength(2);
   });
 });

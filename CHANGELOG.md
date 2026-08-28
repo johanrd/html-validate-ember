@@ -1,5 +1,18 @@
 # Changelog
 
+## Release (2026-05-21)
+
+* html-validate-ember 0.7.4 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#45](https://github.com/johanrd/html-validate-ember/pull/45) Resolve re-yielded block-param curried sub-components (fix wcag/h71 FP) ([@johanrd](https://github.com/johanrd))
+  * [#46](https://github.com/johanrd/html-validate-ember/pull/46) Suppress no-Glint element-permitted-content FPs on dotted table cells ([@johanrd](https://github.com/johanrd))
+  * [#43](https://github.com/johanrd/html-validate-ember/pull/43) Resolve component structural root through built-package exports ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-20)
 
 * html-validate-ember 0.7.3 (patch)

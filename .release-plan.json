@@ -2,8 +2,8 @@
   "solution": {
     "html-validate-ember": {
       "impact": "patch",
-      "oldVersion": "0.7.2",
-      "newVersion": "0.7.3",
+      "oldVersion": "0.7.3",
+      "newVersion": "0.7.4",
       "tagName": "latest",
       "constraints": [
         {
@@ -14,5 +14,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-20)\n\n* html-validate-ember 0.7.3 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#41](https://github.com/johanrd/html-validate-ember/pull/41) Closes [#38](https://github.com/johanrd/html-validate-ember/issues/38): suppress technique-rule FPs per-element, not file-wide ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-05-21)\n\n* html-validate-ember 0.7.4 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#45](https://github.com/johanrd/html-validate-ember/pull/45) Resolve re-yielded block-param curried sub-components (fix wcag/h71 FP) ([@johanrd](https://github.com/johanrd))\n  * [#46](https://github.com/johanrd/html-validate-ember/pull/46) Suppress no-Glint element-permitted-content FPs on dotted table cells ([@johanrd](https://github.com/johanrd))\n  * [#43](https://github.com/johanrd/html-validate-ember/pull/43) Resolve component structural root through built-package exports ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }

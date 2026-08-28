@@ -1,16 +1,14 @@
-// Optional Glint integration. When @glint/ember-tsc is installed in the host
-// project, we use it to extract TypeScript type information for attribute-
-// value mustache positions. The transformer's static-text resolver then sees
-// `popover={{@mode}}` (where `@mode: 'auto' | 'manual' | 'hint'` from the
-// component's Signature) as a string-literal-union and embeds one of the
-// values, letting html-validate's enum rules apply.
+// Optional Glint integration. When a type backend is available for the
+// host project (see `lib/backend/`), we use it to extract TypeScript type
+// information for attribute-value mustache positions. The transformer's
+// static-text resolver then sees `popover={{@mode}}` (where `@mode: 'auto'
+// | 'manual' | 'hint'` from the component's Signature) as a
+// string-literal-union and embeds one of the values, letting
+// html-validate's enum rules apply.
 //
-// When @glint/ember-tsc is absent: all functions return null and the
-// transformer falls back to its non-Glint static-resolution path.
+// Without a backend: all functions return null and the transformer falls
+// back to its non-Glint static-resolution path.
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
 import { Preprocessor } from 'content-tag';
@@ -30,384 +28,30 @@ import {
   type Resolution,
 } from './resolver/walk.js';
 import type { TemplateSource } from './resolver/template-source.js';
+import { backendFor } from './backend/index.js';
+import type {
+  CheckerLike,
+  PreloadProgress,
+  PreloadStats,
+  ProgramLike,
+  SymbolLike,
+  TsSyntax,
+  TypeLike,
+  VirtualRange,
+} from './backend/index.js';
+
+export type { PreloadStats } from './backend/index.js';
 
 const consumerPreprocessor = new Preprocessor();
 
-// Minimal local typing for the @glint/ember-tsc API surface we use.
-// Avoids importing types from @glint/ember-tsc (an optional peerDep)
-// into our shipped .d.ts, which would force downstream consumers to
-// install Glint just to read our types.
-interface GlintEnvironment {
-  // We treat as opaque — passed through to rewriteModule.
-}
-interface GlintConfig {
-  environment: GlintEnvironment;
-}
-interface GlintRewriteResult {
-  transformedContents: string;
-  correlatedSpans: Array<{
-    glimmerAstMapping?: GlimmerAstMappingNode | undefined;
-    transformedStart: number;
-  }>;
-}
-interface GlimmerAstMappingNode {
-  sourceNode?: {
-    type?: string;
-    loc?: { start: { line: number; column: number } };
-    tag?: string;
-  };
-  parent?: { sourceNode?: { type?: string; tag?: string; loc?: { start: { line: number; column: number } } } };
-  transformedRange?: { start: number; end: number };
-  children?: GlimmerAstMappingNode[];
-}
-interface GlintDeps {
-  ts: typeof TS;
-  rewriteModule(
-    ts: typeof TS,
-    script: { script: { filename: string; contents: string } },
-    environment: GlintEnvironment,
-  ): GlintRewriteResult | null;
-  createDefaultConfig(ts: typeof TS, projectRoot: string): GlintConfig;
-}
-
-// Cache deps per project root — `createRequire` resolves @glint/ember-tsc
-// from the project's installed packages, not ours. This means
-// `html-validate-ember` doesn't ship Glint as a runtime dep; if the
-// consumer wants Glint integration, they install `@glint/ember-tsc`
-// themselves.
-//
-// Module-level state — `depsByRoot` and `programByTsconfig` (below) are
-// shared across calls in the same Node process. Safe under the
-// single-threaded CLI / Node main-thread assumption; would need
-// per-thread isolation if ever invoked concurrently from worker_threads.
-const depsByRoot = new Map<string, GlintDeps | null>();
-
-function loadDeps(filename: string): GlintDeps | null {
-  const projectReq = createRequire(path.resolve(filename));
-  let glintPath: string;
-  try {
-    glintPath = projectReq.resolve('@glint/ember-tsc');
-  } catch {
-    return null;
-  }
-  const projectRoot = path.dirname(glintPath);
-  const cached = depsByRoot.get(projectRoot);
-  if (cached !== undefined) {
-    return cached;
-  }
-  let deps: GlintDeps | null;
-  try {
-    const ts = projectReq('typescript') as typeof TS;
-    const transform = projectReq('@glint/ember-tsc/transform/index') as {
-      rewriteModule: GlintDeps['rewriteModule'];
-    };
-    const config = projectReq('@glint/ember-tsc') as {
-      createDefaultConfig: GlintDeps['createDefaultConfig'];
-    };
-    deps = {
-      ts,
-      rewriteModule: transform.rewriteModule,
-      createDefaultConfig: config.createDefaultConfig,
-    };
-  } catch {
-    deps = null;
-  }
-  depsByRoot.set(projectRoot, deps);
-  return deps;
-}
-
-interface ProgramContext {
-  deps: GlintDeps;
-  ts: typeof TS;
-  parsed: TS.ParsedCommandLine;
-  projectRoot: string;
-  virtualFiles: Map<string, string>;
-  compilerHost: TS.CompilerHost;
-  program: TS.Program | null;
-  tsconfigPath: string;
-  extraRootNames: string[];
-  lastRootKey?: string;
-  elementTypeToTag?: Map<string, string>;
-}
-
-// One TS program per tsconfig. Lazily built on first request, then reused
-// for every file under that tsconfig.
-const programByTsconfig = new Map<string, ProgramContext>();
-
-function findTsconfig(start: string): string | null {
-  let dir = fs.statSync(start).isDirectory() ? start : path.dirname(start);
-  while (dir !== path.dirname(dir)) {
-    const candidate = path.join(dir, 'tsconfig.json');
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-    dir = path.dirname(dir);
-  }
-  return null;
-}
-
-function getProgramContext(tsconfigPath: string, deps: GlintDeps): ProgramContext | null {
-  const existing = programByTsconfig.get(tsconfigPath);
-  if (existing) {
-    return existing;
-  }
-  const { ts } = deps;
-  const projectRoot = path.dirname(tsconfigPath);
-  const tsconfigSrc = ts.readConfigFile(tsconfigPath, ts.sys.readFile).config as unknown;
-  const parsed = ts.parseJsonConfigFileContent(tsconfigSrc, ts.sys, projectRoot);
-
-  // TypeScript's `types` compiler option uses legacy resolution — it doesn't
-  // consult package.json `exports` for path-style names like
-  // `@glint/ember-tsc/types`. We resolve those via Node's import resolver
-  // (which DOES honor exports) and add them to rootNames so the type defs
-  // are loaded into the program. Skip what doesn't resolve (likely a
-  // virtual-module type that only exists at build time).
-  const projectReq = createRequire(path.resolve(projectRoot, 'package.json'));
-  const extraRootNames: string[] = [];
-  const remainingTypes: string[] = [];
-  for (const t of parsed.options.types ?? []) {
-    try {
-      let resolved = projectReq.resolve(t);
-      // Node resolution returns the `.js` entry. TS's `types` option needs a
-      // `.d.ts`. Look for the sibling .d.ts (the canonical layout in modern
-      // packages: `dist/index.js` + `dist/index.d.ts`).
-      if (resolved.endsWith('.js')) {
-        const sibling = resolved.slice(0, -3) + '.d.ts';
-        if (fs.existsSync(sibling)) {
-          resolved = sibling;
-        }
-      }
-      if (resolved.endsWith('.d.ts') || resolved.endsWith('.ts')) {
-        extraRootNames.push(resolved);
-        continue;
-      }
-    } catch {
-      // not resolvable — drop it from types so TS doesn't warn
-    }
-    remainingTypes.push(t);
-  }
-  parsed.options.types = remainingTypes;
-
-  // virtualFiles: file path (.ts shadow OR .gts directly) → rewritten
-  // contents. TS may ask for either path depending on how the import was
-  // written in source (`from './foo'` → tries `.ts`; `from './foo.gts'`
-  // → asks for `.gts` directly via our `resolveModuleNameLiterals` shim).
-  const virtualFiles = new Map<string, string>();
-
-  const ctx: ProgramContext = {
-    deps,
-    ts,
-    parsed,
-    projectRoot,
-    virtualFiles,
-    // Filled in below — declare the property up front so we can reference
-    // `ctx` inside the host shim closures without TS complaining.
-    compilerHost: undefined as unknown as TS.CompilerHost,
-    program: null,
-    tsconfigPath,
-    extraRootNames,
-  };
-
-  // For an arbitrary path requested by TS module resolution, return the
-  // corresponding `.gts` or `.gjs` source path that should be rewritten
-  // and served as the file's content. Three cases:
-  //   - Path ends in `.gts` / `.gjs` — return it directly (TS asked for
-  //     the literal extension via `resolveModuleNameLiterals`).
-  //   - Path ends in `.ts` (and not `.d.ts`) — return sibling `.gts` or
-  //     `.gjs` if either exists. Catches imports written without an
-  //     extension that TS resolves through `.ts` lookups.
-  function gtsForRequest(reqPath: string): string | null {
-    if (reqPath.endsWith('.gts') || reqPath.endsWith('.gjs')) {
-      return fs.existsSync(reqPath) ? reqPath : null;
-    }
-    if (reqPath.endsWith('.ts') && !reqPath.endsWith('.d.ts')) {
-      const base = reqPath.slice(0, -3);
-      for (const ext of ['.gts', '.gjs']) {
-        const candidate = base + ext;
-        if (fs.existsSync(candidate)) return candidate;
-      }
-    }
-    return null;
-  }
-
-  const compilerHost = ts.createCompilerHost(parsed.options, true);
-  const realReadFile = compilerHost.readFile.bind(compilerHost);
-  const realFileExists = compilerHost.fileExists.bind(compilerHost);
-  const realGetSourceFile = compilerHost.getSourceFile.bind(compilerHost);
-
-  compilerHost.fileExists = (name: string) => {
-    if (virtualFiles.has(path.normalize(name))) return true;
-    if (realFileExists(name)) return true;
-    return Boolean(gtsForRequest(name));
-  };
-
-  compilerHost.readFile = (name: string) => {
-    const norm = path.normalize(name);
-    const v = virtualFiles.get(norm);
-    if (v !== undefined) return v;
-    if (realFileExists(name)) return realReadFile(name);
-    const gtsPath = gtsForRequest(name);
-    if (gtsPath) {
-      const rewritten = rewriteGtsToShadow(ctx, gtsPath);
-      if (rewritten !== null) {
-        virtualFiles.set(norm, rewritten);
-        return rewritten;
-      }
-    }
-    return realReadFile(name);
-  };
-
-  compilerHost.getSourceFile = (name: string, langVersion, onError) => {
-    const norm = path.normalize(name);
-    let v = virtualFiles.get(norm);
-    if (v === undefined) {
-      const gtsPath = gtsForRequest(name);
-      if (gtsPath) {
-        const rewritten = rewriteGtsToShadow(ctx, gtsPath);
-        if (rewritten !== null) {
-          v = rewritten;
-          virtualFiles.set(norm, v);
-        }
-      }
-    }
-    if (typeof v === 'string') {
-      return ts.createSourceFile(name, v, langVersion, true, ts.ScriptKind.TS);
-    }
-    return realGetSourceFile(name, langVersion, onError);
-  };
-
-  // Module resolution shim for `import './foo.gts'` literal extensions.
-  // TS's standard resolution doesn't recognize `.gts` as a module-bearing
-  // extension; we have to intervene and tell it "yes that path resolves,
-  // treat it as a `.ts` source." The file's contents are then loaded via
-  // the `getSourceFile` shim above (which sees the `.gts` path and serves
-  // the rewritten content).
-  compilerHost.resolveModuleNameLiterals = (literals, containingFile, _redirectedReference, options) => {
-    return literals.map((literal) => {
-      const moduleName = literal.text;
-      if (moduleName.endsWith('.gts') || moduleName.endsWith('.gjs')) {
-        // Containing file may be a `.ts` shadow we created; resolving relative
-        // to its directory still lands on the right `.gts`/`.gjs` path because
-        // we lay shadows alongside originals.
-        const target = path.resolve(path.dirname(containingFile), moduleName);
-        if (fs.existsSync(target)) {
-          return {
-            resolvedModule: {
-              resolvedFileName: target,
-              extension: ts.Extension.Ts,
-              isExternalLibraryImport: false,
-            },
-          };
-        }
-      }
-      const r = ts.resolveModuleName(moduleName, containingFile, options, compilerHost);
-      return { resolvedModule: r.resolvedModule };
-    });
-  };
-
-  ctx.compilerHost = compilerHost;
-  programByTsconfig.set(tsconfigPath, ctx);
-  return ctx;
-}
-
-// Rewrite a .gts file via Glint's rewriteModule and return the transformed
-// TypeScript source. Returns null on parse failure. Result is suitable as a
-// virtual .ts file for the TS program.
-function rewriteGtsToShadow(ctx: ProgramContext, gtsPath: string): string | null {
-  const { deps, ts } = ctx;
-  let glintConfig: GlintConfig;
-  try {
-    glintConfig = deps.createDefaultConfig(ts, ctx.projectRoot);
-  } catch {
-    return null;
-  }
-  let contents: string;
-  try {
-    contents = fs.readFileSync(gtsPath, 'utf8');
-  } catch {
-    return null;
-  }
-  let transformed: GlintRewriteResult | null;
-  try {
-    transformed = deps.rewriteModule(
-      ts,
-      { script: { filename: gtsPath, contents } },
-      glintConfig.environment,
-    );
-  } catch {
-    return null;
-  }
-  return transformed?.transformedContents ?? null;
-}
-
-function ensureProgram(ctx: ProgramContext): TS.Program {
-  const { ts, parsed, virtualFiles, compilerHost, extraRootNames } = ctx;
-  // Build the rootNames set. Cheap re-walk every call.
-  const rootNames = [...new Set([...virtualFiles.keys(), ...parsed.fileNames, ...extraRootNames])];
-  // Skip ts.createProgram when rootNames haven't changed since last call —
-  // big cold-run speedup paired with `preloadGlintFiles`, which populates
-  // virtualFiles up-front so subsequent `extractAttrTypeMap` calls don't
-  // each trigger an incremental rebuild. (Even with `oldProgram`, each
-  // createProgram costs hundreds of ms per file × N files = real time.)
-  const rootKey = `${rootNames.length}|${rootNames.slice().sort().join('|')}`;
-  if (ctx.lastRootKey === rootKey && ctx.program) {
-    return ctx.program;
-  }
-  ctx.program = ts.createProgram({
-    rootNames,
-    options: parsed.options,
-    host: compilerHost,
-    oldProgram: ctx.program ?? undefined,
-  });
-  ctx.lastRootKey = rootKey;
-  return ctx.program;
-}
-
-function locKey(line: number, column: number): string {
-  return `${line}:${column}`;
-}
-
-interface PreloadProgress {
-  done: number;
-  total: number;
-  phase: 'rewrite' | 'program' | 'done';
-}
-
-interface SkipEntry {
-  file: string;
-  message?: string;
-}
-
-export interface PreloadStats {
-  loaded: number;
-  cached: number;
-  skipped: number;
-  skips: {
-    nonGts: SkipEntry[];
-    readError: SkipEntry[];
-    rewriteError: SkipEntry[];
-    rewriteEmpty: SkipEntry[];
-  };
-}
-
 /**
- * Pre-load a batch of `.gts` / `.gjs` files into the TS program so the
- * subsequent per-file `extractAttrTypeMap` calls can reuse a single
- * program build instead of triggering N incremental rebuilds.
+ * Pre-load a batch of `.gts` / `.gjs` files into the type backend so the
+ * subsequent per-file `extractAttrTypeMap` calls reuse one program build
+ * (TypeScript 6) or one project snapshot (TypeScript 7) instead of
+ * triggering N incremental rebuilds.
  *
- * Without preload (cold run on N files): each `extractAttrTypeMap` adds
- * the validated file to `virtualFiles` and calls `ensureProgram`,
- * triggering an incremental TS program rebuild. N rebuilds × hundreds
- * of ms each = the dominant cold-run cost.
- *
- * With preload: rewrite ALL files up-front and stash their virtual
- * shadows in one go; one `ensureProgram` call builds the program once;
- * subsequent per-file calls hit `lastRootKey` cache and reuse the
- * program. Per-file cost drops to just the AST walk + TypeChecker
- * queries.
- *
- * Best-effort: failure to load deps / find tsconfig / rewrite a single
- * file is silently skipped (caller's per-file path will run as
+ * Best-effort: failure to load a backend / find tsconfig / rewrite a
+ * single file is silently skipped (caller's per-file path will run as
  * normal). Cached entries (per-file disk cache) are skipped — no need
  * to load them into the program if we'll just return cached results.
  */
@@ -429,110 +73,12 @@ export function preloadGlintFiles(
     s.skipped = filenames.length;
     return s;
   };
-  // Find the first .gts/.gjs file to seed deps + tsconfig discovery.
+  // Find the first .gts/.gjs file to seed backend + tsconfig discovery.
   const seed = filenames.find((f) => f.endsWith('.gts') || f.endsWith('.gjs'));
   if (!seed) return allSkipped();
-  const deps = loadDeps(seed);
-  if (!deps) return allSkipped();
-  const tsconfigPath = findTsconfig(seed);
-  if (!tsconfigPath) return allSkipped();
-  const ctx = getProgramContext(tsconfigPath, deps);
-  if (!ctx) return allSkipped();
-  const { ts, rewriteModule, createDefaultConfig } = deps;
-  let glintConfig: GlintConfig;
-  try {
-    glintConfig = createDefaultConfig(ts, ctx.projectRoot);
-  } catch {
-    return allSkipped();
-  }
-
-  let loaded = 0;
-  let cached = 0;
-  const skips: PreloadStats['skips'] = {
-    nonGts: [],
-    readError: [],
-    rewriteError: [],
-    rewriteEmpty: [],
-  };
-  let done = 0;
-  const skippedTotal = (): number =>
-    skips.nonGts.length + skips.readError.length + skips.rewriteError.length + skips.rewriteEmpty.length;
-  for (const filename of filenames) {
-    done++;
-    if (!filename.endsWith('.gts') && !filename.endsWith('.gjs')) {
-      skips.nonGts.push({ file: filename });
-      onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-      continue;
-    }
-    let contents: string;
-    try {
-      contents = fs.readFileSync(filename, 'utf8');
-    } catch (err) {
-      skips.readError.push({
-        file: filename,
-        message: err instanceof Error ? err.message : String(err),
-      });
-      onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-      continue;
-    }
-    // If a cached extraction exists for this file, skip the rewrite —
-    // we'll never need its rewritten contents in the program.
-    if (readCache(filename, contents, tsconfigPath)) {
-      cached++;
-      onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-      continue;
-    }
-    let transformed: GlintRewriteResult | null;
-    try {
-      transformed = rewriteModule(
-        ts,
-        { script: { filename, contents } },
-        glintConfig.environment,
-      );
-    } catch (err) {
-      skips.rewriteError.push({
-        file: filename,
-        message: err instanceof Error ? err.message : String(err),
-      });
-      onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-      continue;
-    }
-    if (!transformed) {
-      // Negative cache: stash an empty result so subsequent runs hit
-      // the cache instead of re-parsing this file as "rewrite returned
-      // empty" every time. Stable for this (content + tsconfig +
-      // plugin version) — typically a `.gts` service file with no
-      // `<template>` block. Without this, no-template files
-      // perpetually show up under "analyzed" in the summary, which
-      // reads as "why aren't these cached?" noise.
-      writeCache(filename, contents, tsconfigPath, {
-        attrTypeMap: new Map(),
-        componentTagMap: new Map(),
-        componentAttrMap: new Map(),
-      });
-      skips.rewriteEmpty.push({ file: filename });
-      onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-      continue;
-    }
-    const tsFilename = filename.replace(/\.(gts|gjs)$/, '.ts');
-    ctx.virtualFiles.set(path.normalize(tsFilename), transformed.transformedContents);
-    loaded++;
-    onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
-  }
-  if (loaded > 0) {
-    onProgress?.({ done: filenames.length, total: filenames.length, phase: 'program' });
-    // Single program build with everything seeded. Skipped when loaded
-    // is 0 — no virtualFiles changed, no program needed up-front (the
-    // per-file `extractAttrTypeMap` path triggers a program build on
-    // demand for any file that misses cache).
-    ensureProgram(ctx);
-  }
-  // Always emit `done` so the caller's TTY progress line (if any) gets
-  // cleared — even on the all-cached path where no `program` phase
-  // fired. Without this, the throttled "template 1/N" rewrite line
-  // stays on screen and the summary writes right after it.
-  onProgress?.({ done: filenames.length, total: filenames.length, phase: 'done' });
-  return { loaded, cached, skipped: skippedTotal(), skips };
+  const backend = backendFor(seed);
+  if (!backend) return allSkipped();
+  return backend.preload(filenames, onProgress);
 }
 
 // TypeScript ships `HTMLElementTagNameMap` in lib.dom.d.ts as
@@ -805,13 +351,16 @@ function lookupParam(
   return null;
 }
 
-function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, string> {
+
+function buildElementTypeToTag(ts: TsSyntax, program: ProgramLike): Map<string, string> {
   const map = new Map<string, string>();
   const tagNameMaps = ['HTMLElementTagNameMap', 'SVGElementTagNameMap', 'MathMLElementTagNameMap'];
-  for (const sourceFile of program.getSourceFiles()) {
-    if (!/lib\.dom(?:\.iterable)?\.d\.ts$/.test(sourceFile.fileName)) {
+  for (const fileName of program.getSourceFileNames()) {
+    if (!/lib\.dom(?:\.iterable)?\.d\.ts$/.test(fileName)) {
       continue;
     }
+    const sourceFile = program.getSourceFile(fileName);
+    if (!sourceFile) continue;
     ts.forEachChild(sourceFile, function visit(node) {
       if (ts.isInterfaceDeclaration(node) && tagNameMaps.includes(node.name.text)) {
         for (const member of node.members) {
@@ -848,8 +397,8 @@ function buildElementTypeToTag(ts: typeof TS, program: TS.Program): Map<string, 
 //                                other type — caller falls back to
 //                                transparent neutralization
 function resolveComponentElement(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
+  ts: TsSyntax,
+  checker: CheckerLike,
   emitComponentCall: TS.CallExpression,
   elementTypeToTag: Map<string, string>,
 ): string | null {
@@ -859,6 +408,11 @@ function resolveComponentElement(
     return null;
   }
   const elementType = checker.getTypeOfSymbolAtLocation(elementProp, emitComponentCall);
+  // `Element: null` — the component declares it renders no element of its
+  // own (a signature-less template-only component, or an explicit `null`).
+  if (elementType.flags & ts.TypeFlags.Null) {
+    return 'transparent';
+  }
   // `unknown` and `any` are both ambiguous in this position. Glint can surface
   // `.element` this way for yielded-curried refs (`<C.Options>`), TOC
   // declarations (`: TOC<…> =` / `satisfies TOC<…>`), and also in files with
@@ -882,11 +436,12 @@ function resolveComponentElement(
   }
   // Pick a single tag for unions: take the first matching branch
   // (branches with no DOM mapping are skipped, see matchElementTypeToTag).
-  return matchElementTypeToTag(elementType, elementTypeToTag);
+  return matchElementTypeToTag(ts, elementType, elementTypeToTag);
 }
 
 function matchElementTypeToTag(
-  elementType: TS.Type,
+  ts: TsSyntax,
+  elementType: TypeLike,
   elementTypeToTag: Map<string, string>,
 ): string | null {
   // Generic base classes (`HTMLElement`, `SVGElement`, `MathMLElement`) are
@@ -896,7 +451,7 @@ function matchElementTypeToTag(
   // user component declaring `Signature['Element'] = HTMLElement` Glint
   // DID succeed and we just don't know which specific tag — transparent
   // (children float to parent) is the right semantic.
-  const branches = elementType.isUnion() ? elementType.types : [elementType];
+  const branches = ts.unionMembers(elementType) ?? [elementType];
   let allGenericBase = true;
   for (const branch of branches) {
     const name = branch.getSymbol()?.name;
@@ -951,8 +506,8 @@ const ESSENTIALLY_ALL_ELEMENTS_THRESHOLD = 30;
 //   - null          if no aliasTypeArguments / no `Element` property —
 //                   caller falls through to plain transparent.
 function resolveElementFromComponentRefType(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
+  ts: TsSyntax,
+  checker: CheckerLike,
   emitComponentCall: TS.CallExpression,
   elementTypeToTag: Map<string, string>,
 ): string | null {
@@ -974,19 +529,16 @@ function resolveElementFromComponentRefType(
   //     `checker.getTypeArguments`.
   // We don't know which form the host project's `TOC` (or other
   // signature-carrying generic) uses; check both.
-  const aliasArgs = (refType as TS.Type & { aliasTypeArguments?: ReadonlyArray<TS.Type> })
-    .aliasTypeArguments;
-  let sigType: TS.Type | undefined = aliasArgs?.[0];
-  if (!sigType && (refType as TS.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
-    const refArgs = checker.getTypeArguments(refType as TS.TypeReference);
-    sigType = refArgs[0];
+  let sigType: TypeLike | undefined = ts.aliasTypeArguments(refType)?.[0];
+  if (!sigType && (refType.objectFlags ?? 0) & ts.ObjectFlags.Reference) {
+    sigType = checker.getTypeArguments(refType)[0];
   }
   if (!sigType) return null;
   const eltSym = sigType.getProperty('Element');
   if (!eltSym) return null;
   const eltType = checker.getTypeOfSymbolAtLocation(eltSym, componentRef);
   if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
-  const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+  const tag = matchElementTypeToTag(ts, eltType, elementTypeToTag);
   if (tag !== null) return tag;
   return null;
 }
@@ -1013,14 +565,14 @@ function resolveElementFromComponentRefType(
 //   - null          if no TOC annotation found, no `Element` property,
 //                   or some unexpected shape — caller falls through
 function resolveElementFromTOCDeclaration(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
+  ts: TsSyntax,
+  checker: CheckerLike,
   emitComponentCall: TS.CallExpression,
   elementTypeToTag: Map<string, string>,
 ): string | null {
   const symbol = getComponentSymbolFromEmitCall(ts, checker, emitComponentCall);
   if (!symbol) return null;
-  const declarations = symbol.declarations ?? [];
+  const declarations = ts.declarations(symbol);
   for (const decl of declarations) {
     if (!ts.isVariableDeclaration(decl)) continue;
     // Form A: `const X: TOC<S> = ...;` — type annotation is `TOC<S>`.
@@ -1042,7 +594,7 @@ function resolveElementFromTOCDeclaration(
     if (!eltSym) continue;
     const eltType = checker.getTypeOfSymbolAtLocation(eltSym, typeArgNode);
     if (eltType.flags & ts.TypeFlags.Unknown) return 'transparent';
-    const tag = matchElementTypeToTag(eltType, elementTypeToTag);
+    const tag = matchElementTypeToTag(ts, eltType, elementTypeToTag);
     if (tag !== null) return tag;
   }
   return null;
@@ -1055,41 +607,53 @@ function resolveElementFromTOCDeclaration(
 // since that's the actual type name. Doesn't follow imports: a project
 // that aliases TOC to something else won't be resolved, which is fine —
 // the component falls back to transparent.
-function isTOCTypeName(ts: typeof TS, name: TS.EntityName): boolean {
+function isTOCTypeName(ts: TsSyntax, name: TS.EntityName): boolean {
   let id: TS.Identifier;
   if (ts.isIdentifier(name)) id = name;
   else if (ts.isQualifiedName(name)) id = name.right;
   else return false;
   return id.text === 'TOC' || id.text === 'TemplateOnlyComponent';
 }
-function describeType(checker: TS.TypeChecker, type: TS.Type): AttrTypeInfo {
-  if (type.isStringLiteral()) {
-    return { kind: 'string-literal', values: [type.value] };
+function describeType(ts: TsSyntax, checker: CheckerLike, type: TypeLike): AttrTypeInfo {
+  const literal = ts.stringLiteralValue(type);
+  if (literal !== null) {
+    return { kind: 'string-literal', values: [literal] };
   }
-  if (type.isUnion()) {
-    if (type.types.every((t): t is TS.StringLiteralType => t.isStringLiteral())) {
-      return { kind: 'string-literal-union', values: type.types.map((t) => t.value) };
+  const members = ts.unionMembers(type);
+  if (members) {
+    const values = members.map((member) => ts.stringLiteralValue(member));
+    if (values.every((value): value is string => value !== null)) {
+      return { kind: 'string-literal-union', values };
     }
   }
   return { kind: 'other', text: checker.typeToString(type) };
 }
 
-// For a given mustache `transformedRange` from Glint's mapping, find the TS
-// AST node and resolve its type. Glint's transformedRange covers the whole
+function isDslCall(ts: TsSyntax, node: TS.Node, names: readonly string[]): node is TS.CallExpression {
+  return (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    names.includes(node.expression.name.text)
+  );
+}
+
+// For a given mustache range in the transformed text, find the TS AST node
+// and resolve its type. Glint's mapping range covers the whole
 // `__glintDSL__.resolveOrReturn(__glintRef__.args.X)()` expression; we want
 // the inner argument (the actual user-typed expression).
-function findInnerTypeAtTransformedRange(
-  ts: typeof TS,
+function findInnerTypeAtRange(
+  ts: TsSyntax,
   sourceFile: TS.SourceFile,
-  checker: TS.TypeChecker,
-  range: { start: number; end: number },
-): TS.Type | null {
-  // The expression covering transformedRange is typically a CallExpression
+  checker: CheckerLike,
+  range: VirtualRange,
+): TypeLike | null {
+  // The expression covering the range is typically a CallExpression
   // shaped like `__glintDSL__.resolveOrReturn(<inner>)()`. We want the
   // <inner> argument's type. Strategy: find the deepest node whose start
   // falls within `range`, walk back up to its enclosing CallExpression of
   // resolveOrReturn / resolve, and read its first argument.
   let candidate: TS.Node | undefined;
+  let innermost: TS.Node | undefined;
   function visit(node: TS.Node): void {
     const start = node.getStart();
     const end = node.getEnd();
@@ -1099,24 +663,54 @@ function findInnerTypeAtTransformedRange(
     if (start >= range.start && end <= range.end && ts.isCallExpression(node)) {
       candidate = node;
     }
+    if (start <= range.start && end >= range.end) {
+      innermost = node;
+    }
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
   if (!candidate) {
-    return null;
+    // A range mapped from the template's own text (TypeScript 7's span
+    // map) covers only the user expression, not the DSL wrapper around
+    // it. Climb from the innermost node to the wrapper and retry on the
+    // wrapper's full range so both mappings resolve the same node.
+    let wrapper: TS.Node | undefined;
+    for (let node = innermost; node && !wrapper; node = node.parent) {
+      // A value inside a named-args object (`{ size: "lg" }`) belongs to
+      // the enclosing component invocation, not to a wrapper of its own.
+      if (node.kind === ts.SyntaxKind.ObjectLiteralExpression) {
+        return null;
+      }
+      // `resolve(eq)(a, b)`: the DSL call is the callee, not an ancestor.
+      let callee: TS.Node = node;
+      while (ts.isCallExpression(callee) && ts.isCallExpression(callee.expression)) {
+        callee = callee.expression;
+      }
+      if (isDslCall(ts, callee, ['resolveOrReturn', 'resolve'])) {
+        wrapper = callee;
+      }
+    }
+    if (!wrapper) {
+      return null;
+    }
+    while (wrapper.parent && ts.isCallExpression(wrapper.parent) && wrapper.parent.expression === wrapper) {
+      wrapper = wrapper.parent;
+    }
+    const wrapperRange = { start: wrapper.getStart(), end: wrapper.getEnd() };
+    if (wrapperRange.start === range.start && wrapperRange.end === range.end) {
+      return null;
+    }
+    return findInnerTypeAtRange(ts, sourceFile, checker, wrapperRange);
   }
   // Walk up to find a CallExpression whose callee is `resolveOrReturn` or
   // `resolve` — the @glint/ember-tsc DSL functions that wrap the inner
   // user expression.
   let cur: TS.Node | undefined = candidate;
   while (cur) {
-    if (ts.isCallExpression(cur) && ts.isPropertyAccessExpression(cur.expression)) {
-      const name = cur.expression.name.escapedText;
-      if (name === 'resolveOrReturn' || name === 'resolve') {
-        const inner = cur.arguments[0];
-        if (inner) {
-          return checker.getTypeAtLocation(inner);
-        }
+    if (isDslCall(ts, cur, ['resolveOrReturn', 'resolve'])) {
+      const inner = cur.arguments[0];
+      if (inner) {
+        return checker.getTypeAtLocation(inner);
       }
     }
     cur = cur.parent;
@@ -1127,77 +721,46 @@ function findInnerTypeAtTransformedRange(
 
 /**
  * Extract a map of attribute-value MustacheStatement positions to TS type
- * info for the given .gts file. Returns null if Glint isn't installed or
- * the project doesn't have a tsconfig.
+ * info for the given .gts file. Returns null if no type backend is
+ * available or the project doesn't have a tsconfig.
  *
  * Map keys are `"line:column"` tuples (template-relative — Glimmer's
  * AST loc convention) so blank.ts can look up by Glimmer node loc.
  */
 export function extractAttrTypeMap(filename: string, contents: string): ExtractionResult | null {
-  const deps = loadDeps(filename);
-  if (!deps) {
+  const backend = backendFor(filename);
+  if (!backend) {
     return null;
   }
-  const tsconfigPath = findTsconfig(filename);
-  if (!tsconfigPath) {
-    return null;
-  }
+  const { tsconfigPath, syntax: ts } = backend;
 
   // Disk-cache fast path. The extraction result is a pure function of
-  // (file content + tsconfig content + plugin version) — repeat runs
-  // (CI, pre-commit, IDE re-validation on unchanged files) skip the
-  // entire Glint pipeline. See `lib/cache.ts`.
-  const cached = readCache(filename, contents, tsconfigPath);
+  // (file content + tsconfig content + backend + plugin version) — repeat
+  // runs (CI, pre-commit, IDE re-validation on unchanged files) skip the
+  // entire pipeline. See `lib/cache.ts`.
+  const cached = readCache(filename, contents, tsconfigPath, backend.kind);
   if (cached) {
     return cached;
   }
 
-  const ctx = getProgramContext(tsconfigPath, deps);
-  if (!ctx) {
+  const opened = backend.open(filename, contents);
+  if (opened === null) {
     return null;
   }
-  const { ts, rewriteModule, createDefaultConfig } = deps;
-
-  let glintConfig: GlintConfig;
-  try {
-    glintConfig = createDefaultConfig(ts, ctx.projectRoot);
-  } catch {
-    return null;
-  }
-  let transformed: GlintRewriteResult | null;
-  try {
-    transformed = rewriteModule(
-      ts,
-      { script: { filename, contents } },
-      glintConfig.environment,
-    );
-  } catch {
-    return null;
-  }
-  if (!transformed) {
-    // Negative cache: same rationale as in `preloadGlintFiles` — a file
-    // with no `<template>` block has a stable "no Glint output" result
-    // for this (content + tsconfig + plugin version). Cache it so
-    // subsequent calls hit cache instead of retrying the rewrite.
+  if (opened === 'no-template') {
+    // Negative cache: a file with no `<template>` block has a stable "no
+    // Glint output" result for this (content + tsconfig + plugin
+    // version). Cache it so subsequent calls hit cache instead of
+    // retrying the rewrite.
     const empty: ExtractionResult = {
       attrTypeMap: new Map(),
       componentTagMap: new Map(),
       componentAttrMap: new Map(),
     };
-    writeCache(filename, contents, tsconfigPath, empty);
+    writeCache(filename, contents, tsconfigPath, backend.kind, empty);
     return empty;
   }
-
-  // Stash the rewritten content for the file being validated. Cross-file
-  // .gts imports get handled lazily by the compilerHost shims.
-  const tsFilename = filename.replace(/\.(gts|gjs)$/, '.ts');
-  ctx.virtualFiles.set(path.normalize(tsFilename), transformed.transformedContents);
-  const program = ensureProgram(ctx);
-  const checker = program.getTypeChecker();
-  const sourceFile = program.getSourceFile(tsFilename);
-  if (!sourceFile) {
-    return null;
-  }
+  const { sourceFile, checker, program, sites } = opened;
 
   const attrTypeMap = new Map<string, AttrTypeInfo>();
   const componentTagMap = new Map<string, string>();
@@ -1209,8 +772,8 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
     filename,
     contents,
   );
-  // Populated as we resolve binder invocations during walkMapping. Keys
-  // by binder's line:col; value is its TemplateSource. Lets dotted-
+  // Populated as we resolve binder invocations while walking the sites.
+  // Keys by binder's line:col; value is its TemplateSource. Lets dotted-
   // child resolution reach binders defined in the consumer file
   // itself (no import to follow).
   // For each dotted-binding chain hop we cache the parent's TemplateSource
@@ -1223,194 +786,156 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
     string,
     { source: ReturnType<typeof findTemplateSource>; curriedArgs: Map<string, string> }
   >();
-  if (!ctx.elementTypeToTag) {
-    ctx.elementTypeToTag = buildElementTypeToTag(ts, program);
+  if (!backend.elementTypeToTag) {
+    backend.elementTypeToTag = buildElementTypeToTag(ts, program);
   }
-  const elementTypeToTag = ctx.elementTypeToTag;
+  const elementTypeToTag = backend.elementTypeToTag;
 
-  function walkMapping(node: GlimmerAstMappingNode | undefined, spanTransformedStart: number): void {
-    if (!node) return;
-    const sourceNode = node.sourceNode;
-
+  for (const site of sites) {
     // Attribute-value mustache → TS type lookup.
-    if (
-      sourceNode?.type === 'MustacheStatement' &&
-      node.parent?.sourceNode?.type === 'AttrNode' &&
-      node.transformedRange &&
-      sourceNode.loc?.start
-    ) {
-      const absRange = {
-        start: node.transformedRange.start + spanTransformedStart,
-        end: node.transformedRange.end + spanTransformedStart,
-      };
-      const type = findInnerTypeAtTransformedRange(ts, sourceFile!, checker, absRange);
+    if (site.kind === 'attr-mustache') {
+      const type = findInnerTypeAtRange(ts, sourceFile, checker, site.range);
       if (type) {
-        const key = locKey(sourceNode.loc.start.line, sourceNode.loc.start.column);
-        const desc = describeType(checker, type);
-        attrTypeMap.set(key, desc);
+        attrTypeMap.set(site.key, describeType(ts, checker, type));
       }
+      continue;
     }
 
     // PascalCase component invocation → resolve via Glint's emitComponent
-    // call. Look at the component's PathExpression child (the tag-name
-    // reference); the enclosing emitComponent call is what Glint emitted
-    // for this invocation. Read its return-type's `.element` property.
-    if (
-      sourceNode?.type === 'PathExpression' &&
-      node.parent?.sourceNode?.type === 'ElementNode' &&
-      node.parent.sourceNode.tag &&
-      isComponentTag(node.parent.sourceNode.tag) &&
-      node.transformedRange &&
-      node.parent.sourceNode.loc?.start
-    ) {
-      const absRange = {
-        start: node.transformedRange.start + spanTransformedStart,
-        end: node.transformedRange.end + spanTransformedStart,
-      };
-      const emitCall = findEnclosingEmitComponent(ts, sourceFile!, absRange);
-      const tag = emitCall ? resolveComponentElement(ts, checker, emitCall, elementTypeToTag) : null;
-      const elementLoc = node.parent.sourceNode.loc.start;
-      const key = locKey(elementLoc.line, elementLoc.column);
-      if (tag) {
-        componentTagMap.set(key, tag);
-      }
-      // Run the canonical resolver: walks the component's template AST,
-      // handles polymorphic-tag chain, PascalCase wrapper recursion,
-      // conditional convergence, and yield-ancestor analysis in one
-      // pass. Replaces the previous six-path resolution sprawl
-      // (leaf-fallback, outer-wrapper override, polymorphic chain,
-      // classic-.hbs fallback, import-based outer-wrapper fallback,
-      // dual-tag heuristic).
-      if (emitCall) {
-        const declFile = findComponentDeclSourceFile(ts, checker, emitCall);
-        // Skip the same-package outer-wrapper override when the
-        // declaration ISN'T a top-level statement in `declFile` —
-        // typically a let-block-param (`{{let @x as |Group|}}` becomes
-        // `const [Group] = ...` inside the template-to-typescript
-        // output). For these, declFile is the consumer file and
-        // walking its outer `<template>` block returns whatever
-        // happens to be at the file's root (often unrelated to what
-        // `Group` actually renders).
-        const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
-        const decl = symbol?.declarations?.[0];
-        const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
-        const componentName = node.parent.sourceNode.tag;
+    // call. The site is the component's tag-name reference; the enclosing
+    // emitComponent call is what Glint emitted for this invocation. Read
+    // its return-type's `.element` property.
+    const key = site.key;
+    const emitCall = findEnclosingEmitComponent(ts, sourceFile, site.range);
+    const tag = emitCall ? resolveComponentElement(ts, checker, emitCall, elementTypeToTag) : null;
+    if (tag) {
+      componentTagMap.set(key, tag);
+    }
+    // Run the canonical resolver: walks the component's template AST,
+    // handles polymorphic-tag chain, PascalCase wrapper recursion,
+    // conditional convergence, and yield-ancestor analysis in one
+    // pass. Replaces the previous six-path resolution sprawl
+    // (leaf-fallback, outer-wrapper override, polymorphic chain,
+    // classic-.hbs fallback, import-based outer-wrapper fallback,
+    // dual-tag heuristic).
+    if (!emitCall) continue;
+    const declFile = findComponentDeclSourceFile(ts, checker, emitCall);
+    // Skip the same-package outer-wrapper override when the
+    // declaration ISN'T a top-level statement in `declFile` —
+    // typically a let-block-param (`{{let @x as |Group|}}` becomes
+    // `const [Group] = ...` inside the template-to-typescript
+    // output). For these, declFile is the consumer file and
+    // walking its outer `<template>` block returns whatever
+    // happens to be at the file's root (often unrelated to what
+    // `Group` actually renders).
+    const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
+    const decl = symbol ? ts.declarations(symbol)[0] : undefined;
+    const isTopLevel = decl ? isTopLevelDeclaration(ts, decl) : false;
+    const componentName = site.tag;
 
-        // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
-        // resolve via the binder's `{{yield (hash Step=...)}}` chain.
-        //
-        // Nested-dotted chains (HDS form-layout shape:
-        // `<HdsForm as |FORM|><FORM.Section as |FS|>
-        //  <FS.Header as |FSH|><FSH.Title>...`) — when the binder
-        // itself is a dotted tag (e.g. `FS.Header`), the importable
-        // root lives multiple hops up. Walk `binderSourceByKey` (now
-        // populated for dotted invocations too, see below) to find
-        // the parent's TemplateSource directly.
-        const dottedBinding = dottedBindings.get(key);
-        if (dottedBinding) {
-          const cached = binderSourceByKey.get(dottedBinding.binderKey);
-          let binderSource = cached?.source ?? null;
-          const cachedCurriedArgs = cached?.curriedArgs ?? new Map<string, string>();
-          if (!binderSource) {
-            binderSource = findTemplateSource({
-              consumerFile: filename,
-              componentName: dottedBinding.binderTag,
-              ts,
-            });
-          }
-          if (binderSource) {
-            // Args available at this hop, in increasing-priority order:
-            //   1. binderArgs (`<Binder @x="y" as |S|>` → consumer's
-            //      args on the outermost binder)
-            //   2. cachedCurriedArgs (curry literals collected at any
-            //      earlier hop, e.g. `(component Inner size="300")`)
-            //   3. invocation args on the dotted call itself
-            //      (`<S.Step @tag="li">`) — these should win against
-            //      curry/binder defaults since the consumer set them
-            //      most directly.
-            const invocationArgs = consumerArgsByLoc.get(key) ?? new Map();
-            const mergedArgs = new Map<string, string>([
-              ...dottedBinding.binderArgs,
-              ...cachedCurriedArgs,
-              ...invocationArgs,
-            ]);
-            const resolution = resolveYieldHashBinding({
-              parentSource: binderSource,
-              hashKey: dottedBinding.hashKey,
-              parentArgs: mergedArgs,
-              ts,
-            });
-            applyResolution(componentTagMap, componentAttrMap, key, resolution);
-            // Cache the SOURCE that this dotted invocation yields,
-            // so children whose binder is this dotted invocation
-            // (`<FS.Header>` whose binder is `<FORM.Section>`) can
-            // chain through to the next level without re-walking
-            // from the importable root. Also persist curriedArgs so
-            // the next-level hop can incorporate `(component Inner
-            // size="300")` literals into its mergedArgs.
-            const nextSource = resolveYieldHashBindingSource({
-              parentSource: binderSource,
-              hashKey: dottedBinding.hashKey,
-              parentArgs: mergedArgs,
-              ts,
-            });
-            if (nextSource) {
-              const accumulatedCurried = new Map([
-                ...cachedCurriedArgs,
-                ...nextSource.curriedArgs,
-              ]);
-              binderSourceByKey.set(key, { source: nextSource.source, curriedArgs: accumulatedCurried });
-            }
-          }
-        } else if (declFile && isTopLevel) {
-          // Skip non-top-level decls (let-block-params): walking their
-          // declaring file's template returns whatever's at the file's
-          // root, unrelated to what the binding renders.
-          const declRange = decl ? { start: decl.getStart(), end: decl.getEnd() } : null;
-          const source = findTemplateSource({
-            declFile,
-            declRange,
-            consumerFile: filename,
-            componentName,
-            ts,
-          });
-          // Cache for any dotted-children that name this invocation as
-          // their binder. Accept null too — a transparent binder result
-          // still belongs to this invocation, no point re-querying. No
-          // curried args at this level: this is a direct (non-dotted)
-          // invocation whose binder is its own template.
-          binderSourceByKey.set(key, { source, curriedArgs: new Map() });
-          if (source) {
-            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
-            const resolution = resolveTemplate(source, { consumerArgs, ts });
-            applyResolution(componentTagMap, componentAttrMap, key, resolution);
-          }
-        } else {
-          // Cross-package barrel: TS resolved through a re-export and
-          // we can't reach the source via decl. Fall back to consumer-
-          // side import resolution.
-          const source = findTemplateSource({
-            consumerFile: filename,
-            componentName,
-            ts,
-          });
-          if (source) {
-            const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
-            const resolution = resolveTemplate(source, { consumerArgs, ts });
-            applyResolution(componentTagMap, componentAttrMap, key, resolution);
-          }
+    // Dotted invocation `<S.Step>` from a `<Binder as |S|>` block:
+    // resolve via the binder's `{{yield (hash Step=...)}}` chain.
+    //
+    // Nested-dotted chains (HDS form-layout shape:
+    // `<HdsForm as |FORM|><FORM.Section as |FS|>
+    //  <FS.Header as |FSH|><FSH.Title>...`) — when the binder
+    // itself is a dotted tag (e.g. `FS.Header`), the importable
+    // root lives multiple hops up. Walk `binderSourceByKey` (now
+    // populated for dotted invocations too, see below) to find
+    // the parent's TemplateSource directly.
+    const dottedBinding = dottedBindings.get(key);
+    if (dottedBinding) {
+      const cachedBinder = binderSourceByKey.get(dottedBinding.binderKey);
+      let binderSource = cachedBinder?.source ?? null;
+      const cachedCurriedArgs = cachedBinder?.curriedArgs ?? new Map<string, string>();
+      if (!binderSource) {
+        binderSource = findTemplateSource({
+          consumerFile: filename,
+          componentName: dottedBinding.binderTag,
+          ts,
+        });
+      }
+      if (binderSource) {
+        // Args available at this hop, in increasing-priority order:
+        //   1. binderArgs (`<Binder @x="y" as |S|>` → consumer's
+        //      args on the outermost binder)
+        //   2. cachedCurriedArgs (curry literals collected at any
+        //      earlier hop, e.g. `(component Inner size="300")`)
+        //   3. invocation args on the dotted call itself
+        //      (`<S.Step @tag="li">`) — these should win against
+        //      curry/binder defaults since the consumer set them
+        //      most directly.
+        const invocationArgs = consumerArgsByLoc.get(key) ?? new Map();
+        const mergedArgs = new Map<string, string>([
+          ...dottedBinding.binderArgs,
+          ...cachedCurriedArgs,
+          ...invocationArgs,
+        ]);
+        const resolution = resolveYieldHashBinding({
+          parentSource: binderSource,
+          hashKey: dottedBinding.hashKey,
+          parentArgs: mergedArgs,
+          ts,
+        });
+        applyResolution(componentTagMap, componentAttrMap, key, resolution);
+        // Cache the SOURCE that this dotted invocation yields,
+        // so children whose binder is this dotted invocation
+        // (`<FS.Header>` whose binder is `<FORM.Section>`) can
+        // chain through to the next level without re-walking
+        // from the importable root. Also persist curriedArgs so
+        // the next-level hop can incorporate `(component Inner
+        // size="300")` literals into its mergedArgs.
+        const nextSource = resolveYieldHashBindingSource({
+          parentSource: binderSource,
+          hashKey: dottedBinding.hashKey,
+          parentArgs: mergedArgs,
+          ts,
+        });
+        if (nextSource) {
+          const accumulatedCurried = new Map([
+            ...cachedCurriedArgs,
+            ...nextSource.curriedArgs,
+          ]);
+          binderSourceByKey.set(key, { source: nextSource.source, curriedArgs: accumulatedCurried });
         }
       }
-    }
-
-    for (const child of node.children ?? []) {
-      walkMapping(child, spanTransformedStart);
-    }
-  }
-
-  for (const span of transformed.correlatedSpans) {
-    if (span.glimmerAstMapping) {
-      walkMapping(span.glimmerAstMapping, span.transformedStart);
+    } else if (declFile && isTopLevel) {
+      // Skip non-top-level decls (let-block-params): walking their
+      // declaring file's template returns whatever's at the file's
+      // root, unrelated to what the binding renders.
+      const declRange = decl ? opened.originalRange(decl) : null;
+      const source = findTemplateSource({
+        declFile,
+        declRange,
+        consumerFile: filename,
+        componentName,
+        ts,
+      });
+      // Cache for any dotted-children that name this invocation as
+      // their binder. Accept null too — a transparent binder result
+      // still belongs to this invocation, no point re-querying. No
+      // curried args at this level: this is a direct (non-dotted)
+      // invocation whose binder is its own template.
+      binderSourceByKey.set(key, { source, curriedArgs: new Map() });
+      if (source) {
+        const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+        const resolution = resolveTemplate(source, { consumerArgs, ts });
+        applyResolution(componentTagMap, componentAttrMap, key, resolution);
+      }
+    } else {
+      // Cross-package barrel: TS resolved through a re-export and
+      // we can't reach the source via decl. Fall back to consumer-
+      // side import resolution.
+      const source = findTemplateSource({
+        consumerFile: filename,
+        componentName,
+        ts,
+      });
+      if (source) {
+        const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
+        const resolution = resolveTemplate(source, { consumerArgs, ts });
+        applyResolution(componentTagMap, componentAttrMap, key, resolution);
+      }
     }
   }
 
@@ -1444,7 +969,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   }
 
   const result: ExtractionResult = { attrTypeMap, componentTagMap, componentAttrMap };
-  writeCache(filename, contents, tsconfigPath, result);
+  writeCache(filename, contents, tsconfigPath, backend.kind, result);
   return result;
 }
 
@@ -1461,10 +986,10 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
 // keeping the AST navigation in one place means callers stay in sync if
 // Glint's emitted shape changes.
 function getComponentSymbolFromEmitCall(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
+  ts: TsSyntax,
+  checker: CheckerLike,
   emitCall: TS.CallExpression,
-): TS.Symbol | null {
+): SymbolLike | null {
   const innerCall = emitCall.arguments[0];
   if (!innerCall || !ts.isCallExpression(innerCall)) return null;
   const resolveCall = innerCall.expression;
@@ -1481,12 +1006,12 @@ function getComponentSymbolFromEmitCall(
 
 // Resolve the source file containing a component's declaration.
 function findComponentDeclSourceFile(
-  ts: typeof TS,
-  checker: TS.TypeChecker,
+  ts: TsSyntax,
+  checker: CheckerLike,
   emitCall: TS.CallExpression,
 ): string | null {
   const symbol = getComponentSymbolFromEmitCall(ts, checker, emitCall);
-  const decl = symbol?.declarations?.[0];
+  const decl = symbol ? ts.declarations(symbol)[0] : undefined;
   if (!decl) return null;
   return decl.getSourceFile().fileName;
 }
@@ -1505,7 +1030,7 @@ function findComponentDeclSourceFile(
 // consumer's first `<template>` block returns whatever wrapper
 // happens to be there (often `<ul>` for a power-select-options-style
 // recursive template), not what `Group` actually renders.
-function isTopLevelDeclaration(ts: typeof TS, decl: TS.Declaration): boolean {
+function isTopLevelDeclaration(ts: TsSyntax, decl: TS.Declaration): boolean {
   // VariableDeclaration → VariableDeclarationList → VariableStatement
   // → SourceFile (when top-level).
   // ClassDeclaration / FunctionDeclaration etc. → directly child of
@@ -1534,9 +1059,9 @@ function isTopLevelDeclaration(ts: typeof TS, decl: TS.Declaration): boolean {
 // `emitComponent(__glintDSL__.resolve(Comp)({...}))`, and the surrounding
 // emitComponent's return type carries the rendered Element type.
 function findEnclosingEmitComponent(
-  ts: typeof TS,
+  ts: TsSyntax,
   sourceFile: TS.SourceFile,
-  range: { start: number; end: number },
+  range: VirtualRange,
 ): TS.CallExpression | null {
   let result: TS.CallExpression | undefined;
   function visit(node: TS.Node): void {
@@ -1545,13 +1070,7 @@ function findEnclosingEmitComponent(
     if (end <= range.start || start >= range.end) {
       return;
     }
-    if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.escapedText === 'emitComponent' &&
-      start <= range.start &&
-      end >= range.end
-    ) {
+    if (isDslCall(ts, node, ['emitComponent']) && start <= range.start && end >= range.end) {
       // Overwrite with each deeper match so we end up with the innermost
       // emitComponent call that contains the range.
       result = node;
