@@ -1,18 +1,26 @@
 {
   "solution": {
     "html-validate-ember": {
-      "impact": "patch",
-      "oldVersion": "0.7.3",
-      "newVersion": "0.7.4",
+      "impact": "minor",
+      "oldVersion": "0.7.4",
+      "newVersion": "0.8.0",
       "tagName": "latest",
       "constraints": [
         {
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
+        },
+        {
           "impact": "patch",
           "reason": "Appears in changelog section :bug: Bug Fix"
+        },
+        {
+          "impact": "patch",
+          "reason": "Appears in changelog section :house: Internal"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-05-21)\n\n* html-validate-ember 0.7.4 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#45](https://github.com/johanrd/html-validate-ember/pull/45) Resolve re-yielded block-param curried sub-components (fix wcag/h71 FP) ([@johanrd](https://github.com/johanrd))\n  * [#46](https://github.com/johanrd/html-validate-ember/pull/46) Suppress no-Glint element-permitted-content FPs on dotted table cells ([@johanrd](https://github.com/johanrd))\n  * [#43](https://github.com/johanrd/html-validate-ember/pull/43) Resolve component structural root through built-package exports ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-08-28)\n\n* html-validate-ember 0.8.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#47](https://github.com/johanrd/html-validate-ember/pull/47) recommended: disable noisy stylistic rules; demote prefer-native-element ([@johanrd](https://github.com/johanrd))\n  * [#48](https://github.com/johanrd/html-validate-ember/pull/48) Add a TypeScript 7 backend for Glint type extraction ([@johanrd](https://github.com/johanrd))\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#49](https://github.com/johanrd/html-validate-ember/pull/49) Match the template block of a semicolon-less TOC in multi-template files ([@johanrd](https://github.com/johanrd))\n\n#### :house: Internal\n* `html-validate-ember`\n  * [#24](https://github.com/johanrd/html-validate-ember/pull/24) Add ecosystem CI: regression-test the plugin against real-world Ember repos ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }
