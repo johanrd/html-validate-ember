@@ -1,0 +1,2590 @@
+{
+  "ref": "d8aadf144c22e64d7415144839f60538d54aa440",
+  "fileCount": 1309,
+  "findings": [
+    {
+      "file": "frontend/discourse/admin/components/admin-config-area-card-section.gjs",
+      "line": 31,
+      "column": 9,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
+      "line": 70,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
+      "line": 70,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
+      "line": 73,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-config-areas/flags.gjs",
+      "line": 73,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-editable-field.gjs",
+      "line": 38,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-editable-field.gjs",
+      "line": 50,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-penalty-post-action.gjs",
+      "line": 100,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-section-landing-item.gjs",
+      "line": 59,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-theme-editor.gjs",
+      "line": 163,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-theme-editor.gjs",
+      "line": 197,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-theme-editor.gjs",
+      "line": 231,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
+      "line": 43,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
+      "line": 44,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/admin-user-upcoming-changes.gjs",
+      "line": 45,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/edit-category-tab.gjs",
+      "line": 76,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-uploader.gjs",
+      "line": 155,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"multiple\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-uploader.gjs",
+      "line": 155,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"multiple\" has invalid value \"true\""
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-value-list.gjs",
+      "line": 164,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-value-list.gjs",
+      "line": 166,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-value-list.gjs",
+      "line": 167,
+      "column": 27,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"height\" has invalid value \"15px\""
+    },
+    {
+      "file": "frontend/discourse/admin/components/emoji-value-list.gjs",
+      "line": 168,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"width\" has invalid value \"15px\""
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/change-theme-source.gjs",
+      "line": 174,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"readonly\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/change-theme-source.gjs",
+      "line": 174,
+      "column": 35,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"readonly\" has invalid value \"true\""
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/install-theme.gjs",
+      "line": 439,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"readonly\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/install-theme.gjs",
+      "line": 439,
+      "column": 35,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"readonly\" has invalid value \"true\""
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/uploaded-image-list.gjs",
+      "line": 50,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/watched-word-testing.gjs",
+      "line": 162,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/modal/watched-word-testing.gjs",
+      "line": 183,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/editor/child-tree-node.gjs",
+      "line": 6,
+      "column": 5,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <a> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/editor/child-tree.gjs",
+      "line": 31,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/editor/tree-node.gjs",
+      "line": 53,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <a> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/editor/tree.gjs",
+      "line": 12,
+      "column": 9,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <a> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/types/string.gjs",
+      "line": 54,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "attr-case",
+      "message": "Attribute \"minLength\" should be lowercase"
+    },
+    {
+      "file": "frontend/discourse/admin/components/schema-setting/types/string.gjs",
+      "line": 55,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "attr-case",
+      "message": "Attribute \"maxLength\" should be lowercase"
+    },
+    {
+      "file": "frontend/discourse/admin/components/silence-details.gjs",
+      "line": 13,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/silence-details.gjs",
+      "line": 25,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/admin/components/site-settings/upload.gjs",
+      "line": 329,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <progress> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/themes-list-item.gjs",
+      "line": 82,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/admin/components/themes-list-item.gjs",
+      "line": 149,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/components/webhook-events.gjs",
+      "line": 268,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 13,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 13,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 16,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 16,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 21,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-customize-form-templates/index.gjs",
+      "line": 21,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-email-logs/bounced.gjs",
+      "line": 91,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-email-logs/rejected.gjs",
+      "line": 59,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-email/preview-digest.gjs",
+      "line": 46,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-email/preview-digest.gjs",
+      "line": 54,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 46,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 47,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 50,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 53,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 55,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-embedding/index.gjs",
+      "line": 60,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 30,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 33,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 34,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 35,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 36,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 37,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-emails.gjs",
+      "line": 38,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 44,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 47,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 48,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 51,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 54,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-ip-addresses.gjs",
+      "line": 57,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
+      "line": 27,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
+      "line": 30,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
+      "line": 31,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
+      "line": 32,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/screened-urls.gjs",
+      "line": 33,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 114,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 115,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 116,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 117,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 118,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 119,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 143,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 155,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 164,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 182,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-logs/staff-action-logs.gjs",
+      "line": 192,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
+      "line": 27,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
+      "line": 30,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-search-logs/index.gjs",
+      "line": 33,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-site-text/index.gjs",
+      "line": 31,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-site-text/index.gjs",
+      "line": 85,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 34,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 35,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 36,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 37,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 42,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 53,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 61,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 70,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 78,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 92,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 100,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 111,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 122,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 130,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 138,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 146,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 156,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/admin/templates/admin-user/tl3-requirements.gjs",
+      "line": 162,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/components/a11y/skip-links.gjs",
+      "line": 13,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/about-page.gjs",
+      "line": 251,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/about-page.gjs",
+      "line": 322,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/about-page.gjs",
+      "line": 325,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/admin-onboarding/modal/predefined-topics-options.gjs",
+      "line": 62,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "frontend/discourse/app/components/admin-onboarding/start-posting-option.gjs",
+      "line": 35,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "frontend/discourse/app/components/anonymous-topic-footer-buttons.gjs",
+      "line": 29,
+      "column": 10,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/avatar-uploader.gjs",
+      "line": 76,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/badge-card.gjs",
+      "line": 119,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 234,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 309,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 330,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/bookmark-list.gjs",
+      "line": 340,
+      "column": 27,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/bulk-actions/notification-level.gjs",
+      "line": 46,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-only.gjs",
+      "line": 89,
+      "column": 23,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-only.gjs",
+      "line": 99,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-only.gjs",
+      "line": 114,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-only.gjs",
+      "line": 148,
+      "column": 25,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-only.gjs",
+      "line": 158,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/categories-topic-list.gjs",
+      "line": 16,
+      "column": 12,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/composer-action-title.gjs",
+      "line": 159,
+      "column": 34,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/composer-container.gjs",
+      "line": 463,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/composer-container.gjs",
+      "line": 471,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/composer-container.gjs",
+      "line": 509,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/composer-messages/similar-topics.gjs",
+      "line": 14,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/d-editor-original-translation-preview.gjs",
+      "line": 49,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/d-icon-grid-picker/content.gjs",
+      "line": 310,
+      "column": 9,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/d-otp/index.gjs",
+      "line": 172,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/d-toggle-switch.gjs",
+      "line": 16,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "text-content",
+      "message": "<button> must have accessible text"
+    },
+    {
+      "file": "frontend/discourse/app/components/dialog-messages/confirm-session.gjs",
+      "line": 144,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/directory-item.gjs",
+      "line": 32,
+      "column": 58,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/directory-item.gjs",
+      "line": 42,
+      "column": 46,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/directory-item.gjs",
+      "line": 58,
+      "column": 54,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/discovery/topics.gjs",
+      "line": 226,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/docked-composer.gjs",
+      "line": 441,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"multiple\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/emoji-autocomplete-results.gjs",
+      "line": 36,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/emoji-autocomplete-results.gjs",
+      "line": 42,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
+      "line": 512,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
+      "line": 533,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/emoji-picker/content.gjs",
+      "line": 575,
+      "column": 23,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/flag-action-type.gjs",
+      "line": 110,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "multiple-labeled-controls",
+      "message": "<label> is associated with multiple controls"
+    },
+    {
+      "file": "frontend/discourse/app/components/flag-action-type.gjs",
+      "line": 118,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/flag-action-type.gjs",
+      "line": 148,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "multiple-labeled-controls",
+      "message": "<label> is associated with multiple controls"
+    },
+    {
+      "file": "frontend/discourse/app/components/flag-action-type.gjs",
+      "line": 156,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/form-template-field/multi-select.gjs",
+      "line": 36,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"multiple\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/generated-invite-link.gjs",
+      "line": 11,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-card-contents.gjs",
+      "line": 183,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-card-contents.gjs",
+      "line": 191,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-card-contents.gjs",
+      "line": 195,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-card.gjs",
+      "line": 34,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-manage-email-settings.gjs",
+      "line": 75,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-redundant-for",
+      "message": "Redundant \"for\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-manage-email-settings.gjs",
+      "line": 99,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "no-redundant-for",
+      "message": "Redundant \"for\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-member.gjs",
+      "line": 24,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-smtp-email-settings.gjs",
+      "line": 214,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-smtp-email-settings.gjs",
+      "line": 221,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/group-smtp-email-settings.gjs",
+      "line": 228,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/hashtag-autocomplete-results.gjs",
+      "line": 78,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/header/contents.gjs",
+      "line": 121,
+      "column": 26,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <nav> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/header/sidebar-toggle.gjs",
+      "line": 29,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/horizontal-overflow-nav.gjs",
+      "line": 154,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/horizontal-overflow-nav.gjs",
+      "line": 181,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/iframed-html.gjs",
+      "line": 17,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "element-required-attributes",
+      "message": "<iframe> is missing required \"title\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/link-to-input.gjs",
+      "line": 25,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/local-login-form.gjs",
+      "line": 186,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/local-login-form.gjs",
+      "line": 196,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/local-login-form.gjs",
+      "line": 233,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/mobile-nav.gjs",
+      "line": 87,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/auth-token.gjs",
+      "line": 74,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/avatar-selector.gjs",
+      "line": 185,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/bulk-topic-actions.gjs",
+      "line": 487,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/bulk-topic-actions.gjs",
+      "line": 546,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "no-redundant-for",
+      "message": "Redundant \"for\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/change-post-notice.gjs",
+      "line": 89,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/create-invite.gjs",
+      "line": 339,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/discard-draft.gjs",
+      "line": 27,
+      "column": 35,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/history/revision.gjs",
+      "line": 160,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/history/revision.gjs",
+      "line": 175,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/history/revision.gjs",
+      "line": 190,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/jump-to-post.gjs",
+      "line": 52,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/jump-to-post.gjs",
+      "line": 52,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"autofocus\" has invalid value \"true\""
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
+      "line": 299,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "no-redundant-for",
+      "message": "Redundant \"for\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/move-to-topic.gjs",
+      "line": 368,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "no-redundant-for",
+      "message": "Redundant \"for\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
+      "line": 199,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/reorder-categories.gjs",
+      "line": 200,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/second-factor-add-totp.gjs",
+      "line": 128,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/second-factor-add-totp.gjs",
+      "line": 130,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/second-factor-add-totp.gjs",
+      "line": 137,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/second-factor-add-totp.gjs",
+      "line": 142,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/sidebar-section-form.gjs",
+      "line": 562,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <table> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/modal/spreadsheet-editor.gjs",
+      "line": 409,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<h4> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/nested.gjs",
+      "line": 77,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/nested/context-view.gjs",
+      "line": 108,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/nested/sort-selector.gjs",
+      "line": 20,
+      "column": 5,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/notifications-tracking.gjs",
+      "line": 51,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/pinned-options.gjs",
+      "line": 48,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/post/meta-data/reply-to-tab.gjs",
+      "line": 33,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/post/meta-data/reply-to-tab.gjs",
+      "line": 36,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/related-messages.gjs",
+      "line": 42,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <aside> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/responsive-table.gjs",
+      "line": 7,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <table> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/reviewable/queued-post.gjs",
+      "line": 41,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/rich-hashtag-autocomplete-results.gjs",
+      "line": 73,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-menu/clear-button.gjs",
+      "line": 10,
+      "column": 5,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-menu/results/assistant-item.gjs",
+      "line": 152,
+      "column": 43,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-menu/results/random-quick-tip.gjs",
+      "line": 78,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-menu/results/types.gjs",
+      "line": 95,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-result-entries.gjs",
+      "line": 9,
+      "column": 37,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <ul> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/search-result-entry.gjs",
+      "line": 82,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/second-factor-form.gjs",
+      "line": 85,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/second-factor-input.gjs",
+      "line": 28,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/security-key-form.gjs",
+      "line": 35,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/selected-posts.gjs",
+      "line": 23,
+      "column": 33,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/selected-posts.gjs",
+      "line": 31,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/selected-posts.gjs",
+      "line": 74,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/common/custom-section.gjs",
+      "line": 70,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/common/custom-section.gjs",
+      "line": 86,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/categories-modal.gjs",
+      "line": 270,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/categories-modal.gjs",
+      "line": 295,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/modal.gjs",
+      "line": 84,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/modal.gjs",
+      "line": 84,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"autofocus\" has invalid value \"true\""
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/tags-modal.gjs",
+      "line": 201,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/edit-navigation-menu/tags-modal.gjs",
+      "line": 220,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/more-section-links.gjs",
+      "line": 84,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/more-section-links.gjs",
+      "line": 111,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
+      "line": 103,
+      "column": 32,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
+      "line": 119,
+      "column": 32,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/section-form-link.gjs",
+      "line": 137,
+      "column": 32,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <td> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/section-link.gjs",
+      "line": 246,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as a descendant of <a>"
+    },
+    {
+      "file": "frontend/discourse/app/components/sidebar/section-link.gjs",
+      "line": 313,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<button> element is not permitted as a descendant of <a>"
+    },
+    {
+      "file": "frontend/discourse/app/components/small-user-list.gjs",
+      "line": 57,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <ul> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/small-user-list.gjs",
+      "line": 64,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/small-user-list.gjs",
+      "line": 67,
+      "column": 19,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <li> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/small-user-list.gjs",
+      "line": 75,
+      "column": 19,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <li> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/subcategories-with-featured-topics.gjs",
+      "line": 62,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/suggested-topics.gjs",
+      "line": 21,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <aside> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/table-header-toggle.gjs",
+      "line": 111,
+      "column": 9,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-footer-buttons.gjs",
+      "line": 138,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/bulk-select-cell.gjs",
+      "line": 8,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/sortable-column.gjs",
+      "line": 87,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/sortable-column.gjs",
+      "line": 98,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/sortable-column.gjs",
+      "line": 99,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/sortable-column.gjs",
+      "line": 103,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/header/sortable-column.gjs",
+      "line": 120,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/item/topic-cell.gjs",
+      "line": 47,
+      "column": 35,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/new-list-header-controls.gjs",
+      "line": 41,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/new-list-header-controls.gjs",
+      "line": 52,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/new-list-header-controls.gjs",
+      "line": 63,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-list/participant-groups.gjs",
+      "line": 6,
+      "column": 5,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <ul> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-map/private-message-map.gjs",
+      "line": 120,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<a> element is not permitted as a descendant of <a>"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-status.gjs",
+      "line": 74,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-status.gjs",
+      "line": 88,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/topic-timer-info.gjs",
+      "line": 179,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h3>"
+    },
+    {
+      "file": "frontend/discourse/app/components/uppy-image-uploader.gjs",
+      "line": 257,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <progress> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-autocomplete-results.gjs",
+      "line": 119,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-info.gjs",
+      "line": 63,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "hidden-focusable",
+      "message": "aria-hidden cannot be used on focusable elements"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-info.gjs",
+      "line": 82,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-menu/icon-avatar.gjs",
+      "line": 15,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-menu/items-list.gjs",
+      "line": 117,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-menu/profile-tab-content.gjs",
+      "line": 120,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-menu/profile-tab-content.gjs",
+      "line": 191,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<hr> element is not permitted as content under <ul>"
+    },
+    {
+      "file": "frontend/discourse/app/components/user-preferences/user-api-keys.gjs",
+      "line": 55,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/helpers/element.gjs",
+      "line": 21,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/static/dev-tools/mobile-view/button.gjs",
+      "line": 20,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/static/dev-tools/plugin-outlet-debug/button.gjs",
+      "line": 20,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/static/dev-tools/safe-mode/button.gjs",
+      "line": 25,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/static/dev-tools/verbose-localization/button.gjs",
+      "line": 20,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/static/prosemirror/components/image-node-view.gjs",
+      "line": 605,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/static/wizard/components/wizard-field.gjs",
+      "line": 57,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/application.gjs",
+      "line": 92,
+      "column": 48,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <main> element"
+    },
+    {
+      "file": "frontend/discourse/app/templates/discovery/categories.gjs",
+      "line": 41,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 41,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 45,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 147,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 149,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 150,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attr-case",
+      "message": "Attribute \"ariaLabel\" should be lowercase"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 216,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "frontend/discourse/app/templates/full-page-search.gjs",
+      "line": 263,
+      "column": 31,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 40,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 40,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 41,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 41,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 42,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 42,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 43,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 43,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 44,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 44,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 45,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/group/manage/logs.gjs",
+      "line": 45,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h63",
+      "message": "<th> element must have a valid scope attribute: row, col, rowgroup or colgroup"
+    },
+    {
+      "file": "frontend/discourse/app/templates/invites/show.gjs",
+      "line": 108,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/login.gjs",
+      "line": 42,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-required-attributes",
+      "message": "<img> is missing required \"src\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/templates/login.gjs",
+      "line": 42,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "wcag/h37",
+      "message": "<img> is missing required \"alt\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/templates/password-reset.gjs",
+      "line": 21,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences.gjs",
+      "line": 128,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/email.gjs",
+      "line": 18,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/navigation-menu.gjs",
+      "line": 10,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/security.gjs",
+      "line": 20,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/security.gjs",
+      "line": 45,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/security.gjs",
+      "line": 143,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/preferences/security.gjs",
+      "line": 160,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/review/topics.gjs",
+      "line": 27,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/review/topics.gjs",
+      "line": 28,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/review/topics.gjs",
+      "line": 29,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/review/topics.gjs",
+      "line": 30,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/second-factor-auth.gjs",
+      "line": 58,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/signup.gjs",
+      "line": 78,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"autofocus\" should omit value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/tags/index.gjs",
+      "line": 113,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/tags/index.gjs",
+      "line": 117,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/topic.gjs",
+      "line": 138,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user-private-messages/tags/index.gjs",
+      "line": 15,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user-private-messages/tags/index.gjs",
+      "line": 20,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user-topics-list.gjs",
+      "line": 42,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"href\" is missing value"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user/summary.gjs",
+      "line": 290,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user/summary.gjs",
+      "line": 291,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/app/templates/user/summary.gjs",
+      "line": 292,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<th> element is not permitted as content under <thead>"
+    },
+    {
+      "file": "frontend/discourse/select-kit/components/selected-choice.gjs",
+      "line": 51,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    }
+  ]
+}

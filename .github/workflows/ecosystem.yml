@@ -1,0 +1,141 @@
+name: ecosystem
+
+on:
+  pull_request:
+    # `labeled` is included so that adding the `run-ecosystem-ci` label *after* a PR is
+    # opened kicks off a run — the label does NOT need to exist at creation time.
+    # `opened`/`synchronize`/`reopened` are the defaults; with the label gate in
+    # the job's `if:` below, an unlabeled PR triggers the event but skips the job.
+    types: [opened, synchronize, reopened, labeled]
+    branches: [main, master]
+  workflow_dispatch:
+
+# Cancel in-flight ecosystem runs when a PR force-pushes — clones are
+# expensive and the only result we care about is the latest one.
+concurrency:
+  group: ecosystem-${{ github.ref }}
+  cancel-in-progress: true
+
+# Needed so the job can push refreshed baselines back to the PR branch.
+permissions:
+  contents: write
+
+jobs:
+  ecosystem:
+    # This is a ~20-min clone-and-install marathon (12 real-world targets get
+    # cloned + their deps installed for Glint type-aware extraction), so we
+    # don't pay it on every PR. Opt in per-PR with the `run-ecosystem-ci`
+    # label, or run it by hand via the Actions tab (workflow_dispatch).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'run-ecosystem-ci')
+    runs-on: ubuntu-latest
+    # Generous because targets get cloned + their deps installed for Glint
+    # type-aware extraction. First run is the slow path (cold caches);
+    # subsequent runs hit the pnpm store + clone cache and are much faster.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the PR's head branch (not the detached merge ref) so the
+          # refreshed-baseline commit below can be pushed back to it. Empty on
+          # workflow_dispatch, where checkout falls back to the default branch.
+          # Note: the auto-commit path assumes a same-repo PR — fork PRs get a
+          # read-only token and can't be pushed to (a non-issue for this repo,
+          # where only the maintainer applies the `run-ecosystem-ci` label).
+          ref: ${{ github.head_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      # Targets pin their package manager via package.json#packageManager
+      # (e.g. cardstack-ui-components → yarn). Corepack routes the `yarn`
+      # / `pnpm` shims to the pinned version instead of the runner's
+      # global yarn 1.x — without it, `installDeps` falls back to
+      # no-Glint validation for those targets and the baseline silently
+      # loses Glint-resolved findings.
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      # Cache target repo clones AND their installed node_modules across runs.
+      # The exact key tracks the pinned SHAs (via targets.json); `restore-keys`
+      # lets a SHA bump warm-start from the previous cache instead of a cold
+      # clone+install. Reuse is safe: run.ts re-fetches + re-checks-out the
+      # pinned ref and re-runs `install --frozen-lockfile` on every run, so the
+      # cached node_modules is always reconciled to the checked-out lockfile —
+      # the cache is only ever a head start, never a stale baseline. The pnpm
+      # store itself is cached by setup-node's `cache: pnpm` (above) against this
+      # repo's lockfile, so target installs reuse the content-addressed store.
+      - name: Cache target clones + node_modules
+        uses: actions/cache@v4
+        with:
+          path: ecosystem/.cache
+          key: ecosystem-clones-${{ hashFiles('ecosystem/targets.json') }}
+          restore-keys: |
+            ecosystem-clones-
+
+      # The contract (run.ts, default --check): exit 1 if any target's findings
+      # drift from its committed baseline. We don't fail here — `continue-on-error`
+      # lets the following steps capture the drift, regenerate the baselines, and
+      # commit them back so the baseline JSON diff is reviewable inline on the PR.
+      - name: Check ecosystem baselines
+        id: check
+        continue-on-error: true
+        run: pnpm run ecosystem:check
+
+      # Regenerate baselines from current findings and surface the delta in the
+      # run summary (works for both PRs and manual dispatch).
+      - name: Refresh baselines on drift
+        if: steps.check.outcome == 'failure'
+        run: |
+          pnpm run ecosystem:update
+          if git diff --quiet -- ecosystem/baselines; then
+            echo "Drift reported but no baseline changes to write — likely a transformer crash; check the logs above." >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Ecosystem baseline changes"
+              echo
+              echo '```'
+              git --no-pager diff --stat -- ecosystem/baselines
+              echo '```'
+              echo
+              echo '<details><summary>Full baseline diff</summary>'
+              echo
+              echo '```diff'
+              git --no-pager diff -- ecosystem/baselines
+              echo '```'
+              echo
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Commit the refreshed baselines onto the PR branch so the diff lands in
+      # the PR's "Files changed". Pushes made with the default GITHUB_TOKEN do
+      # NOT trigger a new workflow run, so this can't loop. Gated to same-repo
+      # PRs: fork PRs get a read-only token and can't be pushed to, and making
+      # the condition explicit keeps the workflow's trust model clear.
+      - name: Commit refreshed baselines to PR
+        if: >-
+          steps.check.outcome == 'failure' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git diff --quiet -- ecosystem/baselines && exit 0
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ecosystem/baselines
+          git commit -m "ecosystem: refresh baselines"
+          git push
+
+      # Keep the job red on drift so an unreviewed change can't sail through —
+      # the baseline diff committed above is the thing to review.
+      - name: Fail if baselines drifted
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::error::Ecosystem findings drifted from committed baselines. Review the baseline diff (committed to this PR / shown in the run summary); merge if the change is intended."
+          exit 1

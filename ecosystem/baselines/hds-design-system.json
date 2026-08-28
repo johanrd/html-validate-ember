@@ -1,0 +1,2174 @@
+{
+  "ref": "9db0ff66136c04789d756d7b1454f3e48fc635ae",
+  "fileCount": 859,
+  "findings": [
+    {
+      "file": "packages/components/src/components/hds/advanced-table/th-reorder-handle.gts",
+      "line": 112,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/advanced-table/th.gts",
+      "line": 498,
+      "column": 20,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/index.gts",
+      "line": 70,
+      "column": 40,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-footer/legal-links.gts",
+      "line": 68,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/app-side-nav/list/index.gts",
+      "line": 58,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "packages/components/src/components/hds/card/container.gts",
+      "line": 185,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <li> element"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/list-item/radio.gts",
+      "line": 46,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
+      "line": 135,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
+      "line": 139,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
+      "line": 143,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/toggle/button.gts",
+      "line": 146,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/dropdown/toggle/icon.gts",
+      "line": 150,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/stepper/list/index.gts",
+      "line": 57,
+      "column": 34,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "packages/components/src/components/hds/stepper/nav/step.gts",
+      "line": 223,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/stepper/nav/step.gts",
+      "line": 226,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "packages/components/src/components/hds/tabs/tab.gts",
+      "line": 148,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/mock/app/main/form-complex.gts",
+      "line": 270,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/mock/app/main/generic-form/partials/add-policy.gts",
+      "line": 120,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
+      "line": 87,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"selected\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/mock/app/main/generic-form/partials/add-user.gts",
+      "line": 87,
+      "column": 33,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"selected\" has invalid value \"true\""
+    },
+    {
+      "file": "showcase/app/components/mock/app/main/table-complex.gts",
+      "line": 98,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/accordion/sub-sections/content.gts",
+      "line": 124,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 520,
+      "column": 46,
+      "severity": "error",
+      "ruleId": "no-dup-class",
+      "message": "Class \"hds-advanced-table__thead\" duplicated"
+    },
+    {
+      "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
+      "line": 1120,
+      "column": 16,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/application-state/sub-sections/container.gts",
+      "line": 54,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
+      "line": 29,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
+      "line": 29,
+      "column": 59,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge/sub-sections/content.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/badge/sub-sections/content.gts",
+      "line": 34,
+      "column": 59,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
+      "line": 32,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/code-fragments/with-generic-content.gts",
+      "line": 37,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
+      "line": 31,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/states.gts",
+      "line": 39,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 58,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/breadcrumb/sub-sections/truncation-options.gts",
+      "line": 63,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/copy/button/code-fragments/with-modal.gts",
+      "line": 47,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h32",
+      "message": "<form> element must have a submit button"
+    },
+    {
+      "file": "showcase/app/components/page-components/copy/snippet/sub-sections/containers.gts",
+      "line": 48,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 28,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 42,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 63,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 86,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 111,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 127,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 146,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 164,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 183,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 199,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
+      "line": 218,
+      "column": 11,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-complex-table.gts",
+      "line": 380,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-table.gts",
+      "line": 172,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 37,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 49,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 61,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
+      "line": 100,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 24,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 28,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 37,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 41,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 44,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 52,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 53,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 66,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 68,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 79,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 81,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 90,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 101,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 112,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 126,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<legend> element is not permitted as content under <div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/base-elements/sub-sections/legend.gts",
+      "line": 128,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 29,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 55,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 68,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 74,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 75,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/checkbox/sub-sections/base-control.gts",
+      "line": 82,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-demo-instructions.gts",
+      "line": 22,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/code-fragments/with-demo-instructions.gts",
+      "line": 76,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 46,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <legend>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 47,
+      "column": 26,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 53,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 54,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 58,
+      "column": 23,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/key-value-inputs/sub-sections/containers.gts",
+      "line": 59,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <h1>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 46,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 48,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 50,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 61,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 63,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/containers.gts",
+      "line": 65,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/layout/sub-sections/content.gts",
+      "line": 163,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/code-fragments/with-group-content.gts",
+      "line": 80,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/code-fragments/with-group-content.gts",
+      "line": 83,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 36,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 39,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 52,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 58,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 77,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 80,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 90,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 93,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 103,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 106,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 116,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 119,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 122,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 125,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 135,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 138,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio-card/sub-sections/group-control.gts",
+      "line": 141,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 29,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 48,
+      "column": 31,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 53,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 59,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 60,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"disabled\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/radio/sub-sections/base-control.gts",
+      "line": 78,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/select/sub-sections/field-control.gts",
+      "line": 164,
+      "column": 9,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 158,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 162,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/after-options.gts",
+      "line": 176,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 80,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 111,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 144,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 176,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 207,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/base-elements.gts",
+      "line": 240,
+      "column": 15,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 33,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 45,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 61,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 76,
+      "column": 17,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 80,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 91,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 105,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <li> is implicitly closed by sibling"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 119,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 120,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/form/super-select/sub-sections/option-group.gts",
+      "line": 131,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</li>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 26,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 43,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 51,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 65,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 74,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 89,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 113,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/basic.gts",
+      "line": 135,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 28,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 52,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 70,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 87,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/complex.gts",
+      "line": 116,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 29,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 46,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/page-header/sub-sections/edge-cases.gts",
+      "line": 70,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "showcase/app/components/page-components/pagination/code-fragments/with-user-table.gts",
+      "line": 48,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 114,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 124,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 127,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 137,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 140,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 150,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 159,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 163,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 169,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 178,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 262,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <label>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 310,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 320,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 343,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 376,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 451,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 460,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 465,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 475,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 480,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
+      "line": 490,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
+      "line": 121,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/options.gts",
+      "line": 137,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 60,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 69,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 70,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 79,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 80,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 88,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/states.gts",
+      "line": 124,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/toggle.gts",
+      "line": 123,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-cluster-data.gts",
+      "line": 53,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
+      "line": 192,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/sorting.gts",
+      "line": 145,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-music-data.gts",
+      "line": 26,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-selectable-data.gts",
+      "line": 42,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
+      "line": 60,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
+      "line": 86,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 57,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 95,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 125,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 151,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 176,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 204,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 224,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 253,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 287,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 302,
+      "column": 20,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 323,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 338,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 363,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 498,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 543,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
+      "line": 588,
+      "column": 14,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 46,
+      "column": 22,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 93,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 148,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 186,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 207,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
+      "line": 266,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/data-model.gts",
+      "line": 27,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/layout.gts",
+      "line": 72,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/multi-select.gts",
+      "line": 62,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
+      "line": 217,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
+      "line": 300,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/table/sub-sections/tooltip.gts",
+      "line": 33,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 59,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 68,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 203,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 240,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 274,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 287,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 300,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
+      "line": 383,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 405,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 414,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 430,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 439,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 452,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 461,
+      "column": 40,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 513,
+      "column": 28,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 561,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 795,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 804,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 805,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 814,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 815,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 823,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 838,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 889,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 913,
+      "column": 16,
+      "severity": "error",
+      "ruleId": "prefer-tbody",
+      "message": "Prefer to wrap <tr> elements in <tbody>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 1041,
+      "column": 10,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 1127,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<p> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
+      "line": 1135,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <button>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 23,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "showcase/app/components/page-layouts/flex/sub-sections/display.gts",
+      "line": 39,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "website/app/components/doc/cards/deck.gts",
+      "line": 36,
+      "column": 55,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/code-group/index.gts",
+      "line": 292,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "website/app/components/doc/code-group/language-picker.gts",
+      "line": 26,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "wcag/h71",
+      "message": "<fieldset> must have a <legend> as the first child"
+    },
+    {
+      "file": "website/app/components/doc/color-card/index.gts",
+      "line": 48,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/color-swatch/index.gts",
+      "line": 57,
+      "column": 50,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/component-api/property.gts",
+      "line": 52,
+      "column": 64,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/component-api/property.gts",
+      "line": 72,
+      "column": 62,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/content/hds-principles/index.gts",
+      "line": 55,
+      "column": 46,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/font-helpers-list/index.gts",
+      "line": 22,
+      "column": 45,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/font-helpers-list/index.gts",
+      "line": 25,
+      "column": 55,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"listitem\" on <li>"
+    },
+    {
+      "file": "website/app/components/doc/icons-list/grid.gts",
+      "line": 32,
+      "column": 43,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/page/footer.gts",
+      "line": 18,
+      "column": 45,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "website/app/components/doc/page/header/index.gts",
+      "line": 39,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/page/sidebar.gjs",
+      "line": 258,
+      "column": 55,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/page/sidecar.gts",
+      "line": 33,
+      "column": 11,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" is strictly allowed but is not recommended to be used on this element"
+    },
+    {
+      "file": "website/app/components/doc/table-of-contents/collapsible-item.gjs",
+      "line": 47,
+      "column": 49,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/table-of-contents/index.gjs",
+      "line": 16,
+      "column": 43,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/table-of-contents/index.gjs",
+      "line": 56,
+      "column": 53,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/tokens-list/grid.gts",
+      "line": 22,
+      "column": 41,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/components/doc/vars-list/index.gts",
+      "line": 16,
+      "column": 35,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    },
+    {
+      "file": "website/app/templates/index.hbs",
+      "line": 37,
+      "column": 44,
+      "severity": "error",
+      "ruleId": "no-redundant-role",
+      "message": "Redundant role \"list\" on <ul>"
+    }
+  ]
+}

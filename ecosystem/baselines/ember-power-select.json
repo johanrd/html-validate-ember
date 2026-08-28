@@ -1,0 +1,278 @@
+{
+  "ref": "bf21b6c08ff87c1921f9fb19d200f994fdfea28c",
+  "fileCount": 114,
+  "findings": [
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 53,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 60,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 67,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 74,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 81,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 88,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/components/code-example.gts",
+      "line": 96,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "docs/app/templates/public-pages/cookbook/css-animations.gts",
+      "line": 48,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by sibling"
+    },
+    {
+      "file": "docs/app/templates/public-pages/cookbook/css-animations.gts",
+      "line": 56,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/architecture.gts",
+      "line": 16,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/architecture.gts",
+      "line": 24,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/architecture.gts",
+      "line": 84,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/architecture.gts",
+      "line": 102,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/custom-search-action.gts",
+      "line": 33,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/custom-search-action.gts",
+      "line": 59,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/installation.gts",
+      "line": 13,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/installation.gts",
+      "line": 17,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/migrate-7-0-to-8-0.gts",
+      "line": 17,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/migrate-7-0-to-8-0.gts",
+      "line": 21,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/migrate-8-0-to-9-0.gts",
+      "line": 6,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/migrate-8-0-to-9-0.gts",
+      "line": 27,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/troubleshooting.gts",
+      "line": 30,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<br> element is not permitted as content under <ol>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 8,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 16,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 33,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 52,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 82,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 98,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 102,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "docs/app/templates/public-pages/docs/typescript.gts",
+      "line": 116,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "src/components/power-select/no-matches-message.gts",
+      "line": 26,
+      "column": 46,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "src/components/power-select/search-message.gts",
+      "line": 23,
+      "column": 44,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <select> element"
+    },
+    {
+      "file": "src/components/power-select/trigger.gts",
+      "line": 175,
+      "column": 19,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "src/components/power-select/trigger.gts",
+      "line": 284,
+      "column": 13,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    }
+  ]
+}

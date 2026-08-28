@@ -1,0 +1,230 @@
+{
+  "ref": "43ac579887f0722e0dc321392ecbab0affb49f34",
+  "fileCount": 73,
+  "findings": [
+    {
+      "file": "app/components/index/ember-addons.hbs",
+      "line": 41,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<pre> element is not permitted as content under <code>"
+    },
+    {
+      "file": "app/templates/community/index.hbs",
+      "line": 118,
+      "column": 92,
+      "severity": "error",
+      "ruleId": "no-deprecated-attr",
+      "message": "Attribute \"frameborder\" is deprecated on <iframe> element"
+    },
+    {
+      "file": "app/templates/community/meetups/index.hbs",
+      "line": 67,
+      "column": 52,
+      "severity": "error",
+      "ruleId": "no-deprecated-attr",
+      "message": "Attribute \"align\" is deprecated on <img> element"
+    },
+    {
+      "file": "app/templates/editions/polaris.hbs",
+      "line": 21,
+      "column": 4,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "app/templates/editions/polaris.hbs",
+      "line": 37,
+      "column": 237,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "app/templates/learn/index.hbs",
+      "line": 3,
+      "column": 24,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-labelledby\" cannot be used on this element"
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 103,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 108,
+      "column": 19,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"checked\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 118,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 132,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 146,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 160,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 174,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "form-dup-name",
+      "message": "Duplicate form control name \"Field8\""
+    },
+    {
+      "file": "app/templates/mascots/commission.hbs",
+      "line": 207,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "prefer-button",
+      "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
+    },
+    {
+      "file": "app/templates/mascots/faq.hbs",
+      "line": 41,
+      "column": 65,
+      "severity": "error",
+      "ruleId": "attribute-allowed-values",
+      "message": "Attribute \"width\" has invalid value \"90%\""
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 18,
+      "column": 7,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"novalidate\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 41,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"required\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 58,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"required\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 108,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"required\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 135,
+      "column": 15,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"required\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 159,
+      "column": 17,
+      "severity": "error",
+      "ruleId": "attribute-boolean-style",
+      "message": "Attribute \"required\" should omit value"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 184,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "no-conditional-comment",
+      "message": "Use of conditional comments are deprecated"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 190,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "no-conditional-comment",
+      "message": "Use of conditional comments are deprecated"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 192,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "no-conditional-comment",
+      "message": "Use of conditional comments are deprecated"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 198,
+      "column": 25,
+      "severity": "error",
+      "ruleId": "no-conditional-comment",
+      "message": "Use of conditional comments are deprecated"
+    },
+    {
+      "file": "app/templates/mascots/payment.hbs",
+      "line": 276,
+      "column": 21,
+      "severity": "error",
+      "ruleId": "prefer-button",
+      "message": "Prefer to use <button> instead of <input type=\"submit\"> when adding buttons"
+    },
+    {
+      "file": "app/templates/releases/lts.hbs",
+      "line": 66,
+      "column": 2,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "app/templates/releases/lts.hbs",
+      "line": 73,
+      "column": 2,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    }
+  ]
+}

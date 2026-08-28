@@ -1,0 +1,78 @@
+{
+  "ref": "589ad84bdf3afe4f35628f70497d720b9a89c193",
+  "fileCount": 31,
+  "findings": [
+    {
+      "file": "app/templates/components/cta.hbs",
+      "line": 1,
+      "column": 2,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/emails.hbs",
+      "line": 5,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/file-upload-dialog.hbs",
+      "line": 20,
+      "column": 71,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<div> element is not permitted as content under <span>"
+    },
+    {
+      "file": "app/templates/components/file-upload-dialog.hbs",
+      "line": 21,
+      "column": 101,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <button> element"
+    },
+    {
+      "file": "app/templates/components/password-field/visibility-toggle.hbs",
+      "line": 1,
+      "column": 2,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/phone-number-fields.hbs",
+      "line": 10,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "app/templates/components/street-addresses.hbs",
+      "line": 9,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-button-type",
+      "message": "<button> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 6,
+      "column": 75,
+      "severity": "error",
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "tests/dummy/app/templates/examples/configurator.hbs",
+      "line": 7,
+      "column": 75,
+      "severity": "error",
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    }
+  ]
+}

@@ -55,7 +55,9 @@
     "test:watch": "vitest",
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "validate": "node dist/run.js",
-    "test:tsgo": "vitest run -c vitest.tsgo.config.ts"
+    "test:tsgo": "vitest run -c vitest.tsgo.config.ts",
+    "ecosystem:check": "tsx ecosystem/run.ts",
+    "ecosystem:update": "tsx ecosystem/run.ts --update"
   },
   "dependencies": {
     "@embroider/shared-internals": "^3.0.2",

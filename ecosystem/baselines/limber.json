@@ -1,0 +1,270 @@
+{
+  "ref": "b7d73e54c33e2dc51f1a778985851b82dcada431",
+  "fileCount": 67,
+  "findings": [
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 155,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/components/verify-danger.gts",
+      "line": 162,
+      "column": 12,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 87,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <dl>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 102,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 109,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 123,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 125,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 142,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 159,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/embedding.gts",
+      "line": 178,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 130,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by adjacent <ul>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 150,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 154,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 184,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 196,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 203,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 207,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 236,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 239,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 253,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 257,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 272,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 276,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/repl-sdk.gts",
+      "line": 291,
+      "column": 6,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 14,
+      "column": 27,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 17,
+      "column": 27,
+      "severity": "error",
+      "ruleId": "aria-label-misuse",
+      "message": "\"aria-label\" cannot be used on this element"
+    },
+    {
+      "file": "apps/repl/app/templates/docs/support/api.gts",
+      "line": 175,
+      "column": 18,
+      "severity": "error",
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/status.gts",
+      "line": 44,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/layout/status.gts",
+      "line": 52,
+      "column": 10,
+      "severity": "error",
+      "ruleId": "unique-landmark",
+      "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
+    },
+    {
+      "file": "apps/repl/app/templates/edit/share.gts",
+      "line": 167,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-input-type",
+      "message": "<input> is missing recommended \"type\" attribute"
+    },
+    {
+      "file": "apps/repl/app/templates/error-404.gts",
+      "line": 12,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "no-implicit-close",
+      "message": "Element <p> is implicitly closed by parent </div>"
+    },
+    {
+      "file": "apps/repl/app/templates/error-404.gts",
+      "line": 26,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "close-order",
+      "message": "Stray end tag '</p>'"
+    },
+    {
+      "file": "apps/tutorial/app/components/selection.gts",
+      "line": 50,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<style> element is not permitted as content under <label>"
+    }
+  ]
+}

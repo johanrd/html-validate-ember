@@ -1,0 +1,46 @@
+{
+  "ref": "b8a890e912e74a0241dbb321ca8750c9b7ce3ffb",
+  "fileCount": 58,
+  "findings": [
+    {
+      "file": "ember-primitives/src/components/accordion/content.gts",
+      "line": 18,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <section> element"
+    },
+    {
+      "file": "ember-primitives/src/components/accordion/header.gts",
+      "line": 20,
+      "column": 5,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <hN> element"
+    },
+    {
+      "file": "ember-primitives/src/components/one-time-password/input.gts",
+      "line": 183,
+      "column": 8,
+      "severity": "error",
+      "ruleId": "element-permitted-content",
+      "message": "<style> element is not permitted as content under <fieldset>"
+    },
+    {
+      "file": "ember-primitives/src/components/progress.gts",
+      "line": 134,
+      "column": 7,
+      "severity": "warning",
+      "ruleId": "prefer-native-element",
+      "message": "Prefer to use the native <progress> element"
+    },
+    {
+      "file": "ember-primitives/src/components/rating/stars.gts",
+      "line": 53,
+      "column": 13,
+      "severity": "error",
+      "ruleId": "input-attributes",
+      "message": "Attribute \"readonly\" is not allowed on <input type=\"radio\">"
+    }
+  ]
+}

@@ -121,6 +121,8 @@ templates/admin.gts:18: error [input-attributes] Attribute "readonly" not allowe
 | `eslint-plugin-ember` / `ember-template-lint` | Is this idiomatic Ember? Invocation style, reactivity, modifier API, built-in components, plus JS/TS-side rules from eslint-plugin-ember and some overlap of HTML spec and ARIA rules |
 | `html-validate-ember` (this plugin) | Is the rendered HTML spec-correct and accessible? — content model, ARIA / WCAG, form correctness, attribute validity, duplicate IDs, unique landmarks. |
 
+See [ECOSYSTEM-OVERLAP.md](https://github.com/johanrd/html-validate-ember/blob/main/ECOSYSTEM-OVERLAP.md)
+
 ---
 
 ## Inline errors in VS Code
