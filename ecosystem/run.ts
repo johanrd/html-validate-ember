@@ -563,6 +563,15 @@ async function main(): Promise<void> {
       regressions++;
       continue;
     }
+    // Fewer (or more) files than the baseline saw means the glob or the
+    // file lister changed, not the plugin; a findings diff would hide it.
+    if (baseline.fileCount !== files) {
+      process.stderr.write(
+        `  baseline covered ${baseline.fileCount} files but this run found ${files} — refusing to diff; re-run with --update after vetting\n`,
+      );
+      regressions++;
+      continue;
+    }
     const { added, removed } = diffFindings(baseline.findings, findings);
     if (added.length === 0 && removed.length === 0) {
       process.stderr.write(`  no diff vs baseline\n`);
