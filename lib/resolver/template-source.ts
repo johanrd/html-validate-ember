@@ -279,8 +279,11 @@ function readGts(
   for (const block of templates) {
     if (!block.range) continue;
     const start = block.range.startUtf16Codepoint;
-    const end = block.range.endUtf16Codepoint;
-    if (start >= resolvedRange.start && end <= resolvedRange.end) {
+    if (start < resolvedRange.start) continue;
+    // `const X = <template>` without a semicolon: the blanked initializer
+    // leaves the statement ending at `=`, so the block follows the range
+    // across whitespace only.
+    if (start < resolvedRange.end || /^\s*$/.test(contents.slice(resolvedRange.end, start))) {
       return { content: block.contents, origin: file, kind };
     }
   }

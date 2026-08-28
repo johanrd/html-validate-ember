@@ -56,6 +56,14 @@ describe('findTemplateSource', () => {
     expect(result?.content).not.toContain('<div ...attributes');
   });
 
+  test('multi-template file: expression-form TOCs without semicolons resolve by name', () => {
+    const declFile = path.join(FIXTURES, 'toc-expression-no-semicolon.gts');
+    const bar = findTemplateSource({ declFile, componentName: 'Bar', ts });
+    expect(bar?.content).toContain("<div class='bar'>");
+    const baz = findTemplateSource({ declFile, componentName: 'Baz', ts });
+    expect(baz?.content).toContain("<span class='baz'>");
+  });
+
   test('reads .hbs source directly', () => {
     const declFile = path.join(FIXTURES, 'node_modules/classic-card-addon/addon/components/classic-card.hbs');
     const result = findTemplateSource({ declFile, ts });
