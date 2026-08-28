@@ -1,5 +1,25 @@
 # Changelog
 
+## Release (2026-08-28)
+
+* html-validate-ember 0.8.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#47](https://github.com/johanrd/html-validate-ember/pull/47) recommended: disable noisy stylistic rules; demote prefer-native-element ([@johanrd](https://github.com/johanrd))
+  * [#48](https://github.com/johanrd/html-validate-ember/pull/48) Add a TypeScript 7 backend for Glint type extraction ([@johanrd](https://github.com/johanrd))
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#49](https://github.com/johanrd/html-validate-ember/pull/49) Match the template block of a semicolon-less TOC in multi-template files ([@johanrd](https://github.com/johanrd))
+
+#### :house: Internal
+* `html-validate-ember`
+  * [#24](https://github.com/johanrd/html-validate-ember/pull/24) Add ecosystem CI: regression-test the plugin against real-world Ember repos ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-05-21)
 
 * html-validate-ember 0.7.4 (patch)
