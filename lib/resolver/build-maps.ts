@@ -6,8 +6,7 @@
 //     given just the consumer file path.
 
 import { traverse, type AST } from '@glimmer/syntax';
-import { createRequire } from 'node:module';
-import type * as TS from 'typescript';
+import { syntaxFor } from '../backend/index.js';
 
 import { BUILTIN_COMPONENTS } from '../builtin-components.js';
 import type { ComponentAttrs } from '../builtin-components.js';
@@ -17,16 +16,6 @@ import { chooseSubstitution, resolveTemplate, isResolvableWrapperTag } from './w
 
 const BUILTIN_COMPONENT_NAMES: ReadonlySet<string> = new Set(BUILTIN_COMPONENTS.keys());
 
-let cachedTs: typeof TS | null | undefined;
-function loadTs(): typeof TS | null {
-  if (cachedTs !== undefined) return cachedTs;
-  try {
-    cachedTs = createRequire(import.meta.url)('typescript') as typeof TS;
-  } catch {
-    cachedTs = null;
-  }
-  return cachedTs;
-}
 
 export function buildResolutionMaps(
   consumerFile: string,
@@ -37,7 +26,7 @@ export function buildResolutionMaps(
 } {
   const componentTagMap = new Map<string, string>();
   const componentAttrMap = new Map<string, ComponentAttrs>();
-  const ts = loadTs();
+  const ts = syntaxFor(consumerFile);
 
   // Build consumer args once per file.
   const consumerArgsByLoc = new Map<string, Map<string, string>>();

@@ -278,7 +278,7 @@ function printUsage(): void {
     //   - Read / rewrite errors are surfaced via `HVE_DEBUG=1` only.
     const noTemplate = stats.skips.rewriteEmpty.length;
     process.stderr.write(
-      `Glint: ${stats.loaded} analyzed, ${stats.cached} from cache` +
+      `Glint (${stats.backend ?? 'ts6'}): ${stats.loaded} analyzed, ${stats.cached} from cache` +
         (noTemplate > 0 ? ` (${noTemplate} .gts file${noTemplate === 1 ? '' : 's'} had no <template>)` : '') +
         '\n',
     );

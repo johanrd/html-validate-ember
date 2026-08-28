@@ -3,8 +3,8 @@
 // The Glint pipeline (`extractAttrTypeMap`) is the dominant cost when
 // `--glint` is on — TS program rebuilds + per-file `rewriteModule` +
 // `getTypeChecker().getTypeAtLocation` calls. The result is a pure
-// function of (file content + tsconfig content + plugin version +
-// plugin source content), so we can cache it on disk and skip the work
+// function of (file content + tsconfig content + type backend + plugin
+// version + plugin source content), so we can cache it on disk and skip the work
 // on repeat runs (CI, pre-commit hooks, IDE re-validation).
 //
 // Why plugin source content (not just version)? On release the package
@@ -124,6 +124,7 @@ export interface ExtractionResult {
 
 interface CacheEntry {
   pluginVersion: string;
+  backend: string;
   pluginSourceSha: string;
   tsconfigSha: string;
   fileSha: string;
@@ -191,6 +192,7 @@ export function readCache(
   filename: string,
   contents: string,
   tsconfigPath: string,
+  backend: string,
 ): ExtractionResult | null {
   if (CACHE_DISABLED) return null;
   const cacheDir = findCacheDir(filename);
@@ -213,6 +215,7 @@ export function readCache(
   const tsconfigSha = getTsconfigSha(tsconfigPath);
   if (
     parsed.pluginVersion !== PLUGIN_VERSION ||
+    parsed.backend !== backend ||
     parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
     parsed.tsconfigSha !== tsconfigSha ||
     parsed.fileSha !== fileSha
@@ -234,6 +237,7 @@ export function writeCache(
   filename: string,
   contents: string,
   tsconfigPath: string,
+  backend: string,
   result: ExtractionResult,
 ): void {
   if (CACHE_DISABLED) return;
@@ -242,6 +246,7 @@ export function writeCache(
     fs.mkdirSync(cacheDir, { recursive: true });
     const payload: CacheEntry = {
       pluginVersion: PLUGIN_VERSION,
+      backend,
       pluginSourceSha: PLUGIN_SOURCE_SHA,
       tsconfigSha: getTsconfigSha(tsconfigPath),
       fileSha: sha256(contents),

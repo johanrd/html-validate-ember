@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
+import { backendFor } from '../lib/backend/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -747,5 +748,23 @@ import Outer from './curry-component-yield-hash-parent.gts';
       liEntry,
       `expected ConditionalElementHelper(@tag="li") to resolve to 'li'; got: ${JSON.stringify(entries)}`,
     ).toBeDefined();
+  });
+});
+
+describe('type backend selection', () => {
+  it('uses the backend named by HVE_TS_BACKEND for the fixture project', () => {
+    const { filename } = readFixture('inline-typed-popover.gts');
+    expect(backendFor(filename)?.kind).toBe(process.env['HVE_TS_BACKEND'] ?? 'tsgo');
+  });
+});
+
+describe('attribute mustache sites', () => {
+  it('does not attribute a sibling argument type to a literal mustache', () => {
+    const { filename, contents } = readFixture('literal-arg-sibling.gts');
+    const { attrTypeMap } = extractAttrTypeMap(filename, contents)!;
+    // `{{"lg"}}` is emitted bare inside the named-args object and
+    // `{{this.text}}` is its sibling argument: neither is a site of its
+    // own. Only the inner template's `class={{@size}}` is typed.
+    expect([...attrTypeMap.keys()]).toEqual(['1:12']);
   });
 });

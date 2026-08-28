@@ -11,6 +11,7 @@ import type { BlankResult } from '../blank.js';
 import type { ComponentAttrs } from '../lib/builtin-components.js';
 import { DYNAMIC_VALUE_PLACEHOLDER } from '../lib/dynamic-value.js';
 import type * as TS from 'typescript';
+import { ts6Syntax } from '../lib/backend/ts6.js';
 
 import { resolveTemplate } from '../lib/resolver/walk.js';
 import { findTemplateSource } from '../lib/resolver/template-source.js';
@@ -1594,7 +1595,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       'export default CardContainer;',
     ].join('\n'));
     try {
-      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const ts = ts6Syntax(createRequire(import.meta.url)('typescript') as typeof TS);
       const source = findTemplateSource({ declFile: filename, ts });
       expect(source).not.toBeNull();
       const r = resolveTemplate(source!, {
@@ -1647,7 +1648,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       'export default EnumDefault;',
     ].join('\n'));
     try {
-      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const ts = ts6Syntax(createRequire(import.meta.url)('typescript') as typeof TS);
       const source = findTemplateSource({ declFile: filename, ts });
       expect(source).not.toBeNull();
       const r = resolveTemplate(source!, { ts });
@@ -1687,7 +1688,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       'export default NullishEnumDefault;',
     ].join('\n'));
     try {
-      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const ts = ts6Syntax(createRequire(import.meta.url)('typescript') as typeof TS);
       const source = findTemplateSource({ declFile: filename, ts });
       expect(source).not.toBeNull();
       const r = resolveTemplate(source!, { ts });
@@ -1718,7 +1719,7 @@ describe('curried-yield-hash structural-parent suppression (case C)', () => {
       'export default NullishDefault;',
     ].join('\n'));
     try {
-      const ts = createRequire(import.meta.url)('typescript') as typeof TS;
+      const ts = ts6Syntax(createRequire(import.meta.url)('typescript') as typeof TS);
       const source = findTemplateSource({ declFile: filename, ts });
       expect(source).not.toBeNull();
       const r = resolveTemplate(source!, { ts });
