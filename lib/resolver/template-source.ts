@@ -30,6 +30,8 @@ import { createRequire } from 'node:module';
 import { Preprocessor } from 'content-tag';
 import * as resolveExports from 'resolve.exports';
 import type * as TS from 'typescript';
+import type { TsSyntax } from '../backend/types.js';
+import { syntaxFor } from '../backend/index.js';
 // `@embroider/shared-internals` is lazy-imported via `loadEmbroider`
 // below — it's a 344KB dep (plus lodash, fs-extra, resolve-package-path,
 // etc. transitively) and importing it eagerly at module-load time
@@ -75,7 +77,7 @@ export interface FindOptions {
   consumerFile?: string | null;
   /** TypeScript module (for compiled-.js extraction). When absent, the
    *  .js path returns null. */
-  ts?: typeof TS | null;
+  ts?: TsSyntax | null;
 }
 
 const cache = new Map<string, TemplateSource | null>();
@@ -138,7 +140,7 @@ export function findTemplateSource(opts: FindOptions): TemplateSource | null {
 function findFromImport(
   resolvedFile: string,
   componentName: string,
-  ts: typeof TS | null,
+  ts: TsSyntax | null,
   depth = 0,
 ): TemplateSource | null {
   if (depth >= 10) return null;
@@ -153,13 +155,7 @@ function findFromImport(
   } catch {
     return null;
   }
-  const sf = ts.createSourceFile(
-    resolvedFile,
-    contents,
-    ts.ScriptTarget.Latest,
-    false,
-    resolvedFile.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
-  );
+  const sf = ts.parseFile(resolvedFile, contents, resolvedFile.endsWith('.js') ? 'js' : 'ts');
   for (const stmt of sf.statements) {
     if (!ts.isExportDeclaration(stmt)) continue;
     if (!stmt.moduleSpecifier || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
@@ -192,7 +188,7 @@ function findFromImport(
 
 function findFromDecl(
   declFile: string,
-  ts: typeof TS | null,
+  ts: TsSyntax | null,
   declRange: { start: number; end: number } | null,
   componentName: string | null,
 ): TemplateSource | null {
@@ -308,13 +304,10 @@ function findDeclRangeByName(
     const end = block.range.endUtf16Codepoint;
     buf = buf.slice(0, start) + ' '.repeat(end - start) + buf.slice(end);
   }
-  let ts: typeof TS;
-  try {
-    ts = localRequire(file, 'typescript') as typeof TS;
-  } catch {
-    return null;
-  }
-  const sf = ts.createSourceFile(file, buf, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const syntax = syntaxFor(file);
+  if (!syntax) return null;
+  const ts: TsSyntax = syntax;
+  const sf = ts.parseFile(file, buf, 'ts');
   let result: { start: number; end: number } | null = null;
   function visit(node: TS.Node): void {
     if (result) return;
@@ -334,10 +327,6 @@ function findDeclRangeByName(
   }
   visit(sf);
   return result;
-}
-
-function localRequire(fromFile: string, moduleName: string): unknown {
-  return createRequire(fromFile)(moduleName);
 }
 
 function readHbs(file: string): TemplateSource | null {
@@ -382,7 +371,7 @@ function tryHbsPeer(file: string): TemplateSource | null {
 // PackageCache replaces the hand-rolled `node_modules`/`isEmberAddon`
 // scan in classic-resolver.ts.
 
-function findFromDeclaration(declFile: string, ts: typeof TS | null): TemplateSource | null {
+function findFromDeclaration(declFile: string, ts: TsSyntax | null): TemplateSource | null {
   const pkg = packageOwnerOf(declFile);
   if (!pkg) return null;
 
@@ -406,7 +395,7 @@ function findFromDeclaration(declFile: string, ts: typeof TS | null): TemplateSo
   return null;
 }
 
-function loadFromCompanion(companion: string, ts: typeof TS | null): TemplateSource | null {
+function loadFromCompanion(companion: string, ts: TsSyntax | null): TemplateSource | null {
   if (companion.endsWith('.gts')) return readGts(companion, 'gts');
   if (companion.endsWith('.gjs')) return readGts(companion, 'gjs');
   if (companion.endsWith('.hbs')) return readHbs(companion);
@@ -499,14 +488,14 @@ function matchWildcardPattern(pattern: string, candidate: string): string | null
 
 // --- compiled .js extraction --------------------------------------------
 
-function extractCompiledJs(file: string, ts: typeof TS): string | null {
+function extractCompiledJs(file: string, ts: TsSyntax): string | null {
   let contents: string;
   try {
     contents = fs.readFileSync(file, 'utf8');
   } catch {
     return null;
   }
-  const sf = ts.createSourceFile(file, contents, ts.ScriptTarget.Latest, false, ts.ScriptKind.JS);
+  const sf = ts.parseFile(file, contents, 'js');
   const found: string[] = [];
   function visit(node: TS.Node): void {
     if (found.length > 1) return;
@@ -700,7 +689,7 @@ function packageOwnerOf(file: string): Package | null {
 export function resolveImport(
   originFile: string,
   componentName: string,
-  ts: typeof TS | null,
+  ts: TsSyntax | null,
 ): string | null {
   if (!ts) return null;
   if (originFile.endsWith('.hbs')) return null;
@@ -731,13 +720,7 @@ export function resolveImport(
     }
   }
 
-  const sf = ts.createSourceFile(
-    originFile,
-    scriptContents,
-    ts.ScriptTarget.Latest,
-    false,
-    originFile.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
-  );
+  const sf = ts.parseFile(originFile, scriptContents, originFile.endsWith('.js') ? 'js' : 'ts');
 
   for (const stmt of sf.statements) {
     if (!ts.isImportDeclaration(stmt)) continue;
@@ -752,7 +735,7 @@ export function resolveImport(
 }
 
 function matchesImport(
-  ts: typeof TS,
+  ts: TsSyntax,
   clause: TS.ImportClause,
   componentName: string,
 ): boolean {

@@ -25,6 +25,7 @@
 import { preprocess, type AST } from '@glimmer/syntax';
 import { Preprocessor } from 'content-tag';
 import type * as TS from 'typescript';
+import type { TsSyntax } from '../backend/types.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -81,7 +82,7 @@ export interface ResolveOptions {
   /** Args the consumer passed to this component, e.g. {tag: 'li', size: 'sm'}. */
   consumerArgs?: ReadonlyMap<string, string>;
   /** TypeScript module — for inspecting class getters that drive (element this.prop). */
-  ts?: typeof TS | null;
+  ts?: TsSyntax | null;
   /** Visited set + depth — cycle/recursion guard for cross-component recursion. */
   visited?: Set<string>;
   depth?: number;
@@ -524,7 +525,7 @@ interface ParsedClassFile {
   enumsByName: Map<string, Map<string, string>>;
 }
 
-function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
+function readClassBody(origin: string, ts: TsSyntax): ParsedClassFile | null {
   let contents: string;
   try {
     contents = fs.readFileSync(origin, 'utf8');
@@ -538,13 +539,7 @@ function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
   if (origin.endsWith('.gts') || origin.endsWith('.gjs')) {
     contents = stripTemplateBlocks(contents, origin);
   }
-  const sf = ts.createSourceFile(
-    origin,
-    contents,
-    ts.ScriptTarget.Latest,
-    false,
-    origin.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
-  );
+  const sf = ts.parseFile(origin, contents, origin.endsWith('.js') ? 'js' : 'ts');
   let classBody: TS.NodeArray<TS.ClassElement> | null = null;
 
   // Build a map of enum name → member-name → string value. Captures
@@ -596,7 +591,7 @@ function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
     if (!resolvedPath) continue;
     let importContents: string;
     try { importContents = fs.readFileSync(resolvedPath, 'utf8'); } catch { continue; }
-    const importSf = ts.createSourceFile(resolvedPath, importContents, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+    const importSf = ts.parseFile(resolvedPath, importContents, 'ts');
     for (const [name, members] of captureEnums(importSf)) {
       if (wantedNames.has(name) && !enumsByName.has(name)) {
         enumsByName.set(name, members);
@@ -642,7 +637,7 @@ function readClassBody(origin: string, ts: typeof TS): ParsedClassFile | null {
 }
 
 function analyzeGetterBody(
-  ts: typeof TS,
+  ts: TsSyntax,
   body: TS.Block | undefined,
   consumerArgs: ReadonlyMap<string, string>,
   topLevelConsts: ReadonlyMap<string, string>,
@@ -743,7 +738,7 @@ function analyzeGetterBody(
   return null;
 }
 
-function isThisArgs(ts: typeof TS, expr: TS.Expression): boolean {
+function isThisArgs(ts: TsSyntax, expr: TS.Expression): boolean {
   return ts.isPropertyAccessExpression(expr)
     && expr.expression.kind === ts.SyntaxKind.ThisKeyword
     && ts.isIdentifier(expr.name)
@@ -879,7 +874,7 @@ export interface YieldHashBindingOptions {
   /** Args the consumer passed to the parent (`<HdsStepperList @x="y">` →
    *  {x: 'y'}). Lets `(hash X=@arg)` chain through to the consumer. */
   parentArgs?: ReadonlyMap<string, string>;
-  ts?: typeof TS | null;
+  ts?: TsSyntax | null;
   visited?: Set<string>;
   depth?: number;
 }
@@ -1159,7 +1154,7 @@ function nearestBinderFor(
 function resolveBinderSource(
   binderTag: string,
   parentSource: TemplateSource,
-  ts: typeof TS | null,
+  ts: TsSyntax | null,
 ): TemplateSource | null {
   const importedFile = resolveImport(parentSource.origin, binderTag, ts);
   let binderSource: TemplateSource | null = importedFile
@@ -1294,7 +1289,7 @@ function resolveByName(
 function readClassPropAssignment(
   originFile: string,
   propName: string,
-  ts: typeof TS,
+  ts: TsSyntax,
 ): string | null {
   let contents: string;
   try {
@@ -1305,13 +1300,7 @@ function readClassPropAssignment(
   if (originFile.endsWith('.gts') || originFile.endsWith('.gjs')) {
     contents = stripTemplateBlocks(contents, originFile);
   }
-  const sf = ts.createSourceFile(
-    originFile,
-    contents,
-    ts.ScriptTarget.Latest,
-    false,
-    originFile.endsWith('.js') ? ts.ScriptKind.JS : ts.ScriptKind.TS,
-  );
+  const sf = ts.parseFile(originFile, contents, originFile.endsWith('.js') ? 'js' : 'ts');
   let result: string | null = null;
   function visit(node: TS.Node): void {
     if (result) return;

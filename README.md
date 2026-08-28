@@ -148,6 +148,20 @@ Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
 
 Install `@glint/ember-tsc` in your project and the transformer extracts TypeScript type information for two patterns. Default on when installed; pass `--no-glint` (or `HVE_GLINT=0`) to opt out.
 
+### TypeScript 7
+
+Type information comes from one of two backends, chosen per `tsconfig.json`:
+
+- **TypeScript 5/6 + `@glint/ember-tsc`** (default). The project's `typescript` is used as a library and Glint's transform rewrites `.gts` files in-process.
+- **TypeScript 7** (`typescript/unstable/sync`). Used when the tsconfig declares `contentMappers` (see [ember-content-mapper](https://github.com/NullVoxPopuli/ember-content-mapper)) and a TypeScript 7 package resolves from the project: `typescript` itself when it is 7.x, or the aliases `@typescript/native` / `typescript-7`. The compiler runs the content mapper, so no Glint rewrite and no `typescript` library run in this process. Needs Node 22.12+.
+
+Both produce the same results; the TypeScript 7 backend opens a project once (a few seconds for a large app) and then answers type queries in milliseconds.
+
+- `HVE_TS_BACKEND=tsgo` forces TypeScript 7 (Glint integration is disabled with a message when it is not resolvable); `HVE_TS_BACKEND=ts6` forces the TypeScript 5/6 pipeline.
+- `HVE_TSGO=<package name>` names the TypeScript 7 package when it is installed under another alias.
+
+Projects on the TypeScript 5/6 backend that migrated to the content mapper can keep `"ember-source/types"` and `"@glint/ember-tsc/types"` out of `compilerOptions.types`: the backend adds them itself.
+
 ### 1. String-literal-union narrowing in attribute positions
 
 ```ts
