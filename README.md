@@ -153,7 +153,7 @@ Install `@glint/ember-tsc` in your project and the transformer extracts TypeScri
 Type information comes from one of two backends, chosen per `tsconfig.json`:
 
 - **TypeScript 5/6 + `@glint/ember-tsc`** (default). The project's `typescript` is used as a library and Glint's transform rewrites `.gts` files in-process.
-- **TypeScript 7** (`typescript/unstable/sync`). Used when the tsconfig declares `contentMappers` (see [ember-content-mapper](https://github.com/NullVoxPopuli/ember-content-mapper)) and a TypeScript 7 package resolves from the project: `typescript` itself when it is 7.x, or the aliases `@typescript/native` / `typescript-7`. The compiler runs the content mapper, so no Glint rewrite and no `typescript` library run in this process. Needs Node 22.12+.
+- **TypeScript 7** (`typescript/unstable/sync`). Used when the tsconfig declares `contentMappers` (see [ember-content-mapper](https://github.com/NullVoxPopuli/ember-content-mapper)) and a TypeScript 7 package resolves from the project: `typescript` itself when it is 7.x, `@typescript/native-preview`, or the aliases `@typescript/native` / `typescript-7`. The compiler runs the content mapper, so no Glint rewrite and no `typescript` library run in this process. Needs Node 22.12+.
 
 Both produce the same results; the TypeScript 7 backend opens a project once (a few seconds for a large app) and then answers type queries in milliseconds.
 

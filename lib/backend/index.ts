@@ -78,7 +78,7 @@ function selectBackend(tsconfigPath: string, filename: string): TypeBackend | nu
     if (forced === 'tsgo') {
       warnOnce(
         `tsgo:${tsconfigPath}`,
-        `HVE_TS_BACKEND=tsgo but no TypeScript 7 package resolves from ${projectRoot} (tried typescript, @typescript/native, typescript-7; set HVE_TSGO=<package name>). Glint integration disabled.`,
+        `HVE_TS_BACKEND=tsgo but no TypeScript 7 package resolves from ${projectRoot} (tried typescript, @typescript/native, typescript-7, @typescript/native-preview; set HVE_TSGO=<package name>). Glint integration disabled.`,
       );
       return null;
     }

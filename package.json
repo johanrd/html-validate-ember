@@ -28,7 +28,7 @@
     "url": "git+https://github.com/johanrd/html-validate-ember.git"
   },
   "license": "MIT",
-  "author": "Johan R\u00f8ed",
+  "author": "Johan Røed",
   "type": "module",
   "exports": {
     ".": {
