@@ -1,8 +1,8 @@
 /**
- * Benchmarks with mitata. Standalone: `pnpm bench` measures this checkout.
- * With `--control-dir <dir>` (from `scripts/bench-compare.mjs`) each
- * benchmark runs for the base branch as well, and mitata prints the pair
- * side by side.
+ * Benchmarks with mitata. `pnpm bench` measures this checkout; with
+ * `--dist <dir>` it measures another build (the base branch, from
+ * `scripts/bench-compare.mjs`) against this checkout's fixtures, and
+ * `--json <file>` writes the results.
  *
  * Two kinds of benchmark, because the costs that regressed live in
  * different places:
@@ -22,19 +22,25 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { bench, boxplot, do_not_optimize, run, summary } from 'mitata';
+import { bench, do_not_optimize, run } from 'mitata';
 
 const args = process.argv.slice(2);
-const controlIdx = args.indexOf('--control-dir');
-const CONTROL_DIR = controlIdx !== -1 ? resolve(args[controlIdx + 1]) : null;
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i !== -1 ? resolve(args[i + 1]) : null;
+};
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
+// The build under test. `scripts/bench-compare.mjs` runs this script once
+// per side, in separate processes: two copies in one V8 heap skew the
+// numbers by 10-15 % on identical code.
+const DIST = flag('--dist') ?? ROOT;
+const JSON_OUT = flag('--json') ?? process.env['BENCH_JSON_OUTPUT'];
 
 // The in-process benchmarks measure extraction, not the disk cache.
 process.env['HVE_NO_CACHE'] = '1';
 process.env['HVE_TS_BACKEND'] ??= 'tsgo';
 
-const experiment = await import(resolve(ROOT, 'dist/lib/glint.js'));
-const control = CONTROL_DIR ? await import(resolve(CONTROL_DIR, 'dist/lib/glint.js')) : null;
+const plugin = await import(resolve(DIST, 'dist/lib/glint.js'));
 
 const fixture = (rel) => {
   const filename = resolve(ROOT, rel);
@@ -46,20 +52,17 @@ const FIXTURES = {
   'cross-file resolution': fixture('test/glint-fixtures/curry-multi-level-consumer.gts'),
 };
 
-// Warm both sides: opens the project and compiles the hot paths before
-// anything is measured, so the first side to run pays no start-up cost.
+// Warm up: opens the project and compiles the hot paths before anything
+// is measured.
 for (const { filename, contents } of Object.values(FIXTURES)) {
-  for (let i = 0; i < 5; i++) {
-    do_not_optimize(experiment.extractAttrTypeMap(filename, contents));
-    if (control) do_not_optimize(control.extractAttrTypeMap(filename, contents));
-  }
+  for (let i = 0; i < 5; i++) do_not_optimize(plugin.extractAttrTypeMap(filename, contents));
 }
 globalThis.gc?.();
 
 // A whole `dist/run.js` run. `HVE_NO_CACHE` is inherited from this process
 // unless the case sets it.
-function validate(dir, cliArgs, env = {}) {
-  const result = spawnSync(process.execPath, [resolve(dir, 'dist/run.js'), ...cliArgs], {
+function validate(cliArgs, env = {}) {
+  const result = spawnSync(process.execPath, [resolve(DIST, 'dist/run.js'), ...cliArgs], {
     cwd: ROOT,
     env: { ...process.env, ...env },
     stdio: ['ignore', 'ignore', 'pipe'],
@@ -80,46 +83,19 @@ const SUBSET = readdirSync(resolve(ROOT, 'examples'))
 const ONE = [SUBSET[0]];
 const CACHED = { HVE_NO_CACHE: '' };
 const PROCESS_CASES = {
-  'cold run (cache off)': (dir) => validate(dir, ['--glint', ...SUBSET]),
-  'warm run (all cached)': (dir) => validate(dir, ['--glint', ...SUBSET], CACHED),
-  'one cached file': (dir) => validate(dir, ['--glint', ...ONE], CACHED),
-  'no glint': (dir) => validate(dir, ['--no-glint', ...SUBSET]),
+  'cold run (cache off)': () => validate(['--glint', ...SUBSET]),
+  'warm run (all cached)': () => validate(['--glint', ...SUBSET], CACHED),
+  'one cached file': () => validate(['--glint', ...ONE], CACHED),
+  'no glint': () => validate(['--no-glint', ...SUBSET]),
 };
 
-// Populate the disk cache for the warm cases, for both sides (entries are
-// keyed by plugin source, so the sides do not share them).
-validate(ROOT, ['--glint', ...SUBSET], CACHED);
-if (CONTROL_DIR) validate(CONTROL_DIR, ['--glint', ...SUBSET], CACHED);
-
-// Alternate which side runs first inside each pair so the small advantage
-// of going first cancels out over the run.
-let pairIndex = 0;
-function pair(name, experimentFn, controlFn) {
-  if (!controlFn) {
-    bench(name, experimentFn);
-    return;
-  }
-  const controlFirst = pairIndex++ % 2 === 0;
-  boxplot(() => {
-    summary(() => {
-      if (controlFirst) {
-        bench(`${name} (control)`, controlFn);
-        bench(`${name} (experiment)`, experimentFn);
-      } else {
-        bench(`${name} (experiment)`, experimentFn);
-        bench(`${name} (control)`, controlFn);
-      }
-    });
-  });
-}
+// Populate the disk cache for the warm cases (entries are keyed by plugin
+// source, so the two sides of a comparison do not share them).
+validate(['--glint', ...SUBSET], CACHED);
 
 for (const [name, { filename, contents }] of Object.entries(FIXTURES)) {
   globalThis.gc?.();
-  pair(
-    `extract ${name}`,
-    () => do_not_optimize(experiment.extractAttrTypeMap(filename, contents)),
-    control ? () => do_not_optimize(control.extractAttrTypeMap(filename, contents)) : null,
-  );
+  bench(`extract ${name}`, () => do_not_optimize(plugin.extractAttrTypeMap(filename, contents)));
 }
 
 const result = await run({ colors: false, throw: true });
@@ -137,31 +113,18 @@ const ms = (ns) => `${(ns / 1e6).toFixed(0)} ms`;
 const processTrials = [];
 console.log('\nwhole process (min / p50 of %d runs, %d files)', PROCESS_SAMPLES, SUBSET.length);
 for (const [name, runCase] of Object.entries(PROCESS_CASES)) {
-  const sides = CONTROL_DIR
-    ? [['control', CONTROL_DIR], ['experiment', ROOT]]
-    : [[null, ROOT]];
-  const samples = new Map(sides.map(([role]) => [role, []]));
+  const samples = [];
   for (let i = 0; i < PROCESS_SAMPLES; i++) {
-    // Alternate the order each round.
-    for (const [role, dir] of i % 2 ? [...sides].reverse() : sides) {
-      const t = process.hrtime.bigint();
-      runCase(dir);
-      samples.get(role).push(Number(process.hrtime.bigint() - t));
-    }
+    const t = process.hrtime.bigint();
+    runCase();
+    samples.push(Number(process.hrtime.bigint() - t));
   }
-  const runs = [];
-  for (const [role, dir] of sides) {
-    const st = stats(samples.get(role));
-    const label = role ? `${name} (${role})` : name;
-    runs.push({ name: label, args: {}, stats: st });
-    console.log(`  ${label.padEnd(36)} ${ms(st.min).padStart(9)} / ${ms(st.p50).padStart(9)}`);
-  }
-  processTrials.push({ alias: name, runs });
+  const st = stats(samples);
+  console.log(`  ${name.padEnd(28)} ${ms(st.min).padStart(9)} / ${ms(st.p50).padStart(9)}`);
+  processTrials.push({ alias: name, runs: [{ name, args: {}, stats: st }] });
 }
 
-
-const jsonPath = process.env['BENCH_JSON_OUTPUT'];
-if (jsonPath) {
+if (JSON_OUT) {
   const benchmarks = [...result.benchmarks, ...processTrials].map((trial) => ({
     alias: trial.alias,
     runs: trial.runs.map((r) => ({
@@ -181,5 +144,5 @@ if (jsonPath) {
         : undefined,
     })),
   }));
-  writeFileSync(jsonPath, JSON.stringify({ context: result.context, benchmarks }, null, 2));
+  writeFileSync(JSON_OUT, JSON.stringify({ context: result.context, benchmarks }, null, 2));
 }

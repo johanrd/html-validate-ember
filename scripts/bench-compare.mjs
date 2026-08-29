@@ -2,15 +2,15 @@
  * Benchmark comparison against a base branch (adapted from ember-estree).
  *
  * Exports the base branch to a temp directory, installs and builds it, then
- * runs `test/validate.bench.mjs` with `--control-dir` so mitata benchmarks
- * both sides in one process and prints them side by side.
+ * runs `test/validate.bench.mjs` once per side in its own process and
+ * merges the results for the formatters.
  *
  * Usage:
  *   node scripts/bench-compare.mjs [--base <branch>]
  */
 
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -71,26 +71,46 @@ try {
   // does not pick `@types/*` up on its own.
   run('pnpm exec tsc --types node', { cwd: CONTROL_DIR, stdio: ['inherit', 'pipe', 'inherit'] });
 
-  console.error(`\nRunning benchmarks (experiment vs control)…\n`);
-  const benchArgs = [
-    '--expose-gc',
-    '--max-old-space-size=4096',
-    join(ROOT, 'test/validate.bench.mjs'),
-    '--control-dir',
-    CONTROL_DIR,
-  ];
-
-  // Pin to one CPU on Linux to reduce cross-core migration variance.
+  // One process per side, so neither copy's code layout or optimisation
+  // state affects the other. Control first, then experiment.
+  const benchScript = join(ROOT, 'test/validate.bench.mjs');
   const hasTaskset =
     process.platform === 'linux' && spawnSync('which', ['taskset'], { stdio: 'pipe' }).status === 0;
-  const cmd = hasTaskset ? 'taskset' : 'node';
-  const fullArgs = hasTaskset ? ['-c', '0', 'node', ...benchArgs] : benchArgs;
   if (hasTaskset) console.error('CPU pinning enabled (taskset -c 0)\n');
+  const sides = [
+    ['control', CONTROL_DIR],
+    ['experiment', ROOT],
+  ];
+  const results = {};
+  for (const [side, dist] of sides) {
+    console.error(`\nRunning benchmarks: ${side} (${dist})\n`);
+    const jsonFile = join(CONTROL_DIR, `${side}.json`);
+    const nodeArgs = ['--expose-gc', '--max-old-space-size=4096', benchScript, '--dist', dist, '--json', jsonFile];
+    const result = spawnSync(hasTaskset ? 'taskset' : 'node', hasTaskset ? ['-c', '0', 'node', ...nodeArgs] : nodeArgs, {
+      stdio: 'inherit',
+      cwd: ROOT,
+      env: { ...process.env },
+    });
+    if (result.status !== 0) {
+      console.error(`\nBenchmark run failed (${side}).`);
+      process.exit(1);
+    }
+    results[side] = JSON.parse(readFileSync(jsonFile, 'utf8'));
+  }
 
-  const result = spawnSync(cmd, fullArgs, { stdio: 'inherit', cwd: ROOT, env: { ...process.env } });
-  if (result.status !== 0) {
-    console.error('\nBenchmark run failed.');
-    process.exit(1);
+  // Merge into one file with `(control)` / `(experiment)` runs, the shape
+  // the formatters read.
+  if (process.env.BENCH_JSON_OUTPUT) {
+    const benchmarks = [];
+    for (const [side, json] of Object.entries(results)) {
+      for (const trial of json.benchmarks) {
+        benchmarks.push({
+          alias: trial.alias,
+          runs: trial.runs.map((r) => ({ ...r, name: `${r.name} (${side})` })),
+        });
+      }
+    }
+    writeFileSync(process.env.BENCH_JSON_OUTPUT, JSON.stringify({ context: results.experiment.context, benchmarks }, null, 2));
   }
   console.error('\nBenchmark comparison complete.\n');
 } catch (e) {
