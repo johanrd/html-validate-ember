@@ -22,7 +22,7 @@
 // choice — the resolver picks the right tag (preferring the yield-ancestor
 // when content-permission validation hinges on it).
 
-import { preprocess, type AST } from '@glimmer/syntax';
+import type { AST } from '@glimmer/syntax';
 import { Preprocessor } from 'content-tag';
 import type * as TS from 'typescript';
 import type { TsSyntax } from '../backend/types.js';
@@ -30,10 +30,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 import { STRUCTURAL_CHILD_TAGS } from '../element-sets.js';
-
-function parseTemplate(content: string): AST.Template {
-  return preprocess(content, { mode: 'codemod' });
-}
+import { parseTemplate } from '../parse-template.js';
 
 const ctPreprocessor = new Preprocessor();
 

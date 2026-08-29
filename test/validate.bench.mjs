@@ -50,6 +50,7 @@ const FIXTURES = {
   'small template': fixture('examples/h32-yield-and-ambiguous-submit.gts'),
   'medium template': fixture('examples/heuristic-masks-real-bug.gts'),
   'cross-file resolution': fixture('test/glint-fixtures/curry-multi-level-consumer.gts'),
+  'large template': fixture('test/bench/large.gts'),
 };
 
 // Warm up: opens the project and compiles the hot paths before anything
@@ -75,12 +76,16 @@ function validate(cliArgs, env = {}) {
 
 // A fixed subset keeps each run short; the costs these cases guard against
 // (backend start-up, uncached per-file work) show at any size.
-const SUBSET = readdirSync(resolve(ROOT, 'examples'))
-  .filter((f) => f.endsWith('.gts'))
-  .sort()
-  .slice(0, 20)
-  .map((f) => `examples/${f}`);
-const ONE = [SUBSET[0]];
+const SUBSET = [
+  'test/bench/large.gts',
+  ...readdirSync(resolve(ROOT, 'examples'))
+    .filter((f) => f.endsWith('.gts'))
+    .sort()
+    .slice(0, 20)
+    .map((f) => `examples/${f}`),
+];
+// A small file: this case measures start-up, not template work.
+const ONE = [SUBSET[1]];
 const CACHED = { HVE_NO_CACHE: '' };
 const PROCESS_CASES = {
   'cold run (cache off)': () => validate(['--glint', ...SUBSET]),

@@ -1,4 +1,5 @@
-import { preprocess, traverse } from '@glimmer/syntax';
+import { traverse } from '@glimmer/syntax';
+import { parseTemplate } from './lib/parse-template.js';
 import type { AST } from '@glimmer/syntax';
 
 // At runtime, AST node `loc` fields are `SourceSpan` instances that
@@ -1532,7 +1533,7 @@ function blankTemplateContent(
     // (e.g. long-form `{{!-- ... --}}` vs short-form `{{! ... }}` comments;
     // exact whitespace) — same flag `ember-estree` uses for its
     // `templateOnly: true` path.
-    ast = preprocess(content, { mode: 'codemod' });
+    ast = parseTemplate(content);
   } catch (err) {
     return { content, error: err instanceof Error ? err : new Error(String(err)) };
   }
@@ -2724,7 +2725,7 @@ function blankTemplateContentMultipass(
 ): Array<BlankResult | BlankErrorResult> {
   // Cap=0 disables multipass — the tree would be empty anyway, and
   // every fallback path below ends in a single `blankTemplateContent`
-  // call. Short-circuit before the local `preprocess()` so the
+  // call. Short-circuit before the local `parseTemplate()` so the
   // disable path parses once instead of twice.
   const cap = readMaxConditionalBranches();
   if (cap === 0) {
@@ -2734,7 +2735,7 @@ function blankTemplateContentMultipass(
   }
   let ast: AST.Template;
   try {
-    ast = preprocess(content, { mode: 'codemod' });
+    ast = parseTemplate(content);
   } catch (err) {
     return [{ content, error: err instanceof Error ? err : new Error(String(err)) }];
   }

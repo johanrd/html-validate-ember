@@ -10,7 +10,7 @@ import type {
 } from 'html-validate';
 import { createRequire } from 'node:module';
 
-import { preprocess } from '@glimmer/syntax';
+import { parseTemplate } from './lib/parse-template.js';
 
 import {
   blankTemplateContent,
@@ -258,7 +258,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     let classicTagMap: Map<string, string> | null = null;
     let classicAttrMap: Parameters<typeof blankTemplateContent>[4] | null = null;
     try {
-      const ast = preprocess(data, { mode: 'codemod' });
+      const ast = parseTemplate(data);
       const maps = buildResolutionMaps(filename, ast);
       classicTagMap = maps.componentTagMap;
       classicAttrMap = maps.componentAttrMap;
@@ -398,7 +398,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     let attrMap = glintComponentAttrMap;
     if (!tagMap) {
       try {
-        const ast = preprocess(tpl.contents, { mode: 'codemod' });
+        const ast = parseTemplate(tpl.contents);
         const maps = buildResolutionMaps(filename, ast);
         tagMap = maps.componentTagMap;
         attrMap = maps.componentAttrMap;
