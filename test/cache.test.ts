@@ -7,7 +7,16 @@ import path from 'node:path';
 import os from 'node:os';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { readCache, readTransformCache, transformCacheKey, writeCache, writeTransformCache } from '../lib/cache.js';
+import {
+  readCache,
+  readReportCache,
+  readTransformCache,
+  reportCacheKey,
+  transformCacheKey,
+  writeCache,
+  writeReportCache,
+  writeTransformCache,
+} from '../lib/cache.js';
 import type { CachedTemplate, ExtractionResult } from '../lib/cache.js';
 
 // We need a writeable parent that has a `node_modules/` so cache.ts's
@@ -174,5 +183,52 @@ describe('transform cache', () => {
     expect(readTransformCache(file, transformCacheKey('v2', tsconfigPath, 'ts6'))).toBeNull();
     expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'tsgo:typescript@7.0.0'))).toBeNull();
     expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'ts6'))).toEqual(templates);
+  });
+});
+
+describe('report cache', () => {
+  const report = {
+    valid: false,
+    errorCount: 1,
+    warningCount: 0,
+    results: [{ filePath: 'a.gts', messages: [{ ruleId: 'no-inline-style', severity: 2 }] }],
+  };
+  const key = (contents: string, config: unknown = { extends: ['html-validate:recommended'] }, version = '11.0.0', backend = 'ts6') =>
+    reportCacheKey(contents, config, version, tsconfigPath, backend);
+
+  it('round-trips a report', () => {
+    const file = path.join(templatesDir, 'a.gts');
+    writeReportCache(file, key('v1'), report);
+    expect(readReportCache(file, key('v1'))).toEqual(report);
+  });
+
+  it('misses when content, config, html-validate version, backend, tsconfig or env differ', () => {
+    const file = path.join(templatesDir, 'a.gts');
+    writeReportCache(file, key('v1'), report);
+    expect(readReportCache(file, key('v2'))).toBeNull();
+    expect(readReportCache(file, key('v1', { extends: [] }))).toBeNull();
+    expect(readReportCache(file, key('v1', undefined, '11.1.0'))).toBeNull();
+    expect(readReportCache(file, key('v1', undefined, '11.0.0', 'tsgo:typescript@7.0.0'))).toBeNull();
+    fs.writeFileSync(tsconfigPath, '{"compilerOptions":{"target":"es2020"}}');
+    const otherTsconfig = path.join(projectRoot, 'tsconfig.other.json');
+    fs.writeFileSync(otherTsconfig, '{}');
+    expect(readReportCache(file, reportCacheKey('v1', { extends: ['html-validate:recommended'] }, '11.0.0', otherTsconfig, 'ts6'))).toBeNull();
+    process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = '2';
+    try {
+      expect(readReportCache(file, key('v1'))).toBeNull();
+    } finally {
+      delete process.env['HVE_MAX_CONDITIONAL_BRANCHES'];
+    }
+    expect(readReportCache(file, key('v1'))).toEqual(report);
+  });
+
+  it('keeps one entry per file path', () => {
+    const file = path.join(templatesDir, 'a.gts');
+    writeReportCache(file, key('v1'), report);
+    writeReportCache(file, key('v2'), { ...report, valid: true, errorCount: 0, results: [] });
+    const dir = path.join(projectRoot, 'node_modules', '.cache', 'html-validate-ember', 'report');
+    expect(fs.readdirSync(dir)).toHaveLength(1);
+    expect(readReportCache(file, key('v1'))).toBeNull();
+    expect(readReportCache(file, key('v2'))?.valid).toBe(true);
   });
 });

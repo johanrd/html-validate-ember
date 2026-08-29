@@ -361,15 +361,21 @@ interface ReportCacheEntry<Result> extends CachedReport<Result> {
   key: string;
 }
 
-export function reportCacheKey(contents: string, config: unknown, htmlValidateVersion: string, tsconfigPath: string | null): string {
+export function reportCacheKey(
+  contents: string,
+  config: unknown,
+  htmlValidateVersion: string,
+  tsconfigPath: string | null,
+  backendKind: string,
+): string {
   return sha256(
     [
       contents,
       JSON.stringify(config ?? null),
       htmlValidateVersion,
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
+      backendKind,
       process.env['HVE_GLINT'] ?? '',
-      process.env['HVE_TS_BACKEND'] ?? '',
       process.env['HVE_MAX_CONDITIONAL_BRANCHES'] ?? '',
     ].join('\0'),
   );

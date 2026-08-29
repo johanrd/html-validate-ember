@@ -9,7 +9,7 @@ import plugin from './index.js';
 import { preloadGlintFiles } from './lib/glint.js';
 import type { PreloadStats } from './lib/glint.js';
 import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
-import { findTsconfig } from './lib/backend/index.js';
+import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
 import type { CachedReport } from './lib/cache.js';
 
@@ -356,7 +356,14 @@ function printUsage(): void {
   for (const file of files) {
     let key: string | null = null;
     try {
-      key = reportCacheKey(fs.readFileSync(file, 'utf8'), userConfig, htmlValidateVersion, findTsconfig(file));
+      const tsconfigPath = findTsconfig(file);
+      key = reportCacheKey(
+        fs.readFileSync(file, 'utf8'),
+        userConfig,
+        htmlValidateVersion,
+        tsconfigPath,
+        tsconfigPath ? backendKindFor(tsconfigPath) : 'none',
+      );
     } catch {
       // unreadable: let validateFile report it
     }
