@@ -10,17 +10,16 @@ export function formatTime(ns) {
 }
 
 // Negative pct means the experiment is faster (lower time is better).
-// Shared CI runners show up to ±10 % between two runs of identical code,
-// so only larger deltas get a colour.
+// Identical code measures within about ±3 % on a shared CI runner.
 export function deltaEmoji(pct) {
   const abs = Math.abs(pct);
-  if (abs < 2) return '⚪';
+  if (abs < 5) return '⚪';
   if (pct <= -10) return '🟢';
   if (pct >= 10) return '🔴';
   return '🟡';
 }
 
-export const LEGEND = '🟢 faster · 🔴 slower · 🟡 within 10 % (noise) · ⚪ within 2 %';
+export const LEGEND = '🟢 faster · 🔴 slower · 🟡 5–10 %, possibly noise · ⚪ within 5 %';
 
 /**
  * Rows of { name, control, experiment, delta } from the bench JSON, using
