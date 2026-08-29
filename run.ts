@@ -2,12 +2,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { HtmlValidate, formatterFactory } from 'html-validate';
-import type { ConfigData, Report } from 'html-validate';
+import type { ConfigData, Report, Result } from 'html-validate';
+import { createRequire } from 'node:module';
 
 import plugin from './index.js';
 import { preloadGlintFiles } from './lib/glint.js';
 import type { PreloadStats } from './lib/glint.js';
 import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
+import { backendKindFor, findTsconfig } from './lib/backend/index.js';
+import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
+import type { CachedReport } from './lib/cache.js';
 
 // Walk up from `start` looking for a `.htmlvalidate.json` config file
 // and return its parsed contents (or null if none found / unreadable).
@@ -328,7 +332,47 @@ function printUsage(): void {
     }
   };
 
+  // A file's report depends on its content, the configuration and the
+  // plugin; unchanged files replay their last report instead of being
+  // validated again.
+  const htmlValidateVersion = (createRequire(import.meta.url)('html-validate/package.json') as { version: string }).version;
+  const recordReport = (cached: CachedReport<Result>): void => {
+    if (cached.valid) {
+      valid++;
+      return;
+    }
+    invalid++;
+    totalErrors += cached.errorCount;
+    totalWarnings += cached.warningCount;
+    for (const result of cached.results) {
+      for (const msg of result.messages) {
+        ruleCounts.set(msg.ruleId, (ruleCounts.get(msg.ruleId) ?? 0) + 1);
+      }
+    }
+    if (!quiet) {
+      process.stdout.write(format(cached.results));
+    }
+  };
   for (const file of files) {
+    let key: string | null = null;
+    try {
+      const tsconfigPath = findTsconfig(file);
+      key = reportCacheKey(
+        fs.readFileSync(file, 'utf8'),
+        userConfig,
+        htmlValidateVersion,
+        tsconfigPath,
+        tsconfigPath ? backendKindFor(tsconfigPath) : 'none',
+      );
+    } catch {
+      // unreadable: let validateFile report it
+    }
+    const cachedReport = key ? readReportCache<Result>(file, key) : null;
+    if (cachedReport) {
+      recordReport(cachedReport);
+      tickValidation();
+      continue;
+    }
     let report: Report;
     try {
       report = await htmlvalidate.validateFile(file);
@@ -342,6 +386,7 @@ function printUsage(): void {
       continue;
     }
     if (report.valid) {
+      if (key) writeReportCache(file, key, { valid: true, errorCount: 0, warningCount: 0, results: [] });
       valid++;
       tickValidation();
       continue;
@@ -353,6 +398,14 @@ function printUsage(): void {
     // No-op for templates without branch points (one source → one
     // result → set of message keys is already unique).
     const deduped = dedupeMultipassReport(report);
+    if (key) {
+      writeReportCache(file, key, {
+        valid: deduped.valid,
+        errorCount: deduped.errorCount,
+        warningCount: deduped.warningCount,
+        results: deduped.valid ? [] : deduped.results,
+      });
+    }
     if (deduped.valid) {
       // Every flagged error/warning was a multipass duplicate of one
       // already counted under a previous pass; the file is effectively
@@ -362,17 +415,7 @@ function printUsage(): void {
       tickValidation();
       continue;
     }
-    invalid++;
-    totalErrors += deduped.errorCount;
-    totalWarnings += deduped.warningCount;
-    for (const result of deduped.results) {
-      for (const msg of result.messages) {
-        ruleCounts.set(msg.ruleId, (ruleCounts.get(msg.ruleId) ?? 0) + 1);
-      }
-    }
-    if (!quiet) {
-      process.stdout.write(format(deduped.results));
-    }
+    recordReport(deduped);
     tickValidation();
   }
 
