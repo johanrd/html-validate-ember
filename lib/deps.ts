@@ -1,27 +1,32 @@
-// What a file's Glint result depends on besides its own content: the
-// project files it imports, transitively, plus the project-wide inputs
-// that reach every file without an import (ambient declarations, module
+// What a file's result depends on besides its own content: the project
+// files it imports, transitively, plus the project-wide inputs that reach
+// every file without an import (ambient declarations, module
 // augmentations, installed packages). The cache keys include
 // `dependencySha`, so a change anywhere upstream misses for every file
 // downstream — the shape of tsc's incremental `referencedMap`, keyed on
 // file content rather than on the exported signature, so stricter than
-// tsc, never looser.
+// tsc, never looser. The closure is needed with Glint off too: the
+// resolver reads an imported component's template to substitute its tag.
 //
-// Imports are found by scanning the text for specifiers, not by parsing.
+// Imports are found by scanning the text for specifiers (`from`,
+// `import`, `import()`, `/// <reference path>`), not by parsing.
 // Resolution follows tsc: relative paths; tsconfig `paths` (longest
 // prefix wins) against `baseUrl` or the directory of the config that
 // declares them; `baseUrl`; `extends` (relative, and packages through
 // their `tsconfig` field or `tsconfig.json`), later entries overriding
 // earlier ones; TypeScript's `.js` → `.ts` rewrite; extension probing
-// with `.gts`/`.gjs` first; directory `index` files. A resolved file is
-// taken by its real path; anything under `node_modules` is a package and
-// covered by the lockfile sha. Workspace sources reached through a
-// symlink or a `../` path are project files.
+// with `.gts`/`.gjs` first; directory `index` files. A `.ts`/`.js`
+// module's co-located `.hbs` template counts as part of it. A resolved
+// file is taken by its real path; anything under `node_modules` is a
+// package and covered by the lockfile sha. Workspace sources reached
+// through a symlink or a `../` path are project files. Without a
+// tsconfig only relative imports resolve.
 //
 // Memos re-validate against the file system: file records on mtime and
 // size, module resolution on the mtime of every directory it probed,
-// tsconfig paths on the config chain's content. The list of project-wide
-// input files is found once per process; their content is re-checked.
+// tsconfig paths on the config chain's content, the list of project-wide
+// inputs on the mtime of the directories walked. `assumeStaticFileSystem`
+// (the CLI) trusts them for the rest of the process.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,19 +42,27 @@ export function sha256(input: string | Buffer): string {
   return crypto.createHash('sha256').update(input).digest('hex');
 }
 
+const warned = new Set<string>();
 function warnOnce(key: string, message: string): void {
   if (warned.has(key)) return;
   warned.add(key);
   process.stderr.write(`[html-validate-ember] ${message}\n`);
 }
-const warned = new Set<string>();
 
 // A one-shot run (the CLI) sees the file system as it was at start, like a
 // non-watch `tsc`: memos are trusted after their first fill. A long-lived
-// host keeps re-validating them.
+// host keeps re-validating.
 let staticFileSystem = false;
 export function assumeStaticFileSystem(): void {
   staticFileSystem = true;
+}
+
+function mtimeOf(p: string): number {
+  try {
+    return fs.statSync(p).mtimeMs;
+  } catch {
+    return -1;
+  }
 }
 
 // --- file content, memoised on mtime and size -------------------------------
@@ -58,7 +71,7 @@ interface FileRecord {
   mtimeMs: number;
   size: number;
   sha: string;
-  /** Specifiers, scanned on first use. */
+  /** Specifiers, scanned on first use; the content is not kept. */
   imports: () => string[];
 }
 const fileRecords = new Map<string, FileRecord>();
@@ -77,30 +90,41 @@ function fileRecord(file: string): FileRecord | null {
   if (!stat.isFile()) return null;
   const cached = fileRecords.get(file);
   if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached;
-  let contents: string;
+  let contents: string | null;
   try {
     contents = fs.readFileSync(file, 'utf8');
   } catch {
     return null;
   }
   let imports: string[] | undefined;
-  const record = {
+  const record: FileRecord = {
     mtimeMs: stat.mtimeMs,
     size: stat.size,
     sha: sha256(contents),
-    imports: () => (imports ??= importSpecifiers(contents)),
+    imports: () => {
+      if (!imports) {
+        imports = importSpecifiers(contents!);
+        contents = null;
+      }
+      return imports;
+    },
   };
   fileRecords.set(file, record);
   return record;
 }
 
-/** `from '...'`, `import '...'` and `import('...')` specifiers, in order of appearance. */
+/** Import specifiers and `/// <reference path>` targets, in order of appearance. */
 export function importSpecifiers(contents: string): string[] {
   const found: string[] = [];
-  const pattern = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"\n]+)['"]/g;
-  for (const match of contents.matchAll(pattern)) {
-    const spec = match[1];
-    if (spec && !found.includes(spec)) found.push(spec);
+  const patterns = [
+    /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"\n]+)['"]/g,
+    /^\s*\/\/\/\s*<reference\s+path\s*=\s*['"]([^'"\n]+)['"]/gm,
+  ];
+  for (const pattern of patterns) {
+    for (const match of contents.matchAll(pattern)) {
+      const spec = match[1];
+      if (spec && !found.includes(spec)) found.push(spec);
+    }
   }
   return found;
 }
@@ -119,10 +143,12 @@ interface ProjectPaths {
   /** Config files read, with their content sha, for re-validation. */
   chain: Array<[string, string]>;
 }
+const NO_TSCONFIG: ProjectPaths = { id: 0, baseUrl: null, pathsBase: null, paths: [], chain: [] };
 const projectPathsByTsconfig = new Map<string, ProjectPaths>();
 let projectPathsReads = 0;
 
-// tsconfig.json is JSON with comments and trailing commas.
+// tsconfig.json is JSON with comments and trailing commas. Strings are
+// copied verbatim; comments and trailing commas are removed outside them.
 export function parseJsonc(text: string): unknown {
   let out = '';
   let i = 0;
@@ -139,12 +165,21 @@ export function parseJsonc(text: string): unknown {
     } else if (ch === '/' && text[i + 1] === '*') {
       const end = text.indexOf('*/', i + 2);
       i = end === -1 ? text.length : end + 2;
+    } else if (ch === ',') {
+      let j = i + 1;
+      while (j < text.length && /\s/.test(text[j]!)) j++;
+      if (text[j] === '}' || text[j] === ']') {
+        i++;
+      } else {
+        out += ch;
+        i++;
+      }
     } else {
       out += ch;
       i++;
     }
   }
-  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'));
+  return JSON.parse(out);
 }
 
 interface TsconfigShape {
@@ -168,7 +203,10 @@ function readTsconfigChain(tsconfigPath: string, seen = new Set<string>()): Proj
   try {
     config = (parseJsonc(fs.readFileSync(tsconfigPath, 'utf8')) ?? {}) as TsconfigShape;
   } catch (err) {
-    warnOnce(`tsconfig:${tsconfigPath}`, `${tsconfigPath}: cannot parse (${err instanceof Error ? err.message : String(err)}); imports through tsconfig paths are not tracked for the cache.`);
+    warnOnce(
+      `tsconfig:${tsconfigPath}`,
+      `${tsconfigPath}: cannot parse (${err instanceof Error ? err.message : String(err)}); imports through tsconfig paths are not tracked for the cache.`,
+    );
     return result;
   }
   const dir = path.dirname(tsconfigPath);
@@ -219,12 +257,18 @@ function resolveExtends(spec: string, fromDir: string): string | null {
   return null;
 }
 
-function projectPaths(tsconfigPath: string): ProjectPaths {
+function projectPaths(tsconfigPath: string | null): ProjectPaths {
+  if (!tsconfigPath) return NO_TSCONFIG;
   const cached = projectPathsByTsconfig.get(tsconfigPath);
   if (cached && (staticFileSystem || cached.chain.every(([file, sha]) => fileRecord(file)?.sha === sha))) return cached;
   const fresh = readTsconfigChain(tsconfigPath);
   projectPathsByTsconfig.set(tsconfigPath, fresh);
   return fresh;
+}
+
+/** Sha over the tsconfig and every config it extends. */
+export function tsconfigChainSha(tsconfigPath: string): string {
+  return sha256(projectPaths(tsconfigPath).chain.map(([file, sha]) => `${file}\0${sha}`).join('\n'));
 }
 
 // --- module resolution -----------------------------------------------------------
@@ -235,36 +279,32 @@ interface Resolution {
   dirs: string[];
 }
 const resolutionByKey = new Map<string, Resolution>();
+const probeByCandidate = new Map<string, Resolution>();
 const dirMtimes = new Map<string, number>();
 
-function dirMtime(dir: string): number {
-  try {
-    return fs.statSync(dir).mtimeMs;
-  } catch {
-    return -1;
-  }
-}
-
-// Drops memoised resolutions that probed a directory whose mtime moved —
-// a file was created, deleted or renamed there. One stat per known
-// directory per closure walk.
+// Drops memoised resolutions and probes that touched a directory whose
+// mtime moved — a file was created, deleted or renamed there.
 function revalidateDirectories(): void {
   if (staticFileSystem) return;
   const changed = new Set<string>();
   for (const [dir, mtime] of dirMtimes) {
-    const now = dirMtime(dir);
+    const now = mtimeOf(dir);
     if (now !== mtime) {
       changed.add(dir);
       dirMtimes.set(dir, now);
     }
   }
   if (changed.size === 0) return;
-  for (const [key, resolution] of resolutionByKey) {
-    if (resolution.dirs.some((dir) => changed.has(dir))) resolutionByKey.delete(key);
+  for (const map of [resolutionByKey, probeByCandidate]) {
+    for (const [key, entry] of map) {
+      if (entry.dirs.some((dir) => changed.has(dir))) map.delete(key);
+    }
   }
-  for (const [candidate, probe] of probeByCandidate) {
-    if (probe.dirs.some((dir) => changed.has(dir))) probeByCandidate.delete(candidate);
-  }
+}
+
+function watch(dir: string, probed: Set<string>): void {
+  probed.add(dir);
+  if (!dirMtimes.has(dir)) dirMtimes.set(dir, mtimeOf(dir));
 }
 
 // The directory whose mtime moves when a file at `p` is created: the
@@ -277,10 +317,7 @@ function watchedDirectory(p: string): string {
 }
 
 // A candidate path is probed once; the same `types/@ember/service` is
-// tried from every importing directory. Dropped with the memoised
-// resolutions when a watched directory changes.
-const probeByCandidate = new Map<string, { file: string | null; dirs: string[] }>();
-
+// tried from every importing directory.
 function probeFile(candidate: string, probed: Set<string>): string | null {
   const memo = probeByCandidate.get(candidate);
   if (memo) {
@@ -288,25 +325,25 @@ function probeFile(candidate: string, probed: Set<string>): string | null {
     return memo.file;
   }
   const dirs = new Set<string>();
-  const file = probeUncached(candidate, dirs);
-  for (const dir of dirs) probed.add(dir);
-  probeByCandidate.set(candidate, { file, dirs: [...dirs] });
-  return file;
-}
-
-function probeUncached(candidate: string, probed: Set<string>): string | null {
+  watch(watchedDirectory(candidate), dirs);
+  // `index` files live one level deeper.
+  if (fs.existsSync(candidate)) watch(candidate, dirs);
   const stem = candidate.replace(/\.(?:js|mjs|cjs|jsx)$/, '');
   const attempts = [candidate, ...EXTENSIONS.map((ext) => stem + ext), ...EXTENSIONS.map((ext) => path.join(candidate, `index${ext}`))];
-  probed.add(watchedDirectory(candidate));
+  let file: string | null = null;
   for (const attempt of attempts) {
     try {
-      if (fs.statSync(attempt).isFile()) return fs.realpathSync.native(attempt);
+      if (fs.statSync(attempt).isFile()) {
+        file = fs.realpathSync.native(attempt);
+        break;
+      }
     } catch {
       // next
     }
   }
-  if (fs.existsSync(candidate)) probed.add(candidate);
-  return null;
+  for (const dir of dirs) probed.add(dir);
+  probeByCandidate.set(candidate, { file, dirs: [...dirs] });
+  return file;
 }
 
 // tsc's findBestPatternMatch: the pattern with the longest prefix wins.
@@ -329,7 +366,7 @@ function matchPaths(paths: Array<[string, string[]]>, spec: string): { wildcard:
 }
 
 /** The project file `spec` refers to from `fromFile`, or null when it is a package or unresolved. */
-export function resolveProjectImport(spec: string, fromFile: string, tsconfigPath: string): string | null {
+export function resolveProjectImport(spec: string, fromFile: string, tsconfigPath: string | null): string | null {
   return resolveWith(spec, fromFile, projectPaths(tsconfigPath));
 }
 
@@ -339,9 +376,6 @@ function resolveWith(spec: string, fromFile: string, paths: ProjectPaths): strin
   if (memo) return memo.file;
   const probed = new Set<string>();
   const file = resolveUncached(spec, fromFile, paths, probed);
-  for (const dir of probed) {
-    if (!dirMtimes.has(dir)) dirMtimes.set(dir, dirMtime(dir));
-  }
   resolutionByKey.set(memoKey, { file, dirs: [...probed] });
   return file;
 }
@@ -365,15 +399,25 @@ function resolveUncached(spec: string, fromFile: string, { baseUrl, pathsBase, p
   return null;
 }
 
+// A `.ts`/`.js` module's template can live next to it or under
+// `templates/components/`; the resolver reads it, so it is part of the
+// module for the cache.
+function hbsPeers(file: string): string[] {
+  const m = /^(.*)\/components\/([^/]+)\.(?:ts|js)$/.exec(file);
+  const peers = [file.replace(/\.(?:ts|js)$/, '.hbs')];
+  if (m) peers.push(path.join(m[1]!, 'templates', 'components', `${m[2]!}.hbs`));
+  return peers.filter((peer) => peer !== file && fileRecord(peer) !== null);
+}
+
 // --- closure ----------------------------------------------------------------------
 
-/** Project files `file` imports, transitively (real absolute paths, sorted, without `file` itself). */
 // Directories are re-validated once per `dependencySha` (which walks
 // many closures), and on every direct call.
 let insideSha = false;
 let revalidatedInsideSha = false;
 
-export function dependencyClosure(file: string, contents: string, tsconfigPath: string, specifiers = importSpecifiers(contents)): string[] {
+/** Project files `file` imports, transitively (real absolute paths, sorted, without `file` itself). */
+export function dependencyClosure(file: string, contents: string, tsconfigPath: string | null, specifiers = importSpecifiers(contents)): string[] {
   if (!insideSha || !revalidatedInsideSha) {
     revalidateDirectories();
     revalidatedInsideSha = insideSha;
@@ -382,12 +426,14 @@ export function dependencyClosure(file: string, contents: string, tsconfigPath: 
   const root = path.resolve(file);
   const seen = new Set<string>([root]);
   const queue: Array<[string, string[]]> = [[root, specifiers]];
+  for (const peer of hbsPeers(root)) seen.add(peer);
   while (queue.length > 0) {
     const [from, specs] = queue.pop()!;
     for (const spec of specs) {
       const dep = resolveWith(spec, from, paths);
       if (!dep || seen.has(dep)) continue;
       seen.add(dep);
+      for (const peer of hbsPeers(dep)) seen.add(peer);
       const record = fileRecord(dep);
       if (record) queue.push([dep, record.imports()]);
     }
@@ -398,16 +444,45 @@ export function dependencyClosure(file: string, contents: string, tsconfigPath: 
 
 // --- project-wide inputs -------------------------------------------------------
 
+// The directory the project's inputs are found under: the tsconfig's, or
+// without one the nearest with a package.json.
+function projectRootFor(file: string, tsconfigPath: string | null): string {
+  if (tsconfigPath) return path.dirname(tsconfigPath);
+  let dir = path.dirname(path.resolve(file));
+  while (dir !== path.dirname(dir) && !fs.existsSync(path.join(dir, 'package.json'))) dir = path.dirname(dir);
+  return dir;
+}
+
+// The nearest lockfile at or above the project root (a workspace keeps
+// one at the repository root).
+function lockfileFor(projectRoot: string): string | null {
+  let dir = projectRoot;
+  for (;;) {
+    for (const name of LOCKFILES) {
+      const candidate = path.join(dir, name);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    if (dir === path.dirname(dir)) return null;
+    dir = path.dirname(dir);
+  }
+}
+
 // Files whose declarations reach every file without an import: `.d.ts`
-// files, and source files with `declare module` / `declare global`
-// (registry augmentations). The list is found once per process; the
-// content of each file is re-checked on every call.
-const projectInputFilesByRoot = new Map<string, string[]>();
+// files, source files with `declare module` / `declare global` (registry
+// augmentations), and the lockfile. A nested directory with its own
+// package.json is another project and is not walked. The walk is
+// re-validated on the mtimes of the directories it visited.
+interface ProjectInputs {
+  files: string[];
+  dirs: Array<[string, number]>;
+}
+const projectInputsByRoot = new Map<string, ProjectInputs>();
 
 function projectInputFiles(projectRoot: string): string[] {
-  let files = projectInputFilesByRoot.get(projectRoot);
-  if (files) return files;
-  files = [];
+  const cached = projectInputsByRoot.get(projectRoot);
+  if (cached && (staticFileSystem || cached.dirs.every(([dir, mtime]) => mtimeOf(dir) === mtime))) return cached.files;
+  const files: string[] = [];
+  const dirs: Array<[string, number]> = [];
   const walk = (dir: string): void => {
     let entries: fs.Dirent[];
     try {
@@ -415,15 +490,18 @@ function projectInputFiles(projectRoot: string): string[] {
     } catch {
       return;
     }
+    dirs.push([dir, mtimeOf(dir)]);
+    if (dir !== projectRoot && entries.some((entry) => entry.name === 'package.json')) return;
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         if (!SKIPPED_DIRS.has(entry.name) && !entry.name.startsWith('.')) walk(full);
       } else if (entry.name.endsWith('.d.ts')) {
-        files!.push(full);
+        files.push(full);
       } else if (/\.(?:ts|tsx|gts|gjs)$/.test(entry.name)) {
         try {
-          if (GLOBAL_DECLARATION.test(fs.readFileSync(full, 'utf8'))) files!.push(full);
+          const text = fs.readFileSync(full, 'utf8');
+          if (text.includes('declare ') && GLOBAL_DECLARATION.test(text)) files.push(full);
         } catch {
           // unreadable — skip
         }
@@ -431,9 +509,10 @@ function projectInputFiles(projectRoot: string): string[] {
     }
   };
   walk(projectRoot);
-  files.push(...LOCKFILES.map((name) => path.join(projectRoot, name)));
+  const lockfile = lockfileFor(projectRoot);
+  if (lockfile) files.push(lockfile);
   files.sort();
-  projectInputFilesByRoot.set(projectRoot, files);
+  projectInputsByRoot.set(projectRoot, { files, dirs });
   return files;
 }
 
@@ -454,12 +533,11 @@ function hashFiles(hash: crypto.Hash, projectRoot: string, files: string[]): voi
 // hashed — an edit to any file the registry reaches invalidates every
 // template. Both shas are computed once per run under a static file
 // system.
-const inputsShaByTsconfig = new Map<string, { own: string; closure: string }>();
+const inputsShaByRoot = new Map<string, { own: string; closure: string }>();
 
-function projectInputsSha(tsconfigPath: string, withImports: boolean): string {
-  const memo = inputsShaByTsconfig.get(tsconfigPath);
+function projectInputsSha(projectRoot: string, tsconfigPath: string | null, withImports: boolean): string {
+  const memo = inputsShaByRoot.get(projectRoot);
   if (memo && staticFileSystem) return withImports ? memo.closure : memo.own;
-  const projectRoot = path.dirname(tsconfigPath);
   const inputs = projectInputFiles(projectRoot);
   const closure = new Set<string>(inputs);
   for (const input of inputs) {
@@ -473,25 +551,32 @@ function projectInputsSha(tsconfigPath: string, withImports: boolean): string {
     return hash.digest('hex');
   };
   const shas = { own: shaOf(inputs), closure: shaOf([...closure].sort()) };
-  inputsShaByTsconfig.set(tsconfigPath, shas);
+  inputsShaByRoot.set(projectRoot, shas);
   return withImports ? shas.closure : shas.own;
 }
 
+// Under a static file system a file's sha is computed once per content.
+const shaByFile = new Map<string, { contentSha: string; sha: string }>();
+
 /**
- * Sha over everything `file`'s type information can depend on besides its
- * own content: its import closure and the project-wide inputs (ambient
+ * Sha over everything `file`'s result can depend on besides its own
+ * content: its import closure and the project-wide inputs (ambient
  * declarations, module augmentations, the lockfile) — for a `.hbs`
  * template, the inputs with everything they import.
  */
 export function dependencySha(file: string, contents: string, tsconfigPath: string | null): string {
-  if (!tsconfigPath) return 'no-tsconfig';
+  const contentSha = sha256(contents);
+  const memo = staticFileSystem ? shaByFile.get(file) : undefined;
+  if (memo && memo.contentSha === contentSha) return memo.sha;
   insideSha = true;
   try {
-    const projectRoot = path.dirname(tsconfigPath);
+    const projectRoot = projectRootFor(file, tsconfigPath);
     const hash = crypto.createHash('sha256');
     hashFiles(hash, projectRoot, dependencyClosure(file, contents, tsconfigPath));
-    hash.update(projectInputsSha(tsconfigPath, file.endsWith('.hbs')));
-    return hash.digest('hex');
+    hash.update(projectInputsSha(projectRoot, tsconfigPath, file.endsWith('.hbs')));
+    const sha = hash.digest('hex');
+    shaByFile.set(file, { contentSha, sha });
+    return sha;
   } finally {
     insideSha = false;
     revalidatedInsideSha = false;

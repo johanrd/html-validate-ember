@@ -38,7 +38,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import type { ComponentAttrs } from './builtin-components.js';
-import { dependencySha, sha256 } from './deps.js';
+import { dependencySha, sha256, tsconfigChainSha } from './deps.js';
 
 // Walk up from this module looking for the nearest `package.json` so the
 // version is found regardless of whether we're running from source
@@ -139,22 +139,10 @@ interface CacheEntry {
   componentAttrMap: Array<[string, ComponentAttrs]>;
 }
 
-// In-memory cache for the SHA of each tsconfig file (read once per
-// process; tsconfigs rarely change mid-run).
-const tsconfigShaCache = new Map<string, string>();
-
+// The tsconfig and every config it extends; `lib/deps.ts` re-validates
+// the chain against the file system.
 function getTsconfigSha(tsconfigPath: string): string {
-  const cached = tsconfigShaCache.get(tsconfigPath);
-  if (cached !== undefined) return cached;
-  let sha: string;
-  try {
-    const contents = fs.readFileSync(tsconfigPath, 'utf8');
-    sha = sha256(contents);
-  } catch {
-    sha = 'no-tsconfig';
-  }
-  tsconfigShaCache.set(tsconfigPath, sha);
-  return sha;
+  return tsconfigChainSha(tsconfigPath);
 }
 
 // Walk up from a file to find the project root (where node_modules/
@@ -306,10 +294,10 @@ interface TransformCacheEntry {
 }
 
 /** Everything the transform's output depends on besides the plugin itself. */
-// Without Glint nothing crosses file boundaries, so the closure is not
-// part of the key (and not computed).
+// The closure matters with Glint off too: the resolver reads an imported
+// component's template to substitute its tag.
 function dependenciesForKey(filename: string, contents: string, tsconfigPath: string | null): string {
-  return process.env['HVE_GLINT'] === '0' ? 'no-glint' : dependencySha(filename, contents, tsconfigPath);
+  return CACHE_DISABLED ? 'disabled' : dependencySha(filename, contents, tsconfigPath);
 }
 
 export function transformCacheKey(filename: string, data: string, tsconfigPath: string | null, backendKind: string): string {
