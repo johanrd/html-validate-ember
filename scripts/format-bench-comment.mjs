@@ -13,6 +13,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { comparisonRows, deltaEmoji, formatTime } from "./bench-format-shared.mjs";
 
 const marker = "<!-- bench-compare -->";
 
@@ -50,59 +51,14 @@ if (jsonPath) {
   }
 }
 
-function formatTime(ns) {
-  if (ns >= 1e6) return `${(ns / 1e6).toFixed(2)} ms`;
-  if (ns >= 1e3) return `${(ns / 1e3).toFixed(2)} µs`;
-  return `${ns.toFixed(2)} ns`;
-}
 
-function deltaEmoji(pct) {
-  const abs = Math.abs(pct);
-  // negative pct means experiment is faster (lower time = better)
-  if (abs < 1) return "⚪";
-  if (pct <= -5) return "🟢";
-  if (pct >= 5) return "🔴";
-  return "🟡";
-}
 
 function buildSummary(json) {
-  const benchmarks = json.benchmarks || [];
-
-  // In comparison mode, benchmarks come in pairs inside summary groups.
-  // Each benchmark alias is like "gts small (control)" / "gts small (experiment)".
-  // Group them by stripping the suffix.
-  const pairs = new Map();
-
-  for (const trial of benchmarks) {
-    for (const r of trial.runs || []) {
-      if (!r.stats) continue;
-      const m = r.name.match(/^(.+)\s+\((control|experiment)\)$/);
-      if (!m) continue;
-      const [, key, role] = m;
-      if (!pairs.has(key)) pairs.set(key, {});
-      pairs.get(key)[role] = r.stats;
-    }
-  }
-
-  if (pairs.size === 0) return "";
-
-  const rows = [];
-  for (const [name, { control, experiment }] of pairs) {
-    if (!control || !experiment) continue;
-    // Use p50 (median) — far more robust to GC pauses and noisy-neighbor
-    // spikes on shared CI runners than the mean.
-    const ctrlVal = control.p50 ?? control.avg;
-    const expVal = experiment.p50 ?? experiment.avg;
-    const delta = ((expVal - ctrlVal) / ctrlVal) * 100;
-    const emoji = deltaEmoji(delta);
+  const rows = comparisonRows(json).map(({ name, control, experiment, delta }) => {
     const sign = delta > 0 ? "+" : "";
-    rows.push(
-      `| ${emoji} | ${name} | ${formatTime(ctrlVal)} | ${formatTime(expVal)} | ${sign}${delta.toFixed(1)}% |`,
-    );
-  }
-
+    return `| ${deltaEmoji(delta)} | ${name} | ${formatTime(control)} | ${formatTime(experiment)} | ${sign}${delta.toFixed(1)}% |`;
+  });
   if (rows.length === 0) return "";
-
   return [
     "",
     "| | Benchmark | Control (p50) | Experiment (p50) | Δ |",
@@ -126,7 +82,7 @@ const body = [
   heading,
   summarySection,
   "<details>",
-  "<summary>Full mitata output</summary>",
+  "<summary>Full output</summary>",
   "",
   "```",
   rawOutput,

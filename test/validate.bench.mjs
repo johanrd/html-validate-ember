@@ -9,15 +9,16 @@
  *
  * - In-process: `extractAttrTypeMap` per fixture (the extraction and
  *   resolver work, with the disk cache off).
- * - Whole process: `dist/run.js` over `examples/` — cold (cache off), warm
- *   (all cached), one cached file, and `--no-glint`. These catch backend
- *   start-up and per-run costs that no single call can see.
+ * - Whole process: `dist/run.js` over a fixed subset of `examples/` — cold
+ *   (cache off), warm (all cached), one cached file, and `--no-glint`. These
+ *   catch backend start-up and per-run costs that no single call can see;
+ *   they are timed with a few samples each rather than by mitata.
  *
  * Both sides need `dist/` built. The harness is adapted from ember-estree.
  */
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -69,20 +70,26 @@ function validate(dir, cliArgs, env = {}) {
   }
 }
 
-const EXAMPLES = ['examples'];
-const ONE = ['examples/heuristic-masks-real-bug.gts'];
+// A fixed subset keeps each run short; the costs these cases guard against
+// (backend start-up, uncached per-file work) show at any size.
+const SUBSET = readdirSync(resolve(ROOT, 'examples'))
+  .filter((f) => f.endsWith('.gts'))
+  .sort()
+  .slice(0, 20)
+  .map((f) => `examples/${f}`);
+const ONE = [SUBSET[0]];
 const CACHED = { HVE_NO_CACHE: '' };
 const PROCESS_CASES = {
-  'cold run (cache off)': (dir) => validate(dir, ['--glint', ...EXAMPLES]),
-  'warm run (all cached)': (dir) => validate(dir, ['--glint', ...EXAMPLES], CACHED),
+  'cold run (cache off)': (dir) => validate(dir, ['--glint', ...SUBSET]),
+  'warm run (all cached)': (dir) => validate(dir, ['--glint', ...SUBSET], CACHED),
   'one cached file': (dir) => validate(dir, ['--glint', ...ONE], CACHED),
-  'no glint': (dir) => validate(dir, ['--no-glint', ...EXAMPLES]),
+  'no glint': (dir) => validate(dir, ['--no-glint', ...SUBSET]),
 };
 
 // Populate the disk cache for the warm cases, for both sides (entries are
 // keyed by plugin source, so the sides do not share them).
-validate(ROOT, ['--glint', ...EXAMPLES], CACHED);
-if (CONTROL_DIR) validate(CONTROL_DIR, ['--glint', ...EXAMPLES], CACHED);
+validate(ROOT, ['--glint', ...SUBSET], CACHED);
+if (CONTROL_DIR) validate(CONTROL_DIR, ['--glint', ...SUBSET], CACHED);
 
 // Alternate which side runs first inside each pair so the small advantage
 // of going first cancels out over the run.
@@ -115,19 +122,47 @@ for (const [name, { filename, contents }] of Object.entries(FIXTURES)) {
   );
 }
 
+const result = await run({ colors: false, throw: true });
+
+// Whole-process cases take seconds each, so they are timed here with a
+// few samples (min and median) instead of mitata's twelve-sample minimum,
+// and reported in the same shape as the mitata trials.
+const PROCESS_SAMPLES = 3;
+function stats(samples) {
+  const sorted = [...samples].sort((a, b) => a - b);
+  const p50 = sorted[Math.floor(sorted.length / 2)];
+  return { avg: samples.reduce((a, b) => a + b, 0) / samples.length, min: sorted[0], max: sorted.at(-1), p50, p75: p50, p99: sorted.at(-1), samples: sorted };
+}
+const ms = (ns) => `${(ns / 1e6).toFixed(0)} ms`;
+const processTrials = [];
+console.log('\nwhole process (min / p50 of %d runs, %d files)', PROCESS_SAMPLES, SUBSET.length);
 for (const [name, runCase] of Object.entries(PROCESS_CASES)) {
-  pair(
-    name,
-    () => runCase(ROOT),
-    CONTROL_DIR ? () => runCase(CONTROL_DIR) : null,
-  );
+  const sides = CONTROL_DIR
+    ? [['control', CONTROL_DIR], ['experiment', ROOT]]
+    : [[null, ROOT]];
+  const samples = new Map(sides.map(([role]) => [role, []]));
+  for (let i = 0; i < PROCESS_SAMPLES; i++) {
+    // Alternate the order each round.
+    for (const [role, dir] of i % 2 ? [...sides].reverse() : sides) {
+      const t = process.hrtime.bigint();
+      runCase(dir);
+      samples.get(role).push(Number(process.hrtime.bigint() - t));
+    }
+  }
+  const runs = [];
+  for (const [role, dir] of sides) {
+    const st = stats(samples.get(role));
+    const label = role ? `${name} (${role})` : name;
+    runs.push({ name: label, args: {}, stats: st });
+    console.log(`  ${label.padEnd(36)} ${ms(st.min).padStart(9)} / ${ms(st.p50).padStart(9)}`);
+  }
+  processTrials.push({ alias: name, runs });
 }
 
-const result = await run({ colors: false, throw: true });
 
 const jsonPath = process.env['BENCH_JSON_OUTPUT'];
 if (jsonPath) {
-  const benchmarks = result.benchmarks.map((trial) => ({
+  const benchmarks = [...result.benchmarks, ...processTrials].map((trial) => ({
     alias: trial.alias,
     runs: trial.runs.map((r) => ({
       name: r.name,
