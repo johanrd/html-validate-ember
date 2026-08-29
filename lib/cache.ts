@@ -58,8 +58,7 @@ function findPluginVersion(): string {
 }
 const PLUGIN_VERSION = findPluginVersion();
 
-// SHA over the plugin's own library code (the directory this module
-// lives in). The cache entries are produced by these files; if the
+// SHA over the plugin's own code: the root sources and `lib/`. The cache entries are produced by these files; if the
 // files change between runs, the stored entries can be wrong even
 // though the source-under-validation and tsconfig haven't moved.
 // Bumping the package version on release covers consumers of the
@@ -70,7 +69,9 @@ const PLUGIN_VERSION = findPluginVersion();
 // Computed once at module load: it's the same for every cache call in
 // a process. Costs ~50ms on first import, then cached.
 function computePluginSourceSha(): string {
-  const start = path.dirname(fileURLToPath(import.meta.url));
+  // The package root (`dist/` when built, the repo when run from source):
+  // `blank` and `transform` live there, next to `lib/`.
+  const start = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
   const files: string[] = [];
   function walk(dir: string): void {
     let entries: fs.Dirent[];
@@ -82,7 +83,8 @@ function computePluginSourceSha(): string {
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        walk(full);
+        // Only `lib/` below the root: not node_modules, tests or fixtures.
+        if (dir !== start || entry.name === 'lib') walk(full);
       } else if (entry.isFile() && /\.(?:js|ts|cjs|mjs|hbs|gjs|gts|json)$/.test(entry.name)) {
         // Skip `.d.ts` and source maps — they don't drive behaviour.
         if (entry.name.endsWith('.d.ts') || entry.name.endsWith('.map')) continue;
@@ -255,6 +257,86 @@ export function writeCache(
       componentAttrMap: serializeMap(result.componentAttrMap),
     };
     fs.writeFileSync(entryPath(cacheDir, filename), JSON.stringify(payload));
+  } catch {
+    // ignore — cache is best-effort
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Transform-output cache: the blanked passes of a `.gts`/`.gjs` file, keyed
+// by the file's content plus everything else the transform reads (the
+// tsconfig, the environment switches). Same layout and lifetime rules as
+// the Glint cache above, under `.../html-validate-ember/transform/`.
+// ---------------------------------------------------------------------------
+
+export interface CachedPass {
+  content: string;
+  error: string | null;
+  dynamicContentOffsets: number[];
+  attrInjections: Array<[number, Array<{ attr: string; value: string | null }>]>;
+  disablePerElement: Array<[number, string[]]>;
+}
+
+export interface CachedTemplate {
+  startOffset: number;
+  endOffset: number;
+  passes: CachedPass[];
+}
+
+interface TransformCacheEntry {
+  pluginVersion: string;
+  pluginSourceSha: string;
+  key: string;
+  templates: CachedTemplate[];
+}
+
+/** Everything the transform's output depends on besides the plugin itself. */
+export function transformCacheKey(data: string, tsconfigPath: string | null, backendKind: string): string {
+  return sha256(
+    [
+      data,
+      tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
+      backendKind,
+      process.env['HVE_GLINT'] ?? '',
+      process.env['HVE_MAX_CONDITIONAL_BRANCHES'] ?? '',
+    ].join('\0'),
+  );
+}
+
+function transformEntryPath(filename: string): string {
+  return path.join(findCacheDir(filename), '..', 'transform', `${sha256(path.resolve(filename))}.json`);
+}
+
+export function readTransformCache(filename: string, key: string): CachedTemplate[] | null {
+  if (CACHE_DISABLED) return null;
+  let parsed: TransformCacheEntry;
+  try {
+    parsed = JSON.parse(fs.readFileSync(transformEntryPath(filename), 'utf8')) as TransformCacheEntry;
+  } catch {
+    return null;
+  }
+  if (
+    parsed.pluginVersion !== PLUGIN_VERSION ||
+    parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
+    parsed.key !== key
+  ) {
+    return null;
+  }
+  return parsed.templates;
+}
+
+export function writeTransformCache(filename: string, key: string, templates: CachedTemplate[]): void {
+  if (CACHE_DISABLED) return;
+  const file = transformEntryPath(filename);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const payload: TransformCacheEntry = {
+      pluginVersion: PLUGIN_VERSION,
+      pluginSourceSha: PLUGIN_SOURCE_SHA,
+      key,
+      templates,
+    };
+    fs.writeFileSync(file, JSON.stringify(payload));
   } catch {
     // ignore — cache is best-effort
   }

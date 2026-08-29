@@ -113,6 +113,7 @@ export interface TsgoModules {
 const CANDIDATE_PACKAGES = ['typescript', '@typescript/native', 'typescript-7', '@typescript/native-preview'];
 
 const modulesByRoot = new Map<string, TsgoModules | null>();
+const packageByRoot = new Map<string, { name: string; version: string } | null>();
 
 /**
  * Find a TypeScript 7 package installed in the project. `typescript` itself
@@ -120,24 +121,43 @@ const modulesByRoot = new Map<string, TsgoModules | null>();
  * library-API 5/6 (`HVE_TSGO=<package name>` overrides the search).
  * Requires Node 22.12+ (`require()` of the ESM API).
  */
-export function loadTsgo(projectRoot: string): TsgoModules | null {
-  const cached = modulesByRoot.get(projectRoot);
+/**
+ * The TypeScript 7 package `loadTsgo` would use, without loading it: the
+ * cache keys include it so that installing or removing one invalidates.
+ */
+export function resolveTsgoPackage(projectRoot: string): { name: string; version: string } | null {
+  const cached = packageByRoot.get(projectRoot);
   if (cached !== undefined) return cached;
   const req = createRequire(path.join(projectRoot, 'package.json'));
   const override = process.env['HVE_TSGO'];
-  const candidates = override ? [override] : CANDIDATE_PACKAGES;
-  let found: TsgoModules | null = null;
-  for (const name of candidates) {
+  let found: { name: string; version: string } | null = null;
+  for (const name of override ? [override] : CANDIDATE_PACKAGES) {
     try {
-      const pkg = req(`${name}/package.json`) as { version?: string };
-      const version = pkg.version ?? '0';
+      const version = (req(`${name}/package.json`) as { version?: string }).version ?? '0';
       if (Number.parseInt(version, 10) < 7) continue;
-      const sync = req(`${name}/unstable/sync`) as TsgoSyncModule;
-      const ast = req(`${name}/unstable/ast`) as TsgoAstModule;
-      found = { packageName: name, version, sync, ast };
+      found = { name, version };
       break;
     } catch {
-      // not installed under this name, or not requirable — try the next
+      // not installed under this name — try the next
+    }
+  }
+  packageByRoot.set(projectRoot, found);
+  return found;
+}
+
+export function loadTsgo(projectRoot: string): TsgoModules | null {
+  const cached = modulesByRoot.get(projectRoot);
+  if (cached !== undefined) return cached;
+  const pkg = resolveTsgoPackage(projectRoot);
+  let found: TsgoModules | null = null;
+  if (pkg) {
+    const req = createRequire(path.join(projectRoot, 'package.json'));
+    try {
+      const sync = req(`${pkg.name}/unstable/sync`) as TsgoSyncModule;
+      const ast = req(`${pkg.name}/unstable/ast`) as TsgoAstModule;
+      found = { packageName: pkg.name, version: pkg.version, sync, ast };
+    } catch {
+      // installed but not requirable (Node < 22.12)
     }
   }
   modulesByRoot.set(projectRoot, found);

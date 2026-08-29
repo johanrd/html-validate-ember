@@ -19,6 +19,9 @@ import {
 import { buildResolutionMaps } from './lib/resolver/build-maps.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
+import { backendKindFor, findTsconfig } from './lib/backend/index.js';
+import { readTransformCache, transformCacheKey, writeTransformCache } from './lib/cache.js';
+import type { CachedPass, CachedTemplate } from './lib/cache.js';
 import { extractStringScope } from './lib/scope.js';
 
 // Cross-realm `DynamicValue` shim.
@@ -298,8 +301,64 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
     return;
   }
 
-  // .gts / .gjs: extract `<template>` blocks via content-tag, blank
-  // each one, optionally enrich with Glint type info.
+  // .gts / .gjs: the blanked passes are a function of the file content
+  // (plus tsconfig and environment), so they are cached on disk like the
+  // Glint result. On a hit nothing below `computeTemplates` runs: no
+  // content-tag parse, no Glint, no blanking.
+  const tsconfigPath = findTsconfig(filename);
+  const key = transformCacheKey(data, tsconfigPath, tsconfigPath ? backendKindFor(tsconfigPath) : 'none');
+  let templates = readTransformCache(filename, key);
+  if (!templates) {
+    templates = computeTemplates(filename, data);
+    if (templates) writeTransformCache(filename, key, templates);
+  }
+  if (!templates) return;
+
+  for (const tpl of templates) {
+    const { line, column } = offsetToLineCol(data, tpl.startOffset);
+    const branched = tpl.passes.length > 1;
+    if (branched) {
+      const endLine = offsetToLineCol(data, tpl.endOffset).line;
+      const ranges = __multipassBranchedRanges.get(filename) ?? [];
+      ranges.push([line, endLine]);
+      __multipassBranchedRanges.set(filename, ranges);
+    }
+    for (const pass of tpl.passes) {
+      if (pass.error) {
+        process.stderr.write(`[html-validate-ember] glimmer parse failure on ${filename}: ${pass.error}\n`);
+      }
+      // Branched output gets a leading `no-unused-disable` directive: a
+      // rule disable that is used in one branch may be unused in another.
+      const prefix = branched ? buildDisableDirective(['no-unused-disable']) : '';
+      const sourceData = prefix + pass.content;
+      const sourceOffset = tpl.startOffset - prefix.length;
+      const sourceColumn = column - prefix.length;
+      // Elements whose only Glimmer source content was mustaches will look
+      // empty after blanking. Hook them and append a DynamicValue placeholder
+      // so html-validate's empty-heading / text-content rules see "has content,
+      // unknowable" rather than truly empty.
+      yield {
+        data: sourceData,
+        filename,
+        line,
+        column: sourceColumn,
+        offset: sourceOffset,
+        originalData,
+        hooks: makeHooks(
+          new Set(pass.dynamicContentOffsets),
+          new Map(pass.attrInjections),
+          new Map(pass.disablePerElement.map(([offset, rules]) => [offset, new Set(rules)])),
+          tpl.startOffset,
+        ),
+      };
+    }
+  }
+}
+
+// The transform proper: extract `<template>` blocks via content-tag, blank
+// each one, optionally enriched with Glint type info. Returns null when the
+// file does not parse.
+function computeTemplates(filename: string, data: string): CachedTemplate[] | null {
   const scope = extractStringScope(data, filename);
   let glintTypeMap = null;
   let glintComponentTagMap: Map<string, string> | null = null;
@@ -349,8 +408,9 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         err instanceof Error ? err.message : String(err)
       }\n`,
     );
-    return;
+    return null;
   }
+  const templates: CachedTemplate[] = [];
   // Multipass branch validation: enumerate {{#if}}/{{else}} branch
   // combinations and yield one Source per combination so each is
   // independently validated. Errors in unselected branches surface;
@@ -384,7 +444,6 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       continue;
     }
     const startOffset = tpl.contentRange.startChar;
-    const { line, column } = offsetToLineCol(data, startOffset);
     // No Glint info available → run the canonical resolver alone for
     // this template block. Mirrors the .hbs path: walk PascalCase
     // invocations, resolve via imports + addon by-name, project the
@@ -414,54 +473,25 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       tagMap,
       attrMap,
     );
-    const branched = results.length > 1;
-    if (branched) {
-      // Record the file-line range covered by this template's content
-      // so the dedupe can scope its rule-suppression to just this
-      // template (not the whole file). Multi-template files keep
-      // non-branched templates' diagnostics intact.
-      const endLine = offsetToLineCol(data, tpl.contentRange.endChar).line;
-      const ranges = __multipassBranchedRanges.get(filename) ?? [];
-      ranges.push([line, endLine]);
-      __multipassBranchedRanges.set(filename, ranges);
-    }
+    const passes: CachedPass[] = [];
     for (const result of results) {
-      if (result.error) {
-        process.stderr.write(`[html-validate-ember] glimmer parse failure: ${result.error.message}\n`);
-      }
+      // Blanking preserves length so source positions map 1:1.
       if (result.content.length !== tpl.contents.length) {
         process.stderr.write(
           `[html-validate-ember] BUG: blanked length ${result.content.length} != original ${tpl.contents.length}\n`,
         );
       }
-      // The only rule the prefix directive carries today is
-      // `no-unused-disable` for branched (multipass) sources;
-      // structural suppressions live in `result.disablePerElement`
-      // and land via `processElement → el.disableRules` instead.
-      const prefix = branched ? buildDisableDirective(['no-unused-disable']) : '';
-      const sourceData = prefix + result.content;
-      const sourceOffset = startOffset - prefix.length;
-      const sourceColumn = column - prefix.length;
-      // Elements whose only Glimmer source content was mustaches will look
-      // empty after blanking. Hook them and append a DynamicValue placeholder
-      // so html-validate's empty-heading / text-content rules see "has content,
-      // unknowable" rather than truly empty.
-      yield {
-        data: sourceData,
-        filename,
-        line,
-        column: sourceColumn,
-        offset: sourceOffset,
-        originalData,
-        hooks: makeHooks(
-          new Set(result.dynamicContentOffsets ?? []),
-          result.attrInjections ?? new Map(),
-          result.disablePerElement ?? new Map(),
-          startOffset,
-        ),
-      };
+      passes.push({
+        content: result.content,
+        error: result.error ? result.error.message : null,
+        dynamicContentOffsets: result.dynamicContentOffsets ?? [],
+        attrInjections: [...(result.attrInjections ?? new Map())],
+        disablePerElement: [...(result.disablePerElement ?? new Map())].map(([offset, rules]) => [offset, [...rules]]),
+      });
     }
+    templates.push({ startOffset, endOffset: tpl.contentRange.endChar, passes });
   }
+  return templates;
 }
 
 // html-validate transformers carry an `api` version marker as a static
