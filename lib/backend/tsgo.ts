@@ -20,6 +20,7 @@ import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
 import { isComponentTag } from '../../blank.js';
 import { readCache, writeCache } from '../cache.js';
+import { ts6Syntax } from './ts6.js';
 import type {
   CheckerLike,
   OpenedFile,
@@ -141,6 +142,17 @@ export function loadTsgo(projectRoot: string): TsgoModules | null {
   }
   modulesByRoot.set(projectRoot, found);
   return found;
+}
+
+// The project's `typescript` 5/6 library, if installed: a syntactic parse
+// in-process is ~1 ms; through tsgo it is two snapshot round-trips.
+function libraryTypeScript(projectRoot: string): TsSyntax | null {
+  try {
+    const ts = createRequire(path.join(projectRoot, 'package.json'))('typescript') as typeof TS;
+    return typeof ts.createSourceFile === 'function' ? ts6Syntax(ts) : null;
+  } catch {
+    return null;
+  }
 }
 
 function kindTable(ast: TsgoAstModule, name: string): number {
@@ -446,10 +458,11 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
   }
 
   const syntax = tsgoSyntax(mods, parseFile);
+  // Loading the `typescript` library costs a few hundred milliseconds;
+  // a run that hits the cache for every file never needs it.
+  let parserSyntax: TsSyntax | undefined;
 
   function preload(filenames: readonly string[], onProgress?: (p: PreloadProgress) => void): PreloadStats {
-    onProgress?.({ done: 0, total: filenames.length, phase: 'program' });
-    ensureSnapshot();
     let loaded = 0;
     let cached = 0;
     const skips: PreloadStats['skips'] = {
@@ -490,6 +503,10 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
         continue;
       }
       loaded++;
+    }
+    if (loaded > 0) {
+      onProgress?.({ done: filenames.length, total: filenames.length, phase: 'program' });
+      ensureSnapshot();
     }
     onProgress?.({ done: filenames.length, total: filenames.length, phase: 'done' });
     const skipped =
@@ -566,6 +583,10 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     tsconfigPath,
     projectRoot,
     syntax,
+    get parserSyntax() {
+      parserSyntax ??= libraryTypeScript(projectRoot) ?? syntax;
+      return parserSyntax;
+    },
     preload,
     open,
     dispose,
