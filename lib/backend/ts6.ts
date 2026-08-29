@@ -112,19 +112,28 @@ export function loadTs6Deps(filename: string): Ts6Deps | null {
 }
 
 export function ts6Syntax(ts: typeof TS): TsSyntax {
+  // One parse per file; the resolver reaches the same imported component
+  // from many consumers. A changed buffer replaces the entry.
+  const parsed = new Map<string, { contents: string; sourceFile: TS.SourceFile }>();
   return {
     SyntaxKind: ts.SyntaxKind,
     TypeFlags: ts.TypeFlags,
     SymbolFlags: ts.SymbolFlags,
     ObjectFlags: ts.ObjectFlags,
-    parseFile: (fileName, contents, kind) =>
-      ts.createSourceFile(
+    parseFile: (fileName, contents, kind) => {
+      const key = `${fileName}\0${kind}`;
+      const cached = parsed.get(key);
+      if (cached?.contents === contents) return cached.sourceFile;
+      const sourceFile = ts.createSourceFile(
         fileName,
         contents,
         ts.ScriptTarget.Latest,
         true,
         kind === 'js' ? ts.ScriptKind.JS : ts.ScriptKind.TS,
-      ),
+      );
+      parsed.set(key, { contents, sourceFile });
+      return sourceFile;
+    },
     forEachChild: (node, visit) => {
       ts.forEachChild(node, visit);
     },

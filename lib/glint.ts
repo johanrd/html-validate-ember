@@ -732,7 +732,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   if (!backend) {
     return null;
   }
-  const { tsconfigPath, syntax: ts, parserSyntax: parser } = backend;
+  const { tsconfigPath, syntax: ts } = backend;
 
   // Disk-cache fast path. The extraction result is a pure function of
   // (file content + tsconfig content + backend + plugin version) — repeat
@@ -747,6 +747,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   if (opened === null) {
     return null;
   }
+  const parser = backend.parserSyntax;
   if (opened === 'no-template') {
     // Negative cache: a file with no `<template>` block has a stable "no
     // Glint output" result for this (content + tsconfig + plugin

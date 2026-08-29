@@ -458,7 +458,9 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
   }
 
   const syntax = tsgoSyntax(mods, parseFile);
-  const parserSyntax = libraryTypeScript(projectRoot) ?? syntax;
+  // Loading the `typescript` library costs a few hundred milliseconds;
+  // a run that hits the cache for every file never needs it.
+  let parserSyntax: TsSyntax | undefined;
 
   function preload(filenames: readonly string[], onProgress?: (p: PreloadProgress) => void): PreloadStats {
     let loaded = 0;
@@ -581,7 +583,10 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     tsconfigPath,
     projectRoot,
     syntax,
-    parserSyntax,
+    get parserSyntax() {
+      parserSyntax ??= libraryTypeScript(projectRoot) ?? syntax;
+      return parserSyntax;
+    },
     preload,
     open,
     dispose,
