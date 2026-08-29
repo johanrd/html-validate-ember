@@ -16,7 +16,7 @@ import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
 import { isComponentTag, isNativeTag } from '../blank.js';
 import type { ComponentAttrs } from './builtin-components.js';
-import { readCache, writeCache } from './cache.js';
+import { cacheDependencies, readCache, writeCache } from './cache.js';
 import type { AttrTypeInfo, ExtractionResult } from './cache.js';
 import { findTemplateSource } from './resolver/template-source.js';
 import {
@@ -738,7 +738,8 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   // (file content + tsconfig content + backend + plugin version) — repeat
   // runs (CI, pre-commit, IDE re-validation on unchanged files) skip the
   // entire pipeline. See `lib/cache.ts`.
-  const cached = readCache(filename, contents, tsconfigPath, backend.kind);
+  const dependencies = cacheDependencies(filename, contents, tsconfigPath);
+  const cached = readCache(filename, contents, tsconfigPath, backend.kind, dependencies);
   if (cached) {
     return cached;
   }
@@ -758,7 +759,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       componentTagMap: new Map(),
       componentAttrMap: new Map(),
     };
-    writeCache(filename, contents, tsconfigPath, backend.kind, empty);
+    writeCache(filename, contents, tsconfigPath, backend.kind, empty, dependencies);
     return empty;
   }
   const { sourceFile, checker, program, sites } = opened;
@@ -970,7 +971,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   }
 
   const result: ExtractionResult = { attrTypeMap, componentTagMap, componentAttrMap };
-  writeCache(filename, contents, tsconfigPath, backend.kind, result);
+  writeCache(filename, contents, tsconfigPath, backend.kind, result, dependencies);
   return result;
 }
 

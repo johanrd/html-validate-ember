@@ -12,6 +12,7 @@ import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
 import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
 import type { CachedReport } from './lib/cache.js';
+import { assumeStaticFileSystem } from './lib/deps.js';
 
 // Walk up from `start` looking for a `.htmlvalidate.json` config file
 // and return its parsed contents (or null if none found / unreadable).
@@ -148,6 +149,7 @@ function printUsage(): void {
 }
 
 (async () => {
+  assumeStaticFileSystem();
   const args = process.argv.slice(2);
   const flagArgs = args.filter((a) => a.startsWith('--'));
   // Flags that take a value via `=value`. Anything not in this set
@@ -358,6 +360,7 @@ function printUsage(): void {
     try {
       const tsconfigPath = findTsconfig(file);
       key = reportCacheKey(
+        file,
         fs.readFileSync(file, 'utf8'),
         userConfig,
         htmlValidateVersion,
