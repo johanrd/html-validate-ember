@@ -192,16 +192,16 @@ function matchPattern(pattern: string, spec: string): string | null {
 const resolutionByKey = new Map<string, string | null>();
 
 /** The project file `spec` refers to from `fromFile`, or null when it is a package or unresolved. */
-export function resolveImport(spec: string, fromFile: string, tsconfigPath: string): string | null {
+export function resolveProjectImport(spec: string, fromFile: string, tsconfigPath: string): string | null {
   const memoKey = `${tsconfigPath}\0${path.dirname(fromFile)}\0${spec}`;
   const memo = resolutionByKey.get(memoKey);
   if (memo !== undefined) return memo;
-  const resolved = resolveImportUncached(spec, fromFile, tsconfigPath);
+  const resolved = resolveProjectImportUncached(spec, fromFile, tsconfigPath);
   resolutionByKey.set(memoKey, resolved);
   return resolved;
 }
 
-function resolveImportUncached(spec: string, fromFile: string, tsconfigPath: string): string | null {
+function resolveProjectImportUncached(spec: string, fromFile: string, tsconfigPath: string): string | null {
   const projectRoot = path.dirname(tsconfigPath);
   const candidates: string[] = [];
   if (spec.startsWith('.') || path.isAbsolute(spec)) {
@@ -231,7 +231,7 @@ export function dependencyClosure(file: string, contents: string, tsconfigPath: 
   const root = path.resolve(file);
   const seen = new Set<string>([root]);
   const resolveAll = (from: string, specs: string[]) =>
-    specs.map((spec) => resolveImport(spec, from, tsconfigPath)).filter((dep): dep is string => dep !== null);
+    specs.map((spec) => resolveProjectImport(spec, from, tsconfigPath)).filter((dep): dep is string => dep !== null);
   const queue: string[][] = [resolveAll(root, importSpecifiers(contents))];
   while (queue.length > 0) {
     for (const dep of queue.pop()!) {

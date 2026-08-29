@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { dependencyClosure, dependencySha, importSpecifiers, resolveImport } from '../lib/deps.js';
+import { dependencyClosure, dependencySha, importSpecifiers, resolveProjectImport } from '../lib/deps.js';
 import { readCache, reportCacheKey, transformCacheKey, writeCache } from '../lib/cache.js';
 
 const FIXTURES = fileURLToPath(new URL('./deps-fixtures', import.meta.url));
@@ -47,24 +47,24 @@ describe('importSpecifiers', () => {
   });
 });
 
-describe('resolveImport', () => {
+describe('resolveProjectImport', () => {
   it('resolves relative, paths-mapped, js-to-ts and directory imports to project files', () => {
     const from = component('root.gts');
-    expect(resolveImport('app/components/mid', from, tsconfig)).toBe(component('mid.gts'));
-    expect(resolveImport('./leaf-two.js', from, tsconfig)).toBe(component('leaf-two.ts'));
-    expect(resolveImport('./dir', from, tsconfig)).toBe(component('dir/index.ts'));
-    expect(resolveImport('operations', from, tsconfig)).toBe(path.join(root, 'types', 'operations.d.ts'));
+    expect(resolveProjectImport('app/components/mid', from, tsconfig)).toBe(component('mid.gts'));
+    expect(resolveProjectImport('./leaf-two.js', from, tsconfig)).toBe(component('leaf-two.ts'));
+    expect(resolveProjectImport('./dir', from, tsconfig)).toBe(component('dir/index.ts'));
+    expect(resolveProjectImport('operations', from, tsconfig)).toBe(path.join(root, 'types', 'operations.d.ts'));
   });
 
   it('treats packages and unresolved specifiers as external', () => {
     const from = component('root.gts');
-    expect(resolveImport('@glimmer/component', from, tsconfig)).toBeNull();
-    expect(resolveImport('some-pkg', from, tsconfig)).toBeNull();
-    expect(resolveImport('./missing', from, tsconfig)).toBeNull();
+    expect(resolveProjectImport('@glimmer/component', from, tsconfig)).toBeNull();
+    expect(resolveProjectImport('some-pkg', from, tsconfig)).toBeNull();
+    expect(resolveProjectImport('./missing', from, tsconfig)).toBeNull();
   });
 
   it('reads paths and baseUrl through a jsonc tsconfig with extends', () => {
-    expect(resolveImport('app/components/leaf', component('mid.gts'), tsconfig)).toBe(component('leaf.gts'));
+    expect(resolveProjectImport('app/components/leaf', component('mid.gts'), tsconfig)).toBe(component('leaf.gts'));
   });
 });
 
