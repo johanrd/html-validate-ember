@@ -6,5 +6,5 @@
     "types": ["node"]
   },
   "include": ["*.ts", "lib/**/*.ts", "test/**/*.ts", "ecosystem/**/*.ts"],
-  "exclude": ["node_modules", "dist", "ecosystem/.cache"]
+  "exclude": ["node_modules", "dist", "ecosystem/.cache", "test/deps-fixtures"]
 }
