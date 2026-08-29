@@ -14,6 +14,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { CACHED_CASES, ms, PROCESS_CASES, PROCESS_SAMPLES, sample, seedCache, SUBSET, trial } from '../test/bench-process.mjs';
+
 const args = process.argv.slice(2);
 const baseIdx = args.indexOf('--base');
 const BASE_BRANCH = baseIdx !== -1 ? args[baseIdx + 1] : 'main';
@@ -71,8 +73,9 @@ try {
   // does not pick `@types/*` up on its own.
   run('pnpm exec tsc --types node', { cwd: CONTROL_DIR, stdio: ['inherit', 'pipe', 'inherit'] });
 
-  // One process per side, so neither copy's code layout or optimisation
-  // state affects the other. Control first, then experiment.
+  // In-process benchmarks: one process per side, so neither copy's code
+  // layout or optimisation state affects the other. Control first, then
+  // experiment.
   const benchScript = join(ROOT, 'test/validate.bench.mjs');
   const hasTaskset =
     process.platform === 'linux' && spawnSync('which', ['taskset'], { stdio: 'pipe' }).status === 0;
@@ -85,7 +88,7 @@ try {
   for (const [side, dist] of sides) {
     console.error(`\nRunning benchmarks: ${side} (${dist})\n`);
     const jsonFile = join(CONTROL_DIR, `${side}.json`);
-    const nodeArgs = ['--expose-gc', '--max-old-space-size=4096', benchScript, '--dist', dist, '--json', jsonFile];
+    const nodeArgs = ['--expose-gc', '--max-old-space-size=4096', benchScript, '--dist', dist, '--json', jsonFile, '--skip-process'];
     const result = spawnSync(hasTaskset ? 'taskset' : 'node', hasTaskset ? ['-c', '0', 'node', ...nodeArgs] : nodeArgs, {
       stdio: 'inherit',
       cwd: ROOT,
@@ -96,6 +99,29 @@ try {
       process.exit(1);
     }
     results[side] = JSON.parse(readFileSync(jsonFile, 'utf8'));
+  }
+
+  // Whole-process cases: the samples of the two builds are interleaved
+  // (control, experiment, control, …) so that the runner slowing down or
+  // speeding up over the minutes this takes lands on both sides alike —
+  // run one side after the other and a drift shows up as a regression.
+  process.env['HVE_NO_CACHE'] = '1';
+  process.env['HVE_TS_BACKEND'] ??= 'tsgo';
+  console.error(`\nWhole process (min / p50 of ${PROCESS_SAMPLES} interleaved runs, ${SUBSET.length} files)\n`);
+  for (const [, dist] of sides) seedCache(dist);
+  for (const [name, runCase] of Object.entries(PROCESS_CASES)) {
+    const samples = Object.fromEntries(sides.map(([side]) => [side, []]));
+    for (let i = 0; i < PROCESS_SAMPLES; i++) {
+      for (const [side, dist] of sides) {
+        if (CACHED_CASES.has(name)) seedCache(dist);
+        samples[side].push(sample(runCase, dist));
+      }
+    }
+    for (const [side] of sides) {
+      const t = trial(name, samples[side], side);
+      console.error(`  ${name.padEnd(28)} ${side.padEnd(10)} ${ms(t.runs[0].stats.min).padStart(9)} / ${ms(t.runs[0].stats.p50).padStart(9)}`);
+      results[side].benchmarks.push({ alias: name, runs: t.runs.map((r) => ({ ...r, name })) });
+    }
   }
 
   // Merge into one file with `(control)` / `(experiment)` runs, the shape
