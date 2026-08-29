@@ -168,6 +168,12 @@ describe('tsconfig reading', () => {
     });
   });
 
+  it('drops a trailing comma that is separated from the closing bracket by comments', () => {
+    expect(parseJsonc('{ "a": 1, // note\n }')).toEqual({ a: 1 });
+    expect(parseJsonc('[1, /* x */ // y\n ]')).toEqual([1]);
+    expect(parseJsonc('{ "a": 1, /* not trailing */ "b": 2 }')).toEqual({ a: 1, b: 2 });
+  });
+
   it('keeps resolving when a tsconfig has a malformed paths entry or cannot be parsed', () => {
     fs.writeFileSync(tsconfig, '{ "compilerOptions": { "baseUrl": ".", "paths": { "app/*": "./app/*", "*": ["./types/*"] } } }');
     const from = component('root.gts');

@@ -166,8 +166,20 @@ export function parseJsonc(text: string): unknown {
       const end = text.indexOf('*/', i + 2);
       i = end === -1 ? text.length : end + 2;
     } else if (ch === ',') {
+      // Trailing if only whitespace and comments separate it from the closing bracket
       let j = i + 1;
-      while (j < text.length && /\s/.test(text[j]!)) j++;
+      for (;;) {
+        while (j < text.length && /\s/.test(text[j]!)) j++;
+        if (text[j] === '/' && text[j + 1] === '/') {
+          j = text.indexOf('\n', j);
+          if (j === -1) j = text.length;
+        } else if (text[j] === '/' && text[j + 1] === '*') {
+          const end = text.indexOf('*/', j + 2);
+          j = end === -1 ? text.length : end + 2;
+        } else {
+          break;
+        }
+      }
       if (text[j] === '}' || text[j] === ']') {
         i++;
       } else {
@@ -403,7 +415,7 @@ function resolveUncached(spec: string, fromFile: string, { baseUrl, pathsBase, p
 // `templates/components/`; the resolver reads it, so it is part of the
 // module for the cache.
 function hbsPeers(file: string): string[] {
-  const m = /^(.*)\/components\/([^/]+)\.(?:ts|js)$/.exec(file);
+  const m = /^(.*)[\\/]components[\\/]([^\\/]+)\.(?:ts|js)$/.exec(file);
   const peers = [file.replace(/\.(?:ts|js)$/, '.hbs')];
   if (m) peers.push(path.join(m[1]!, 'templates', 'components', `${m[2]!}.hbs`));
   return peers.filter((peer) => peer !== file && fileRecord(peer) !== null);
