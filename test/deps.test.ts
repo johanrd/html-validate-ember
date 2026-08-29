@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { dependencyClosure, dependencySha, importSpecifiers, resolveProjectImport } from '../lib/deps.js';
+import { dependencyClosure, dependencySha, importSpecifiers, parseJsonc, resolveProjectImport } from '../lib/deps.js';
 import { readCache, reportCacheKey, transformCacheKey, writeCache } from '../lib/cache.js';
 
 const FIXTURES = fileURLToPath(new URL('./deps-fixtures', import.meta.url));
@@ -24,7 +24,7 @@ const edit = (file: string, append: string) => fs.appendFileSync(file, append);
 const shaOf = (name: string) => dependencySha(component(name), read(name), tsconfig);
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-'));
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-')));
   fs.cpSync(FIXTURES, root, { recursive: true });
   fs.mkdirSync(path.join(root, 'node_modules', 'some-pkg'), { recursive: true });
   fs.writeFileSync(path.join(root, 'node_modules', 'some-pkg', 'index.js'), 'export default 1;');
@@ -105,7 +105,7 @@ describe('dependencySha: invalidation', () => {
   // the change is shown with a second copy of the project.
   it('differs for every file between projects whose ambient declarations or lockfile differ', () => {
     const copy = (mutate: (dir: string) => void) => {
-      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-copy-'));
+      const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-copy-')));
       fs.cpSync(root, dir, { recursive: true });
       mutate(dir);
       const at = (name: string) => path.join(dir, 'app', 'components', name);
@@ -159,5 +159,126 @@ describe('cache keys include the closure', () => {
     edit(component('leaf.gts'), '\n');
     expect(keys()[0]).not.toBe(before[0]);
     expect(keys()[1]).not.toBe(before[1]);
+  });
+});
+
+describe('tsconfig reading', () => {
+  it('parses strings that end in a backslash and keeps comments inside strings', () => {
+    expect(parseJsonc('{ "outDir": "c:\\\\out\\\\", // c\n "url": "http://x/*", /* b */ "n": [1, 2,], }')).toEqual({
+      outDir: 'c:\\out\\',
+      url: 'http://x/*',
+      n: [1, 2],
+    });
+  });
+
+  it('keeps resolving when a tsconfig has a malformed paths entry or cannot be parsed', () => {
+    fs.writeFileSync(tsconfig, '{ "compilerOptions": { "baseUrl": ".", "paths": { "app/*": "./app/*", "*": ["./types/*"] } } }');
+    const from = component('root.gts');
+    expect(() => shaOf('root.gts')).not.toThrow();
+    expect(resolveProjectImport('operations', from, tsconfig)).toBe(path.join(root, 'types', 'operations.d.ts'));
+    expect(resolveProjectImport('app/components/mid', from, tsconfig)).toBe(component('mid.gts'));
+    fs.writeFileSync(tsconfig, '{ not json');
+    expect(() => shaOf('root.gts')).not.toThrow();
+  });
+
+  it('prefers the pattern with the longest prefix, like tsc', () => {
+    fs.mkdirSync(path.join(root, 'types', 'app', 'components'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'types', 'app', 'components', 'mid.d.ts'), 'export {}');
+    fs.writeFileSync(tsconfig, '{ "compilerOptions": { "paths": { "*": ["./types/*"], "app/*": ["./app/*"] } } }');
+    expect(resolveProjectImport('app/components/mid', component('root.gts'), tsconfig)).toBe(component('mid.gts'));
+  });
+
+  it('resolves paths against the inherited baseUrl and lets a later extends entry win', () => {
+    fs.mkdirSync(path.join(root, 'src', 'lib', 'x'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'lib', 'x', 'a.ts'), 'export {}');
+    fs.writeFileSync(path.join(root, 'tsconfig.a.json'), '{ "compilerOptions": { "baseUrl": "./app" } }');
+    fs.writeFileSync(path.join(root, 'tsconfig.b.json'), '{ "compilerOptions": { "baseUrl": "./src" } }');
+    fs.writeFileSync(tsconfig, '{ "extends": ["./tsconfig.a.json", "./tsconfig.b.json"], "compilerOptions": { "paths": { "x/*": ["./lib/x/*"] } } }');
+    expect(resolveProjectImport('x/a', component('root.gts'), tsconfig)).toBe(path.join(root, 'src', 'lib', 'x', 'a.ts'));
+  });
+
+  it('follows a package extends through its tsconfig field', () => {
+    const pkg = path.join(root, 'node_modules', '@acme', 'tsconfig');
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, 'package.json'), '{ "name": "@acme/tsconfig", "tsconfig": "base.json" }');
+    fs.writeFileSync(path.join(pkg, 'base.json'), '{ "compilerOptions": { "paths": { "app/*": ["./app/*"] } } }');
+    fs.writeFileSync(tsconfig, '{ "extends": "@acme/tsconfig" }');
+    // paths declared in node_modules resolve against that config's directory, like tsc
+    expect(resolveProjectImport('app/components/mid', component('root.gts'), tsconfig)).toBeNull();
+    fs.writeFileSync(path.join(pkg, 'base.json'), '{ "compilerOptions": { "baseUrl": "../../.." , "paths": { "app/*": ["./app/*"] } } }');
+    expect(resolveProjectImport('app/components/mid', component('root.gts'), tsconfig)).toBe(component('mid.gts'));
+  });
+
+  it('sees an edit to tsconfig paths', () => {
+    const before = shaOf('root.gts');
+    fs.writeFileSync(tsconfig, '{ "compilerOptions": { "paths": { "*": ["./types/*"] } } }');
+    expect(shaOf('root.gts')).not.toBe(before);
+  });
+});
+
+describe('workspace sources', () => {
+  it('tracks files outside the tsconfig directory reached through paths', () => {
+    const shared = path.join(path.dirname(root), path.basename(root) + '-shared');
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, 'button.gts'), '<template><button /></template>');
+    fs.writeFileSync(tsconfig, `{ "compilerOptions": { "paths": { "@acme/ui/*": ["../${path.basename(shared)}/*"] } } }`);
+    fs.writeFileSync(component('root.gts'), "import Button from '@acme/ui/button';\n<template><Button /></template>");
+    try {
+      const before = shaOf('root.gts');
+      expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([path.join(shared, 'button.gts')]);
+      edit(path.join(shared, 'button.gts'), '\n');
+      expect(shaOf('root.gts')).not.toBe(before);
+    } finally {
+      fs.rmSync(shared, { recursive: true, force: true });
+    }
+  });
+
+  it('tracks a workspace package linked into node_modules by its real path', () => {
+    const pkgSource = path.join(root, 'packages', 'ui');
+    fs.mkdirSync(pkgSource, { recursive: true });
+    fs.writeFileSync(path.join(pkgSource, 'button.gts'), '<template><button /></template>');
+    fs.mkdirSync(path.join(root, 'node_modules', '@acme'), { recursive: true });
+    fs.symlinkSync(pkgSource, path.join(root, 'node_modules', '@acme', 'ui'));
+    fs.writeFileSync(tsconfig, '{ "compilerOptions": { "baseUrl": "./node_modules" } }');
+    fs.writeFileSync(component('root.gts'), "import Button from '@acme/ui/button';\n<template><Button /></template>");
+    expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([path.join(pkgSource, 'button.gts')]);
+    expect(resolveProjectImport('some-pkg', component('root.gts'), tsconfig)).toBeNull();
+  });
+});
+
+describe('long-lived process', () => {
+  it('sees a dependency created after the import was first unresolved', () => {
+    fs.writeFileSync(component('root.gts'), "import Card from './card';\n<template><Card /></template>");
+    expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([]);
+    fs.writeFileSync(component('card.gts'), '<template><article /></template>');
+    fs.utimesSync(path.dirname(component('card.gts')), new Date(), new Date(Date.now() + 5000));
+    expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([component('card.gts')]);
+  });
+
+  it('counts a source file with a module augmentation as a project-wide input', () => {
+    const copy = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-copy-')));
+    fs.cpSync(root, copy, { recursive: true });
+    fs.writeFileSync(path.join(copy, 'app', 'components', 'registry.ts'), "declare module '@ember/service' { interface Registry { x: 1 } }\n");
+    try {
+      const at = path.join(copy, 'app', 'components', 'unrelated.gts');
+      expect(dependencySha(at, fs.readFileSync(at, 'utf8'), path.join(copy, 'tsconfig.json'))).not.toBe(shaOf('unrelated.gts'));
+    } finally {
+      fs.rmSync(copy, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('without Glint', () => {
+  it('leaves the closure out of the transform and report keys', () => {
+    const file = component('mid.gts');
+    const contents = read('mid.gts');
+    process.env['HVE_GLINT'] = '0';
+    try {
+      const before = [transformCacheKey(file, contents, tsconfig, 'ts6'), reportCacheKey(file, contents, {}, '11.0.0', tsconfig, 'ts6')];
+      edit(component('leaf.gts'), '\n');
+      expect([transformCacheKey(file, contents, tsconfig, 'ts6'), reportCacheKey(file, contents, {}, '11.0.0', tsconfig, 'ts6')]).toEqual(before);
+    } finally {
+      delete process.env['HVE_GLINT'];
+    }
   });
 });

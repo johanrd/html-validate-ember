@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
 import { isComponentTag } from '../../blank.js';
-import { readCache, writeCache } from '../cache.js';
+import { cacheDependencies, readCache, writeCache } from '../cache.js';
 import type {
   OpenedFile,
   PreloadProgress,
@@ -479,7 +479,8 @@ export function createTs6Backend(deps: Ts6Deps, tsconfigPath: string): TypeBacke
       }
       // If a cached extraction exists for this file, skip the rewrite —
       // we'll never need its rewritten contents in the program.
-      if (readCache(filename, contents, tsconfigPath, 'ts6')) {
+      const dependencies = cacheDependencies(filename, contents, tsconfigPath);
+      if (readCache(filename, contents, tsconfigPath, 'ts6', dependencies)) {
         cached++;
         onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
         continue;
@@ -503,11 +504,14 @@ export function createTs6Backend(deps: Ts6Deps, tsconfigPath: string): TypeBacke
         // `<template>` block. Without this, no-template files
         // perpetually show up under "analyzed" in the summary, which
         // reads as "why aren't these cached?" noise.
-        writeCache(filename, contents, tsconfigPath, 'ts6', {
-          attrTypeMap: new Map(),
-          componentTagMap: new Map(),
-          componentAttrMap: new Map(),
-        });
+        writeCache(
+          filename,
+          contents,
+          tsconfigPath,
+          'ts6',
+          { attrTypeMap: new Map(), componentTagMap: new Map(), componentAttrMap: new Map() },
+          dependencies,
+        );
         skips.rewriteEmpty.push({ file: filename });
         onProgress?.({ done, total: filenames.length, phase: 'rewrite' });
         continue;

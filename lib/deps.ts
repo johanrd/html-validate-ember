@@ -1,17 +1,27 @@
 // What a file's Glint result depends on besides its own content: the
 // project files it imports, transitively, plus the project-wide inputs
-// that reach every file without an import (ambient `.d.ts`, installed
-// packages). The cache keys include `dependencySha`, so a change anywhere
-// upstream misses for every file downstream — the same shape as tsc's
-// incremental `referencedMap`, but keyed on file content rather than on
-// the exported signature, so it is stricter than tsc, never looser.
+// that reach every file without an import (ambient declarations, module
+// augmentations, installed packages). The cache keys include
+// `dependencySha`, so a change anywhere upstream misses for every file
+// downstream — the shape of tsc's incremental `referencedMap`, keyed on
+// file content rather than on the exported signature, so stricter than
+// tsc, never looser.
 //
-// Imports are found by scanning the text for specifiers, not by parsing;
-// a specifier that does not resolve to a project file is external (a
-// package, covered by the lockfile sha) and ignored. Resolution follows
-// relative paths, tsconfig `paths` and `baseUrl` (through relative and
-// package `extends`), TypeScript's `.js` → `.ts` rewrite, extension
-// probing with `.gts`/`.gjs` first, and directory `index` files.
+// Imports are found by scanning the text for specifiers, not by parsing.
+// Resolution follows tsc: relative paths; tsconfig `paths` (longest
+// prefix wins) against `baseUrl` or the directory of the config that
+// declares them; `baseUrl`; `extends` (relative, and packages through
+// their `tsconfig` field or `tsconfig.json`), later entries overriding
+// earlier ones; TypeScript's `.js` → `.ts` rewrite; extension probing
+// with `.gts`/`.gjs` first; directory `index` files. A resolved file is
+// taken by its real path; anything under `node_modules` is a package and
+// covered by the lockfile sha. Workspace sources reached through a
+// symlink or a `../` path are project files.
+//
+// Memos re-validate against the file system: file records on mtime and
+// size, module resolution on the mtime of every directory it probed,
+// tsconfig paths on the config chain's content. The list of project-wide
+// input files is found once per process; their content is re-checked.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,9 +31,25 @@ import { createRequire } from 'node:module';
 const EXTENSIONS = ['.gts', '.gjs', '.ts', '.tsx', '.d.ts', '.js', '.mjs', '.cjs', '.jsx'];
 const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'tmp']);
 const LOCKFILES = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock', 'bun.lock', 'bun.lockb'];
+const GLOBAL_DECLARATION = /^\s*(?:export\s+)?declare\s+(?:module|global)\b/m;
 
-function sha256(input: string | Buffer): string {
+export function sha256(input: string | Buffer): string {
   return crypto.createHash('sha256').update(input).digest('hex');
+}
+
+function warnOnce(key: string, message: string): void {
+  if (warned.has(key)) return;
+  warned.add(key);
+  process.stderr.write(`[html-validate-ember] ${message}\n`);
+}
+const warned = new Set<string>();
+
+// A one-shot run (the CLI) sees the file system as it was at start, like a
+// non-watch `tsc`: memos are trusted after their first fill. A long-lived
+// host keeps re-validating them.
+let staticFileSystem = false;
+export function assumeStaticFileSystem(): void {
+  staticFileSystem = true;
 }
 
 // --- file content, memoised on mtime and size -------------------------------
@@ -32,18 +58,20 @@ interface FileRecord {
   mtimeMs: number;
   size: number;
   sha: string;
-  imports: string[];
-  /** Project files the imports resolve to; filled on first use. */
-  edges?: string[];
+  /** Specifiers, scanned on first use. */
+  imports: () => string[];
 }
-const fileRecords = new Map<string, FileRecord | null>();
+const fileRecords = new Map<string, FileRecord>();
 
 function fileRecord(file: string): FileRecord | null {
+  if (staticFileSystem) {
+    const cached = fileRecords.get(file);
+    if (cached) return cached;
+  }
   let stat: fs.Stats;
   try {
     stat = fs.statSync(file);
   } catch {
-    fileRecords.set(file, null);
     return null;
   }
   if (!stat.isFile()) return null;
@@ -55,7 +83,13 @@ function fileRecord(file: string): FileRecord | null {
   } catch {
     return null;
   }
-  const record = { mtimeMs: stat.mtimeMs, size: stat.size, sha: sha256(contents), imports: importSpecifiers(contents) };
+  let imports: string[] | undefined;
+  const record = {
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+    sha: sha256(contents),
+    imports: () => (imports ??= importSpecifiers(contents)),
+  };
   fileRecords.set(file, record);
   return record;
 }
@@ -74,22 +108,29 @@ export function importSpecifiers(contents: string): string[] {
 // --- tsconfig `paths` ---------------------------------------------------------
 
 interface ProjectPaths {
+  /** Distinct per read of the config chain; part of the resolution memo key. */
+  id: number;
   /** Absolute directory non-relative specifiers resolve against. */
   baseUrl: string | null;
-  /** Pattern → absolute target patterns, child config first. */
+  /** Absolute directory `paths` targets resolve against. */
+  pathsBase: string | null;
+  /** Pattern → absolute target patterns. */
   paths: Array<[string, string[]]>;
+  /** Config files read, with their content sha, for re-validation. */
+  chain: Array<[string, string]>;
 }
 const projectPathsByTsconfig = new Map<string, ProjectPaths>();
+let projectPathsReads = 0;
 
 // tsconfig.json is JSON with comments and trailing commas.
-function parseJsonc(text: string): unknown {
+export function parseJsonc(text: string): unknown {
   let out = '';
   let i = 0;
   while (i < text.length) {
     const ch = text[i]!;
     if (ch === '"') {
       let j = i + 1;
-      while (j < text.length && (text[j] !== '"' || text[j - 1] === '\\')) j++;
+      while (j < text.length && text[j] !== '"') j += text[j] === '\\' ? 2 : 1;
       out += text.slice(i, j + 1);
       i = j + 1;
     } else if (ch === '/' && text[i + 1] === '/') {
@@ -107,35 +148,50 @@ function parseJsonc(text: string): unknown {
 }
 
 interface TsconfigShape {
-  extends?: string | string[];
-  compilerOptions?: { baseUrl?: string; paths?: Record<string, string[]> };
+  extends?: unknown;
+  compilerOptions?: { baseUrl?: unknown; paths?: unknown };
 }
 
+// The merged `baseUrl` and `paths` of a config and its `extends` chain.
+// Like tsc: a child overrides its parents, a later `extends` entry
+// overrides an earlier one, `paths` is replaced as a whole and resolves
+// against the merged `baseUrl` or the directory of the config that
+// declares it.
 function readTsconfigChain(tsconfigPath: string, seen = new Set<string>()): ProjectPaths {
-  const result: ProjectPaths = { baseUrl: null, paths: [] };
+  const result: ProjectPaths = { id: ++projectPathsReads, baseUrl: null, pathsBase: null, paths: [], chain: [] };
   if (seen.has(tsconfigPath)) return result;
   seen.add(tsconfigPath);
+  const record = fileRecord(tsconfigPath);
+  if (!record) return result;
+  result.chain.push([tsconfigPath, record.sha]);
   let config: TsconfigShape;
   try {
-    config = parseJsonc(fs.readFileSync(tsconfigPath, 'utf8')) as TsconfigShape;
-  } catch {
+    config = (parseJsonc(fs.readFileSync(tsconfigPath, 'utf8')) ?? {}) as TsconfigShape;
+  } catch (err) {
+    warnOnce(`tsconfig:${tsconfigPath}`, `${tsconfigPath}: cannot parse (${err instanceof Error ? err.message : String(err)}); imports through tsconfig paths are not tracked for the cache.`);
     return result;
   }
   const dir = path.dirname(tsconfigPath);
-  const options = config.compilerOptions ?? {};
-  if (options.baseUrl) result.baseUrl = path.resolve(dir, options.baseUrl);
-  // `paths` without `baseUrl` resolve relative to the tsconfig that declares them.
-  const pathsBase = result.baseUrl ?? dir;
-  for (const [pattern, targets] of Object.entries(options.paths ?? {})) {
-    result.paths.push([pattern, targets.map((t) => path.resolve(pathsBase, t))]);
-  }
-  const parents = Array.isArray(config.extends) ? config.extends : config.extends ? [config.extends] : [];
+  const parents = Array.isArray(config.extends) ? config.extends : [config.extends];
   for (const parent of parents) {
+    if (typeof parent !== 'string') continue;
     const parentPath = resolveExtends(parent, dir);
     if (!parentPath) continue;
     const inherited = readTsconfigChain(parentPath, seen);
-    result.baseUrl ??= inherited.baseUrl;
-    result.paths.push(...inherited.paths);
+    result.chain.push(...inherited.chain);
+    if (inherited.baseUrl) result.baseUrl = inherited.baseUrl;
+    if (inherited.pathsBase) {
+      result.pathsBase = inherited.pathsBase;
+      result.paths = inherited.paths;
+    }
+  }
+  const options = config.compilerOptions ?? {};
+  if (typeof options.baseUrl === 'string') result.baseUrl = path.resolve(dir, options.baseUrl);
+  if (options.paths && typeof options.paths === 'object') {
+    result.pathsBase = dir;
+    result.paths = Object.entries(options.paths as Record<string, unknown>)
+      .filter((entry): entry is [string, string[]] => Array.isArray(entry[1]))
+      .map(([pattern, targets]) => [pattern, targets.filter((t): t is string => typeof t === 'string')]);
   }
   return result;
 }
@@ -145,30 +201,17 @@ function resolveExtends(spec: string, fromDir: string): string | null {
     const abs = path.resolve(fromDir, spec);
     return fs.existsSync(abs) ? abs : fs.existsSync(`${abs}.json`) ? `${abs}.json` : null;
   }
+  const req = createRequire(path.join(fromDir, 'package.json'));
+  const attempts = path.extname(spec) ? [spec] : [`${spec}/tsconfig.json`, spec];
   try {
-    return createRequire(path.join(fromDir, 'package.json')).resolve(spec);
+    const pkg = req(`${spec}/package.json`) as { tsconfig?: string };
+    if (typeof pkg.tsconfig === 'string') attempts.unshift(`${spec}/${pkg.tsconfig}`);
   } catch {
-    return null;
+    // no package.json at the root of the specifier — fine for deep paths
   }
-}
-
-function projectPaths(tsconfigPath: string): ProjectPaths {
-  let cached = projectPathsByTsconfig.get(tsconfigPath);
-  if (!cached) {
-    cached = readTsconfigChain(tsconfigPath);
-    projectPathsByTsconfig.set(tsconfigPath, cached);
-  }
-  return cached;
-}
-
-// --- module resolution -----------------------------------------------------------
-
-function probeFile(candidate: string): string | null {
-  const stem = candidate.replace(/\.(?:js|mjs|cjs|jsx)$/, '');
-  const attempts = [candidate, ...EXTENSIONS.map((ext) => stem + ext), ...EXTENSIONS.map((ext) => path.join(candidate, `index${ext}`))];
   for (const attempt of attempts) {
     try {
-      if (fs.statSync(attempt).isFile()) return attempt;
+      return req.resolve(attempt);
     } catch {
       // next
     }
@@ -176,71 +219,169 @@ function probeFile(candidate: string): string | null {
   return null;
 }
 
-function matchPattern(pattern: string, spec: string): string | null {
-  const star = pattern.indexOf('*');
-  if (star === -1) return pattern === spec ? '' : null;
-  const prefix = pattern.slice(0, star);
-  const suffix = pattern.slice(star + 1);
-  if (spec.length < prefix.length + suffix.length || !spec.startsWith(prefix) || !spec.endsWith(suffix)) return null;
-  return spec.slice(prefix.length, spec.length - suffix.length);
+function projectPaths(tsconfigPath: string): ProjectPaths {
+  const cached = projectPathsByTsconfig.get(tsconfigPath);
+  if (cached && (staticFileSystem || cached.chain.every(([file, sha]) => fileRecord(file)?.sha === sha))) return cached;
+  const fresh = readTsconfigChain(tsconfigPath);
+  projectPathsByTsconfig.set(tsconfigPath, fresh);
+  return fresh;
 }
 
-// Resolution is memoised per (importing directory, specifier) for the life
-// of the process: the file system is probed once per distinct import. A
-// file created later, that an earlier unresolved specifier would now
-// reach, is seen after a restart.
-const resolutionByKey = new Map<string, string | null>();
+// --- module resolution -----------------------------------------------------------
+
+interface Resolution {
+  file: string | null;
+  /** Directories probed; the memo is valid while their mtimes hold. */
+  dirs: string[];
+}
+const resolutionByKey = new Map<string, Resolution>();
+const dirMtimes = new Map<string, number>();
+
+function dirMtime(dir: string): number {
+  try {
+    return fs.statSync(dir).mtimeMs;
+  } catch {
+    return -1;
+  }
+}
+
+// Drops memoised resolutions that probed a directory whose mtime moved —
+// a file was created, deleted or renamed there. One stat per known
+// directory per closure walk.
+function revalidateDirectories(): void {
+  if (staticFileSystem) return;
+  const changed = new Set<string>();
+  for (const [dir, mtime] of dirMtimes) {
+    const now = dirMtime(dir);
+    if (now !== mtime) {
+      changed.add(dir);
+      dirMtimes.set(dir, now);
+    }
+  }
+  if (changed.size === 0) return;
+  for (const [key, resolution] of resolutionByKey) {
+    if (resolution.dirs.some((dir) => changed.has(dir))) resolutionByKey.delete(key);
+  }
+  for (const [candidate, probe] of probeByCandidate) {
+    if (probe.dirs.some((dir) => changed.has(dir))) probeByCandidate.delete(candidate);
+  }
+}
+
+// The directory whose mtime moves when a file at `p` is created: the
+// nearest existing ancestor (creating `types/@ember/service.d.ts` first
+// changes `types/`).
+function watchedDirectory(p: string): string {
+  let dir = path.dirname(p);
+  while (dir !== path.dirname(dir) && !fs.existsSync(dir)) dir = path.dirname(dir);
+  return dir;
+}
+
+// A candidate path is probed once; the same `types/@ember/service` is
+// tried from every importing directory. Dropped with the memoised
+// resolutions when a watched directory changes.
+const probeByCandidate = new Map<string, { file: string | null; dirs: string[] }>();
+
+function probeFile(candidate: string, probed: Set<string>): string | null {
+  const memo = probeByCandidate.get(candidate);
+  if (memo) {
+    for (const dir of memo.dirs) probed.add(dir);
+    return memo.file;
+  }
+  const dirs = new Set<string>();
+  const file = probeUncached(candidate, dirs);
+  for (const dir of dirs) probed.add(dir);
+  probeByCandidate.set(candidate, { file, dirs: [...dirs] });
+  return file;
+}
+
+function probeUncached(candidate: string, probed: Set<string>): string | null {
+  const stem = candidate.replace(/\.(?:js|mjs|cjs|jsx)$/, '');
+  const attempts = [candidate, ...EXTENSIONS.map((ext) => stem + ext), ...EXTENSIONS.map((ext) => path.join(candidate, `index${ext}`))];
+  probed.add(watchedDirectory(candidate));
+  for (const attempt of attempts) {
+    try {
+      if (fs.statSync(attempt).isFile()) return fs.realpathSync.native(attempt);
+    } catch {
+      // next
+    }
+  }
+  if (fs.existsSync(candidate)) probed.add(candidate);
+  return null;
+}
+
+// tsc's findBestPatternMatch: the pattern with the longest prefix wins.
+function matchPaths(paths: Array<[string, string[]]>, spec: string): { wildcard: string; targets: string[] } | null {
+  let best: { wildcard: string; targets: string[]; prefixLength: number } | null = null;
+  for (const [pattern, targets] of paths) {
+    const star = pattern.indexOf('*');
+    if (star === -1) {
+      if (pattern === spec) return { wildcard: '', targets };
+      continue;
+    }
+    const prefix = pattern.slice(0, star);
+    const suffix = pattern.slice(star + 1);
+    if (spec.length < prefix.length + suffix.length || !spec.startsWith(prefix) || !spec.endsWith(suffix)) continue;
+    if (!best || prefix.length > best.prefixLength) {
+      best = { wildcard: spec.slice(prefix.length, spec.length - suffix.length), targets, prefixLength: prefix.length };
+    }
+  }
+  return best;
+}
 
 /** The project file `spec` refers to from `fromFile`, or null when it is a package or unresolved. */
 export function resolveProjectImport(spec: string, fromFile: string, tsconfigPath: string): string | null {
-  const memoKey = `${tsconfigPath}\0${path.dirname(fromFile)}\0${spec}`;
-  const memo = resolutionByKey.get(memoKey);
-  if (memo !== undefined) return memo;
-  const resolved = resolveProjectImportUncached(spec, fromFile, tsconfigPath);
-  resolutionByKey.set(memoKey, resolved);
-  return resolved;
+  return resolveWith(spec, fromFile, projectPaths(tsconfigPath));
 }
 
-function resolveProjectImportUncached(spec: string, fromFile: string, tsconfigPath: string): string | null {
-  const projectRoot = path.dirname(tsconfigPath);
+function resolveWith(spec: string, fromFile: string, paths: ProjectPaths): string | null {
+  const memoKey = `${paths.id}\0${path.dirname(fromFile)}\0${spec}`;
+  const memo = resolutionByKey.get(memoKey);
+  if (memo) return memo.file;
+  const probed = new Set<string>();
+  const file = resolveUncached(spec, fromFile, paths, probed);
+  for (const dir of probed) {
+    if (!dirMtimes.has(dir)) dirMtimes.set(dir, dirMtime(dir));
+  }
+  resolutionByKey.set(memoKey, { file, dirs: [...probed] });
+  return file;
+}
+
+function resolveUncached(spec: string, fromFile: string, { baseUrl, pathsBase, paths }: ProjectPaths, probed: Set<string>): string | null {
   const candidates: string[] = [];
   if (spec.startsWith('.') || path.isAbsolute(spec)) {
     candidates.push(path.resolve(path.dirname(fromFile), spec));
   } else {
-    const { baseUrl, paths } = projectPaths(tsconfigPath);
-    for (const [pattern, targets] of paths) {
-      const wildcard = matchPattern(pattern, spec);
-      if (wildcard === null) continue;
-      candidates.push(...targets.map((t) => t.replace('*', wildcard)));
+    const match = matchPaths(paths, spec);
+    if (match) {
+      const base = baseUrl ?? pathsBase!;
+      candidates.push(...match.targets.map((t) => path.resolve(base, t.replace('*', match.wildcard))));
     }
     if (baseUrl) candidates.push(path.resolve(baseUrl, spec));
   }
   for (const candidate of candidates) {
-    const found = probeFile(candidate);
-    if (found && found.startsWith(projectRoot + path.sep) && !found.includes(`${path.sep}node_modules${path.sep}`)) {
-      return found;
-    }
+    const found = probeFile(candidate, probed);
+    if (found && !found.split(path.sep).includes('node_modules')) return found;
   }
   return null;
 }
 
 // --- closure ----------------------------------------------------------------------
 
-/** Project files `file` imports, transitively (absolute paths, sorted, without `file` itself). */
+/** Project files `file` imports, transitively (real absolute paths, sorted, without `file` itself). */
 export function dependencyClosure(file: string, contents: string, tsconfigPath: string): string[] {
+  revalidateDirectories();
+  const paths = projectPaths(tsconfigPath);
   const root = path.resolve(file);
   const seen = new Set<string>([root]);
-  const resolveAll = (from: string, specs: string[]) =>
-    specs.map((spec) => resolveProjectImport(spec, from, tsconfigPath)).filter((dep): dep is string => dep !== null);
-  const queue: string[][] = [resolveAll(root, importSpecifiers(contents))];
+  const queue: Array<[string, string[]]> = [[root, importSpecifiers(contents)]];
   while (queue.length > 0) {
-    for (const dep of queue.pop()!) {
-      if (seen.has(dep)) continue;
+    const [from, specs] = queue.pop()!;
+    for (const spec of specs) {
+      const dep = resolveWith(spec, from, paths);
+      if (!dep || seen.has(dep)) continue;
       seen.add(dep);
       const record = fileRecord(dep);
-      if (!record) continue;
-      record.edges ??= resolveAll(dep, record.imports);
-      queue.push(record.edges);
+      if (record) queue.push([dep, record.imports()]);
     }
   }
   seen.delete(root);
@@ -249,14 +390,14 @@ export function dependencyClosure(file: string, contents: string, tsconfigPath: 
 
 // --- project-wide inputs -------------------------------------------------------
 
-// Ambient declarations reach every file without an import. They and the
-// lockfile are hashed once per process, like the tsconfig: a long-lived
-// host sees a change to them after a restart.
-const ambientFilesByRoot = new Map<string, string[]>();
-const projectInputsShaByTsconfig = new Map<string, string>();
+// Files whose declarations reach every file without an import: `.d.ts`
+// files, and source files with `declare module` / `declare global`
+// (registry augmentations). The list is found once per process; the
+// content of each file is re-checked on every call.
+const projectInputFilesByRoot = new Map<string, string[]>();
 
-function ambientDeclarationFiles(projectRoot: string): string[] {
-  let files = ambientFilesByRoot.get(projectRoot);
+function projectInputFiles(projectRoot: string): string[] {
+  let files = projectInputFilesByRoot.get(projectRoot);
   if (files) return files;
   files = [];
   const walk = (dir: string): void => {
@@ -267,52 +408,48 @@ function ambientDeclarationFiles(projectRoot: string): string[] {
       return;
     }
     for (const entry of entries) {
+      const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (!SKIPPED_DIRS.has(entry.name) && !entry.name.startsWith('.')) walk(path.join(dir, entry.name));
+        if (!SKIPPED_DIRS.has(entry.name) && !entry.name.startsWith('.')) walk(full);
       } else if (entry.name.endsWith('.d.ts')) {
-        files!.push(path.join(dir, entry.name));
+        files!.push(full);
+      } else if (/\.(?:ts|tsx|gts|gjs)$/.test(entry.name)) {
+        try {
+          if (GLOBAL_DECLARATION.test(fs.readFileSync(full, 'utf8'))) files!.push(full);
+        } catch {
+          // unreadable — skip
+        }
       }
     }
   };
   walk(projectRoot);
+  files.push(...LOCKFILES.map((name) => path.join(projectRoot, name)));
   files.sort();
-  ambientFilesByRoot.set(projectRoot, files);
+  projectInputFilesByRoot.set(projectRoot, files);
   return files;
 }
 
-function projectInputsSha(tsconfigPath: string): string {
-  const memo = projectInputsShaByTsconfig.get(tsconfigPath);
-  if (memo !== undefined) return memo;
-  const projectRoot = path.dirname(tsconfigPath);
-  const hash = crypto.createHash('sha256');
-  for (const file of [...ambientDeclarationFiles(projectRoot), ...LOCKFILES.map((name) => path.join(projectRoot, name))]) {
+function hashFiles(hash: crypto.Hash, projectRoot: string, files: string[]): void {
+  for (const file of files) {
     const record = fileRecord(file);
     if (!record) continue;
     hash.update(path.relative(projectRoot, file));
     hash.update(record.sha);
     hash.update('\0');
   }
-  const sha = hash.digest('hex');
-  projectInputsShaByTsconfig.set(tsconfigPath, sha);
-  return sha;
 }
 
 /**
  * Sha over everything `file`'s type information can depend on besides its
- * own content: the content of its import closure, the project's ambient
- * `.d.ts` files and its lockfile.
+ * own content: its import closure, and the project's ambient
+ * declarations, module augmentations and lockfile.
  */
 export function dependencySha(file: string, contents: string, tsconfigPath: string | null): string {
   if (!tsconfigPath) return 'no-tsconfig';
   const projectRoot = path.dirname(tsconfigPath);
   const hash = crypto.createHash('sha256');
-  for (const dep of dependencyClosure(file, contents, tsconfigPath)) {
-    const record = fileRecord(dep);
-    if (!record) continue;
-    hash.update(path.relative(projectRoot, dep));
-    hash.update(record.sha);
-    hash.update('\0');
-  }
-  hash.update(projectInputsSha(tsconfigPath));
+  hashFiles(hash, projectRoot, dependencyClosure(file, contents, tsconfigPath));
+  hash.update('\0');
+  hashFiles(hash, projectRoot, projectInputFiles(projectRoot));
   return hash.digest('hex');
 }

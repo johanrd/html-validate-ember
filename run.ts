@@ -12,6 +12,7 @@ import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
 import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
 import type { CachedReport } from './lib/cache.js';
+import { assumeStaticFileSystem } from './lib/deps.js';
 
 // Walk up from `start` looking for a `.htmlvalidate.json` config file
 // and return its parsed contents (or null if none found / unreadable).
@@ -332,6 +333,7 @@ function printUsage(): void {
     }
   };
 
+  assumeStaticFileSystem();
   // A file's report depends on its content, the configuration and the
   // plugin; unchanged files replay their last report instead of being
   // validated again.

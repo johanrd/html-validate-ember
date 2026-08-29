@@ -3,8 +3,9 @@
 // The Glint pipeline (`extractAttrTypeMap`) is the dominant cost when
 // `--glint` is on — TS program rebuilds + per-file `rewriteModule` +
 // `getTypeChecker().getTypeAtLocation` calls. The result is a pure
-// function of (file content + tsconfig content + type backend + plugin
-// version + plugin source content), so we can cache it on disk and skip the work
+// function of (file content + the content of the files it depends on,
+// see `lib/deps.ts` + tsconfig content + type backend + plugin version
+// + plugin source content), so we can cache it on disk and skip the work
 // on repeat runs (CI, pre-commit hooks, IDE re-validation).
 //
 // Why plugin source content (not just version)? On release the package
@@ -20,8 +21,9 @@
 // One entry per file path, not per (content × tsconfig × version)
 // combination — so editing a file overwrites its previous entry rather
 // than leaving stale entries to accumulate. The stored entry carries
-// the file SHA, tsconfig SHA, and plugin version inside the JSON; the
-// reader compares stored vs. current and treats any mismatch as a miss.
+// the file SHA, dependency SHA, tsconfig SHA, and plugin version inside
+// the JSON; the reader compares stored vs. current and treats any
+// mismatch as a miss.
 //
 // `node_modules/.cache/` is the conventional ignored cache location used
 // by Babel, ESLint, etc. — your existing `.gitignore` already excludes
@@ -36,7 +38,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import type { ComponentAttrs } from './builtin-components.js';
-import { dependencySha } from './deps.js';
+import { dependencySha, sha256 } from './deps.js';
 
 // Walk up from this module looking for the nearest `package.json` so the
 // version is found regardless of whether we're running from source
@@ -141,10 +143,6 @@ interface CacheEntry {
 // process; tsconfigs rarely change mid-run).
 const tsconfigShaCache = new Map<string, string>();
 
-function sha256(input: string): string {
-  return crypto.createHash('sha256').update(input).digest('hex');
-}
-
 function getTsconfigSha(tsconfigPath: string): string {
   const cached = tsconfigShaCache.get(tsconfigPath);
   if (cached !== undefined) return cached;
@@ -189,6 +187,15 @@ function deserializeMap<K, V>(arr: Array<[K, V]> | undefined): Map<K, V> {
   return new Map(arr ?? []);
 }
 
+/**
+ * The dependency sha a Glint result is read and written under. Computed
+ * once by the caller and passed to both `readCache` and `writeCache`; not
+ * computed at all when the cache is off.
+ */
+export function cacheDependencies(filename: string, contents: string, tsconfigPath: string): string {
+  return CACHE_DISABLED ? 'disabled' : dependencySha(filename, contents, tsconfigPath);
+}
+
 // Returns cached extraction results for `filename` when the stored
 // entry's SHAs match current (file content + tsconfig + plugin version).
 // Returns null on miss / stale / disabled / read or parse error.
@@ -197,6 +204,7 @@ export function readCache(
   contents: string,
   tsconfigPath: string,
   backend: string,
+  dependencies = dependencySha(filename, contents, tsconfigPath),
 ): ExtractionResult | null {
   if (CACHE_DISABLED) return null;
   const cacheDir = findCacheDir(filename);
@@ -223,7 +231,7 @@ export function readCache(
     parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
     parsed.tsconfigSha !== tsconfigSha ||
     parsed.fileSha !== fileSha ||
-    parsed.dependencySha !== dependencySha(filename, contents, tsconfigPath)
+    parsed.dependencySha !== dependencies
   ) {
     return null;
   }
@@ -237,13 +245,16 @@ export function readCache(
 // Write extraction results to the cache. Best-effort: failure is swallowed
 // (cache miss next time, but validation still works). Overwrites the
 // file's existing entry — there's only ever one cache file per source
-// file path.
+// file path. `dependencies` is the sha the result was computed under
+// (from the matching `readCache`), so a dependency edited during the
+// analysis cannot be stored as if it were reflected in the result.
 export function writeCache(
   filename: string,
   contents: string,
   tsconfigPath: string,
   backend: string,
   result: ExtractionResult,
+  dependencies = dependencySha(filename, contents, tsconfigPath),
 ): void {
   if (CACHE_DISABLED) return;
   const cacheDir = findCacheDir(filename);
@@ -255,7 +266,7 @@ export function writeCache(
       pluginSourceSha: PLUGIN_SOURCE_SHA,
       tsconfigSha: getTsconfigSha(tsconfigPath),
       fileSha: sha256(contents),
-      dependencySha: dependencySha(filename, contents, tsconfigPath),
+      dependencySha: dependencies,
       attrTypeMap: serializeMap(result.attrTypeMap),
       componentTagMap: serializeMap(result.componentTagMap),
       componentAttrMap: serializeMap(result.componentAttrMap),
@@ -295,11 +306,17 @@ interface TransformCacheEntry {
 }
 
 /** Everything the transform's output depends on besides the plugin itself. */
+// Without Glint nothing crosses file boundaries, so the closure is not
+// part of the key (and not computed).
+function dependenciesForKey(filename: string, contents: string, tsconfigPath: string | null): string {
+  return process.env['HVE_GLINT'] === '0' ? 'no-glint' : dependencySha(filename, contents, tsconfigPath);
+}
+
 export function transformCacheKey(filename: string, data: string, tsconfigPath: string | null, backendKind: string): string {
   return sha256(
     [
       data,
-      dependencySha(filename, data, tsconfigPath),
+      dependenciesForKey(filename, data, tsconfigPath),
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
       backendKind,
       process.env['HVE_GLINT'] ?? '',
@@ -377,7 +394,7 @@ export function reportCacheKey(
   return sha256(
     [
       contents,
-      dependencySha(filename, contents, tsconfigPath),
+      dependenciesForKey(filename, contents, tsconfigPath),
       JSON.stringify(config ?? null),
       htmlValidateVersion,
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
