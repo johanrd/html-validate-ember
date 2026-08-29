@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { extractAttrTypeMap } from '../lib/glint.js';
-import { backendFor } from '../lib/backend/index.js';
+import { backendFor, backendKindFor, findTsconfig } from '../lib/backend/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'glint-fixtures');
@@ -755,6 +755,13 @@ describe('type backend selection', () => {
   it('uses the backend named by HVE_TS_BACKEND for the fixture project', () => {
     const { filename } = readFixture('inline-typed-popover.gts');
     expect(backendFor(filename)?.kind).toBe(process.env['HVE_TS_BACKEND'] ?? 'tsgo');
+  });
+
+  it('keys a tsgo backend on the package and the Node version, which decide whether it loads', () => {
+    const { filename } = readFixture('inline-typed-popover.gts');
+    const kind = backendKindFor(findTsconfig(filename)!);
+    if (kind.startsWith('tsgo:')) expect(kind).toMatch(new RegExp(`^tsgo:[^@]+@[^:]+:node${process.versions.node.replaceAll('.', '\\.')}$`));
+    else expect(kind).toBe(process.env['HVE_TS_BACKEND'] ?? 'ts6');
   });
 });
 

@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 
 import { createTs6Backend, loadTs6Deps, ts6Syntax } from './ts6.js';
-import { createTsgoBackend, loadTsgo } from './tsgo.js';
+import { createTsgoBackend, loadTsgo, resolveTsgoPackage } from './tsgo.js';
 import type { TsSyntax, TypeBackend } from './types.js';
 
 export type {
@@ -70,15 +70,17 @@ function declaresContentMappers(tsconfigPath: string): boolean {
 /**
  * Which backend `backendFor` would pick, as a cache-key component: the
  * forced kind, or tsgo (with its package and version) when the tsconfig
- * declares `contentMappers` and a TypeScript 7 package loads. Same
- * decision as `selectBackend`, without opening a project.
+ * declares `contentMappers` and a TypeScript 7 package resolves. Whether
+ * that package then loads depends on the Node version (`require()` of its
+ * ESM API needs 22.12+), so Node is part of the component too; the
+ * package is not loaded here — a cached replay never needs it.
  */
 export function backendKindFor(tsconfigPath: string): string {
   const forced = process.env['HVE_TS_BACKEND'];
   if (forced === 'ts6') return 'ts6';
   if (forced === 'tsgo' || declaresContentMappers(tsconfigPath)) {
-    const mods = loadTsgo(path.dirname(tsconfigPath));
-    if (mods) return `tsgo:${mods.packageName}@${mods.version}`;
+    const pkg = resolveTsgoPackage(path.dirname(tsconfigPath));
+    if (pkg) return `tsgo:${pkg.name}@${pkg.version}:node${process.versions.node}`;
     if (forced === 'tsgo') return 'none';
   }
   return 'ts6';
