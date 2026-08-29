@@ -20,6 +20,7 @@ import { buildResolutionMaps } from './lib/resolver/build-maps.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
 import { backendKindFor, findTsconfig } from './lib/backend/index.js';
+import path from 'node:path';
 import { readTransformCache, transformCacheKey, writeTransformCache } from './lib/cache.js';
 import type { CachedPass, CachedTemplate } from './lib/cache.js';
 import { extractStringScope } from './lib/scope.js';
@@ -101,6 +102,13 @@ const preprocessor = new Preprocessor();
 // embedder that runs concurrent `validateFile` calls would need to
 // rework this.
 export const __multipassBranchedRanges = new Map<string, Array<[number, number]>>();
+/**
+ * Files (absolute paths) whose last Glint extraction threw. A missing
+ * backend is a stable state the key already covers (backend kind,
+ * tsconfig chain, lockfile); a throw is not, so the result is not cached
+ * at any level and the next run retries.
+ */
+export const __glintUnavailable = new Set<string>();
 
 // Build an inline `<!--html-validate-disable …-->` directive to prepend
 // to a multipass branched Source. The only rule passed in today is
@@ -307,10 +315,11 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // content-tag parse, no Glint, no blanking.
   const tsconfigPath = findTsconfig(filename);
   const key = transformCacheKey(filename, data, tsconfigPath, tsconfigPath ? backendKindFor(tsconfigPath) : 'none');
+  __glintUnavailable.delete(path.resolve(filename));
   let templates = readTransformCache(filename, key);
   if (!templates) {
     templates = computeTemplates(filename, data);
-    if (templates) writeTransformCache(filename, key, templates);
+    if (templates && !__glintUnavailable.has(path.resolve(filename))) writeTransformCache(filename, key, templates);
   }
   if (!templates) return;
 
@@ -392,6 +401,7 @@ function computeTemplates(filename: string, data: string): CachedTemplate[] | nu
         glintComponentAttrMap = result.componentAttrMap;
       }
     } catch (err) {
+      __glintUnavailable.add(path.resolve(filename));
       process.stderr.write(
         `[html-validate-ember] glint type extraction failed for ${filename}: ${
           err instanceof Error ? err.message : String(err)

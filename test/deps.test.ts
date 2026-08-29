@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { dependencyClosure, dependencySha, importSpecifiers, parseJsonc, resolveProjectImport } from '../lib/deps.js';
+import { dependencyClosure, dependencySha, importSpecifiers, parseJsonc, resolveProjectImport, tsconfigChainSha } from '../lib/deps.js';
 import { readCache, reportCacheKey, transformCacheKey, writeCache } from '../lib/cache.js';
 
 const FIXTURES = fileURLToPath(new URL('./deps-fixtures', import.meta.url));
@@ -78,10 +78,6 @@ describe('dependencyClosure', () => {
   it('terminates on cycles and includes both sides', () => {
     expect(dependencyClosure(component('cycle-a.gts'), read('cycle-a.gts'), tsconfig)).toEqual([component('cycle-b.gts')]);
     expect(dependencyClosure(component('cycle-b.gts'), read('cycle-b.gts'), tsconfig)).toEqual([component('cycle-a.gts')]);
-  });
-
-  it('is empty without a tsconfig-relative project', () => {
-    expect(dependencySha(component('leaf.gts'), read('leaf.gts'), null)).toBe('no-tsconfig');
   });
 });
 
@@ -163,12 +159,19 @@ describe('cache keys include the closure', () => {
 });
 
 describe('tsconfig reading', () => {
-  it('parses strings that end in a backslash and keeps comments inside strings', () => {
-    expect(parseJsonc('{ "outDir": "c:\\\\out\\\\", // c\n "url": "http://x/*", /* b */ "n": [1, 2,], }')).toEqual({
+  it('parses strings that end in a backslash and keeps comments and commas inside strings', () => {
+    expect(parseJsonc('{ "outDir": "c:\\\\out\\\\", // c\n "url": "http://x/*", /* b */ "glob": "src/{a,}", "n": [1, 2,], }')).toEqual({
       outDir: 'c:\\out\\',
       url: 'http://x/*',
+      glob: 'src/{a,}',
       n: [1, 2],
     });
+  });
+
+  it('drops a trailing comma that is separated from the closing bracket by comments', () => {
+    expect(parseJsonc('{ "a": 1, // note\n }')).toEqual({ a: 1 });
+    expect(parseJsonc('[1, /* x */ // y\n ]')).toEqual([1]);
+    expect(parseJsonc('{ "a": 1, /* not trailing */ "b": 2 }')).toEqual({ a: 1, b: 2 });
   });
 
   it('keeps resolving when a tsconfig has a malformed paths entry or cannot be parsed', () => {
@@ -292,16 +295,85 @@ describe('long-lived process', () => {
 });
 
 describe('without Glint', () => {
-  it('leaves the closure out of the transform and report keys', () => {
+  it('keeps the closure in the transform and report keys: the resolver still reads imported templates', () => {
     const file = component('mid.gts');
     const contents = read('mid.gts');
     process.env['HVE_GLINT'] = '0';
     try {
       const before = [transformCacheKey(file, contents, tsconfig, 'ts6'), reportCacheKey(file, contents, {}, '11.0.0', tsconfig, 'ts6')];
       edit(component('leaf.gts'), '\n');
-      expect([transformCacheKey(file, contents, tsconfig, 'ts6'), reportCacheKey(file, contents, {}, '11.0.0', tsconfig, 'ts6')]).toEqual(before);
+      const after = [transformCacheKey(file, contents, tsconfig, 'ts6'), reportCacheKey(file, contents, {}, '11.0.0', tsconfig, 'ts6')];
+      expect(after[0]).not.toBe(before[0]);
+      expect(after[1]).not.toBe(before[1]);
     } finally {
       delete process.env['HVE_GLINT'];
     }
+  });
+});
+
+describe('files the resolver reads without an import', () => {
+  it('includes a module\'s co-located .hbs template and templates/components peer', () => {
+    fs.writeFileSync(component('classic.ts'), 'export default class {}');
+    fs.writeFileSync(component('classic.hbs'), '<li>{{yield}}</li>');
+    fs.mkdirSync(path.join(root, 'app', 'templates', 'components'), { recursive: true });
+    fs.writeFileSync(component('peer.ts'), 'export default class {}');
+    fs.writeFileSync(path.join(root, 'app', 'templates', 'components', 'peer.hbs'), '<li>{{yield}}</li>');
+    fs.writeFileSync(component('root.gts'), "import Classic from './classic';\nimport Peer from './peer';\n<template><Classic /><Peer /></template>");
+    expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual(
+      [component('classic.hbs'), component('classic.ts'), component('peer.ts'), path.join(root, 'app', 'templates', 'components', 'peer.hbs')].sort(),
+    );
+    const before = shaOf('root.gts');
+    edit(component('classic.hbs'), '\n');
+    expect(shaOf('root.gts')).not.toBe(before);
+  });
+
+  it('follows /// <reference path> directives', () => {
+    fs.writeFileSync(component('root.gts'), '/// <reference path="../../types/global.d.ts" />\n<template></template>');
+    expect(importSpecifiers(read('root.gts'))).toEqual(['../../types/global.d.ts']);
+    expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([path.join(root, 'types', 'global.d.ts')]);
+  });
+});
+
+describe('project layout', () => {
+  it('finds the lockfile above the tsconfig directory (workspace root)', () => {
+    const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-ws-')));
+    const app = path.join(workspace, 'packages', 'app');
+    fs.cpSync(root, app, { recursive: true });
+    fs.rmSync(path.join(app, 'pnpm-lock.yaml'));
+    fs.writeFileSync(path.join(workspace, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
+    const sha = () => dependencySha(path.join(app, 'app/components/unrelated.gts'), '', path.join(app, 'tsconfig.json'));
+    try {
+      const before = sha();
+      edit(path.join(workspace, 'pnpm-lock.yaml'), '\n');
+      expect(sha()).not.toBe(before);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it('does not walk a nested package for project-wide inputs', () => {
+    const before = shaOf('unrelated.gts');
+    fs.mkdirSync(path.join(root, 'packages', 'other'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'packages', 'other', 'package.json'), '{}');
+    fs.writeFileSync(path.join(root, 'packages', 'other', 'global.d.ts'), 'declare const other: 1;');
+    expect(shaOf('unrelated.gts')).toBe(before);
+    fs.writeFileSync(path.join(root, 'types', 'more.d.ts'), 'declare const more: 1;');
+    expect(shaOf('unrelated.gts')).not.toBe(before);
+  });
+
+  it('resolves relative imports without a tsconfig, and nothing else', () => {
+    fs.rmSync(tsconfig);
+    fs.rmSync(path.join(root, 'tsconfig.base.json'));
+    expect(dependencyClosure(component('mid.gts'), read('mid.gts'), null)).toEqual([component('leaf.gts')]);
+    expect(resolveProjectImport('app/components/mid', component('root.gts'), null)).toBeNull();
+    const before = dependencySha(component('mid.gts'), read('mid.gts'), null);
+    edit(component('leaf.gts'), '\n');
+    expect(dependencySha(component('mid.gts'), read('mid.gts'), null)).not.toBe(before);
+  });
+
+  it('hashes the whole extends chain into the tsconfig sha', () => {
+    const before = tsconfigChainSha(tsconfig);
+    edit(path.join(root, 'tsconfig.base.json'), '\n');
+    expect(tsconfigChainSha(tsconfig)).not.toBe(before);
   });
 });

@@ -9,6 +9,7 @@ import plugin from './index.js';
 import { preloadGlintFiles } from './lib/glint.js';
 import type { PreloadStats } from './lib/glint.js';
 import { dedupeMultipassReport } from './lib/multipass-dedupe.js';
+import { __glintUnavailable } from './transform.js';
 import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
 import type { CachedReport } from './lib/cache.js';
@@ -137,7 +138,7 @@ function printUsage(): void {
       '\n' +
       '  Environment:\n' +
       '    HVE_GLINT=0                      disable Glint type extraction (same as --no-glint; default: on).\n' +
-      '    HVE_NO_CACHE=1                   bypass the on-disk Glint extraction cache.\n' +
+      '    HVE_NO_CACHE=1                   bypass the on-disk caches (Glint extraction, transform output, reports).\n' +
       '    HVE_DEBUG=1                      on Glint preload, print per-file skip reasons (non-gts/gjs, read error, rewrite empty/error).\n' +
       '    HVE_MAX_CONDITIONAL_BRANCHES=N   cap multipass enumeration at N conditional branches per template\n' +
       '                                     (default 10; up to 2^N combinations, often fewer thanks to tree-aware enumeration).\n' +
@@ -233,9 +234,33 @@ function printUsage(): void {
   // target list are filtered out — Glint doesn't apply to classic
   // templates, and counting them would inflate the "analyzing N
   // templates" header with files Glint will never touch.
+  // A file's report depends on its content, the configuration and the
+  // plugin; unchanged files replay their last report instead of being
+  // validated again. Keys first, so the Glint preload covers misses only.
+  const htmlValidateVersion = (createRequire(import.meta.url)('html-validate/package.json') as { version: string }).version;
+  const reportKeys = new Map<string, string>();
+  const cachedReports = new Map<string, CachedReport<Result>>();
+  for (const file of files) {
+    try {
+      const tsconfigPath = findTsconfig(file);
+      const key = reportCacheKey(
+        file,
+        fs.readFileSync(file, 'utf8'),
+        userConfig,
+        htmlValidateVersion,
+        tsconfigPath,
+        tsconfigPath ? backendKindFor(tsconfigPath) : 'none',
+      );
+      reportKeys.set(file, key);
+      const cached = readReportCache<Result>(file, key);
+      if (cached) cachedReports.set(file, cached);
+    } catch {
+      // unreadable: let validateFile report it
+    }
+  }
   const glintFiles =
     process.env['HVE_GLINT'] !== '0'
-      ? files.filter((f) => f.endsWith('.gts') || f.endsWith('.gjs'))
+      ? files.filter((f) => (f.endsWith('.gts') || f.endsWith('.gjs')) && !cachedReports.has(f))
       : [];
   if (glintFiles.length > 1) {
     const isTTY = Boolean(process.stderr.isTTY);
@@ -334,10 +359,6 @@ function printUsage(): void {
     }
   };
 
-  // A file's report depends on its content, the configuration and the
-  // plugin; unchanged files replay their last report instead of being
-  // validated again.
-  const htmlValidateVersion = (createRequire(import.meta.url)('html-validate/package.json') as { version: string }).version;
   const recordReport = (cached: CachedReport<Result>): void => {
     if (cached.valid) {
       valid++;
@@ -356,21 +377,8 @@ function printUsage(): void {
     }
   };
   for (const file of files) {
-    let key: string | null = null;
-    try {
-      const tsconfigPath = findTsconfig(file);
-      key = reportCacheKey(
-        file,
-        fs.readFileSync(file, 'utf8'),
-        userConfig,
-        htmlValidateVersion,
-        tsconfigPath,
-        tsconfigPath ? backendKindFor(tsconfigPath) : 'none',
-      );
-    } catch {
-      // unreadable: let validateFile report it
-    }
-    const cachedReport = key ? readReportCache<Result>(file, key) : null;
+    const key = reportKeys.get(file) ?? null;
+    const cachedReport = cachedReports.get(file);
     if (cachedReport) {
       recordReport(cachedReport);
       tickValidation();
@@ -388,8 +396,11 @@ function printUsage(): void {
       tickValidation();
       continue;
     }
+    // A report computed after a Glint extraction threw is not stored;
+    // the next run retries.
+    const cacheable = key !== null && !__glintUnavailable.has(path.resolve(file));
     if (report.valid) {
-      if (key) writeReportCache(file, key, { valid: true, errorCount: 0, warningCount: 0, results: [] });
+      if (cacheable) writeReportCache(file, key, { valid: true, errorCount: 0, warningCount: 0, results: [] });
       valid++;
       tickValidation();
       continue;
@@ -401,7 +412,7 @@ function printUsage(): void {
     // No-op for templates without branch points (one source → one
     // result → set of message keys is already unique).
     const deduped = dedupeMultipassReport(report);
-    if (key) {
+    if (cacheable) {
       writeReportCache(file, key, {
         valid: deduped.valid,
         errorCount: deduped.errorCount,

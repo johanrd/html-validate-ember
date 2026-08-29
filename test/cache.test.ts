@@ -209,10 +209,14 @@ describe('report cache', () => {
     expect(readReportCache(file, key('v1', { extends: [] }))).toBeNull();
     expect(readReportCache(file, key('v1', undefined, '11.1.0'))).toBeNull();
     expect(readReportCache(file, key('v1', undefined, '11.0.0', 'tsgo:typescript@7.0.0'))).toBeNull();
-    fs.writeFileSync(tsconfigPath, '{"compilerOptions":{"target":"es2020"}}');
     const otherTsconfig = path.join(projectRoot, 'tsconfig.other.json');
     fs.writeFileSync(otherTsconfig, '{}');
     expect(readReportCache(file, reportCacheKey(file, 'v1', { extends: ['html-validate:recommended'] }, '11.0.0', otherTsconfig, 'ts6'))).toBeNull();
+    // an edit to the tsconfig itself changes the key
+    const original = fs.readFileSync(tsconfigPath, 'utf8');
+    fs.writeFileSync(tsconfigPath, '{"compilerOptions":{"target":"es2020"}}');
+    expect(readReportCache(file, key('v1'))).toBeNull();
+    fs.writeFileSync(tsconfigPath, original);
     process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = '2';
     try {
       expect(readReportCache(file, key('v1'))).toBeNull();
