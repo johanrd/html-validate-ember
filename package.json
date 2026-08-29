@@ -57,7 +57,10 @@
     "validate": "node dist/run.js",
     "test:tsgo": "vitest run -c vitest.tsgo.config.ts",
     "ecosystem:check": "tsx ecosystem/run.ts",
-    "ecosystem:update": "tsx ecosystem/run.ts --update"
+    "ecosystem:update": "tsx ecosystem/run.ts --update",
+    "bench": "node --expose-gc test/validate.bench.mjs",
+    "bench:compare": "node scripts/bench-compare.mjs",
+    "bench:summary": "./scripts/local-bench-summary.sh"
   },
   "dependencies": {
     "@embroider/shared-internals": "^3.0.2",
@@ -78,6 +81,7 @@
     "@types/svg-tags": "^1.0.2",
     "ember-content-mapper": "^0.2.1",
     "html-validate": "^11.0.0",
+    "mitata": "1.0.34",
     "release-plan": "^0.18.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
