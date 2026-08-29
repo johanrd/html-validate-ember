@@ -341,3 +341,75 @@ export function writeTransformCache(filename: string, key: string, templates: Ca
     // ignore — cache is best-effort
   }
 }
+// ---------------------------------------------------------------------------
+// Report cache: html-validate's (deduplicated) report for a file, keyed by
+// the file's content and everything the report depends on: the resolved
+// html-validate configuration, html-validate's own version, the tsconfig,
+// and the environment switches. Under `.../html-validate-ember/report/`.
+// ---------------------------------------------------------------------------
+
+export interface CachedReport<Result> {
+  valid: boolean;
+  errorCount: number;
+  warningCount: number;
+  results: Result[];
+}
+
+interface ReportCacheEntry<Result> extends CachedReport<Result> {
+  pluginVersion: string;
+  pluginSourceSha: string;
+  key: string;
+}
+
+export function reportCacheKey(contents: string, config: unknown, htmlValidateVersion: string, tsconfigPath: string | null): string {
+  return sha256(
+    [
+      contents,
+      JSON.stringify(config ?? null),
+      htmlValidateVersion,
+      tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
+      process.env['HVE_GLINT'] ?? '',
+      process.env['HVE_TS_BACKEND'] ?? '',
+      process.env['HVE_MAX_CONDITIONAL_BRANCHES'] ?? '',
+    ].join('\0'),
+  );
+}
+
+function reportEntryPath(filename: string): string {
+  return path.join(findCacheDir(filename), '..', 'report', `${sha256(path.resolve(filename))}.json`);
+}
+
+export function readReportCache<Result>(filename: string, key: string): CachedReport<Result> | null {
+  if (CACHE_DISABLED) return null;
+  let parsed: ReportCacheEntry<Result>;
+  try {
+    parsed = JSON.parse(fs.readFileSync(reportEntryPath(filename), 'utf8')) as ReportCacheEntry<Result>;
+  } catch {
+    return null;
+  }
+  if (
+    parsed.pluginVersion !== PLUGIN_VERSION ||
+    parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
+    parsed.key !== key
+  ) {
+    return null;
+  }
+  return { valid: parsed.valid, errorCount: parsed.errorCount, warningCount: parsed.warningCount, results: parsed.results };
+}
+
+export function writeReportCache<Result>(filename: string, key: string, report: CachedReport<Result>): void {
+  if (CACHE_DISABLED) return;
+  const file = reportEntryPath(filename);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const payload: ReportCacheEntry<Result> = {
+      pluginVersion: PLUGIN_VERSION,
+      pluginSourceSha: PLUGIN_SOURCE_SHA,
+      key,
+      ...report,
+    };
+    fs.writeFileSync(file, JSON.stringify(payload));
+  } catch {
+    // ignore — cache is best-effort
+  }
+}
