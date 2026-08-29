@@ -291,13 +291,13 @@ interface TransformCacheEntry {
 }
 
 /** Everything the transform's output depends on besides the plugin itself. */
-export function transformCacheKey(data: string, tsconfigPath: string | null): string {
+export function transformCacheKey(data: string, tsconfigPath: string | null, backendKind: string): string {
   return sha256(
     [
       data,
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
+      backendKind,
       process.env['HVE_GLINT'] ?? '',
-      process.env['HVE_TS_BACKEND'] ?? '',
       process.env['HVE_MAX_CONDITIONAL_BRANCHES'] ?? '',
     ].join('\0'),
   );

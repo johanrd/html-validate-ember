@@ -19,7 +19,7 @@ import {
 import { buildResolutionMaps } from './lib/resolver/build-maps.js';
 import { isDynamicValuePlaceholder } from './lib/dynamic-value.js';
 import { extractAttrTypeMap } from './lib/glint.js';
-import { findTsconfig } from './lib/backend/index.js';
+import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readTransformCache, transformCacheKey, writeTransformCache } from './lib/cache.js';
 import type { CachedPass, CachedTemplate } from './lib/cache.js';
 import { extractStringScope } from './lib/scope.js';
@@ -305,7 +305,8 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // (plus tsconfig and environment), so they are cached on disk like the
   // Glint result. On a hit nothing below `computeTemplates` runs: no
   // content-tag parse, no Glint, no blanking.
-  const key = transformCacheKey(data, findTsconfig(filename));
+  const tsconfigPath = findTsconfig(filename);
+  const key = transformCacheKey(data, tsconfigPath, tsconfigPath ? backendKindFor(tsconfigPath) : 'none');
   let templates = readTransformCache(filename, key);
   if (!templates) {
     templates = computeTemplates(filename, data);
@@ -323,6 +324,9 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       __multipassBranchedRanges.set(filename, ranges);
     }
     for (const pass of tpl.passes) {
+      if (pass.error) {
+        process.stderr.write(`[html-validate-ember] glimmer parse failure on ${filename}: ${pass.error}\n`);
+      }
       // Branched output gets a leading `no-unused-disable` directive: a
       // rule disable that is used in one branch may be unused in another.
       const prefix = branched ? buildDisableDirective(['no-unused-disable']) : '';
@@ -471,9 +475,6 @@ function computeTemplates(filename: string, data: string): CachedTemplate[] | nu
     );
     const passes: CachedPass[] = [];
     for (const result of results) {
-      if (result.error) {
-        process.stderr.write(`[html-validate-ember] glimmer parse failure: ${result.error.message}\n`);
-      }
       // Blanking preserves length so source positions map 1:1.
       if (result.content.length !== tpl.contents.length) {
         process.stderr.write(

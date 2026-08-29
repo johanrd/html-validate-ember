@@ -7,8 +7,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { readCache, writeCache } from '../lib/cache.js';
-import type { ExtractionResult } from '../lib/cache.js';
+import { readCache, readTransformCache, transformCacheKey, writeCache, writeTransformCache } from '../lib/cache.js';
+import type { CachedTemplate, ExtractionResult } from '../lib/cache.js';
 
 // We need a writeable parent that has a `node_modules/` so cache.ts's
 // `findCacheDir` walk lands somewhere predictable. Set up a fake
@@ -140,5 +140,39 @@ describe('cache: one entry per file path (no accumulation)', () => {
     writeCache(a, 'same', tsconfigPath, 'ts6', makeResult());
     writeCache(b, 'same', tsconfigPath, 'ts6', makeResult());
     expect(fs.readdirSync(cacheDir())).toHaveLength(2);
+  });
+});
+
+describe('transform cache', () => {
+  const templates: CachedTemplate[] = [
+    {
+      startOffset: 10,
+      endOffset: 40,
+      passes: [
+        {
+          content: '<div>   </div>',
+          error: null,
+          dynamicContentOffsets: [5],
+          attrInjections: [[3, [{ attr: 'type', value: 'button' }, { attr: 'hidden', value: null }]]],
+          disablePerElement: [[0, ['no-inline-style']]],
+        },
+        { content: '<div>       </div>', error: 'unclosed', dynamicContentOffsets: [], attrInjections: [], disablePerElement: [] },
+      ],
+    },
+  ];
+
+  it('round-trips the passes, including the Map- and Set-shaped arrays', () => {
+    const file = path.join(templatesDir, 'a.gts');
+    const key = transformCacheKey('<template></template>', tsconfigPath, 'ts6');
+    writeTransformCache(file, key, templates);
+    expect(readTransformCache(file, key)).toEqual(templates);
+  });
+
+  it('misses when the key differs', () => {
+    const file = path.join(templatesDir, 'a.gts');
+    writeTransformCache(file, transformCacheKey('v1', tsconfigPath, 'ts6'), templates);
+    expect(readTransformCache(file, transformCacheKey('v2', tsconfigPath, 'ts6'))).toBeNull();
+    expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'tsgo:typescript@7.0.0'))).toBeNull();
+    expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'ts6'))).toEqual(templates);
   });
 });
