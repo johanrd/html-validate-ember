@@ -2,8 +2,8 @@
   "solution": {
     "html-validate-ember": {
       "impact": "minor",
-      "oldVersion": "0.7.4",
-      "newVersion": "0.8.0",
+      "oldVersion": "0.8.0",
+      "newVersion": "0.9.0",
       "tagName": "latest",
       "constraints": [
         {
@@ -22,5 +22,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-08-28)\n\n* html-validate-ember 0.8.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#47](https://github.com/johanrd/html-validate-ember/pull/47) recommended: disable noisy stylistic rules; demote prefer-native-element ([@johanrd](https://github.com/johanrd))\n  * [#48](https://github.com/johanrd/html-validate-ember/pull/48) Add a TypeScript 7 backend for Glint type extraction ([@johanrd](https://github.com/johanrd))\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#49](https://github.com/johanrd/html-validate-ember/pull/49) Match the template block of a semicolon-less TOC in multi-template files ([@johanrd](https://github.com/johanrd))\n\n#### :house: Internal\n* `html-validate-ember`\n  * [#24](https://github.com/johanrd/html-validate-ember/pull/24) Add ecosystem CI: regression-test the plugin against real-world Ember repos ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-08-29)\n\n* html-validate-ember 0.9.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#57](https://github.com/johanrd/html-validate-ember/pull/57) Cache keys include the import closure ([@johanrd](https://github.com/johanrd))\n  * [#56](https://github.com/johanrd/html-validate-ember/pull/56) CLI: replay the report of unchanged files ([@johanrd](https://github.com/johanrd))\n  * [#55](https://github.com/johanrd/html-validate-ember/pull/55) Cache the transform output per file ([@johanrd](https://github.com/johanrd))\n  * [#54](https://github.com/johanrd/html-validate-ember/pull/54) Parse each template once ([@johanrd](https://github.com/johanrd))\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#58](https://github.com/johanrd/html-validate-ember/pull/58) Release review fixes for 0.9.0 ([@johanrd](https://github.com/johanrd))\n  * [#51](https://github.com/johanrd/html-validate-ember/pull/51) tsgo backend: parse in-process, open the project lazily ([@johanrd](https://github.com/johanrd))\n\n#### :house: Internal\n* `html-validate-ember`\n  * [#60](https://github.com/johanrd/html-validate-ember/pull/60) bench:compare: interleave the whole-process samples of the two builds ([@johanrd](https://github.com/johanrd))\n  * [#52](https://github.com/johanrd/html-validate-ember/pull/52) Benchmarks with base-branch comparison on pull requests ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }

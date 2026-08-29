@@ -1,5 +1,29 @@
 # Changelog
 
+## Release (2026-08-29)
+
+* html-validate-ember 0.9.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#57](https://github.com/johanrd/html-validate-ember/pull/57) Cache keys include the import closure ([@johanrd](https://github.com/johanrd))
+  * [#56](https://github.com/johanrd/html-validate-ember/pull/56) CLI: replay the report of unchanged files ([@johanrd](https://github.com/johanrd))
+  * [#55](https://github.com/johanrd/html-validate-ember/pull/55) Cache the transform output per file ([@johanrd](https://github.com/johanrd))
+  * [#54](https://github.com/johanrd/html-validate-ember/pull/54) Parse each template once ([@johanrd](https://github.com/johanrd))
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#58](https://github.com/johanrd/html-validate-ember/pull/58) Release review fixes for 0.9.0 ([@johanrd](https://github.com/johanrd))
+  * [#51](https://github.com/johanrd/html-validate-ember/pull/51) tsgo backend: parse in-process, open the project lazily ([@johanrd](https://github.com/johanrd))
+
+#### :house: Internal
+* `html-validate-ember`
+  * [#60](https://github.com/johanrd/html-validate-ember/pull/60) bench:compare: interleave the whole-process samples of the two builds ([@johanrd](https://github.com/johanrd))
+  * [#52](https://github.com/johanrd/html-validate-ember/pull/52) Benchmarks with base-branch comparison on pull requests ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-08-28)
 
 * html-validate-ember 0.8.0 (minor)
