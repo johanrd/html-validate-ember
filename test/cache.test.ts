@@ -172,17 +172,17 @@ describe('transform cache', () => {
 
   it('round-trips the passes, including the Map- and Set-shaped arrays', () => {
     const file = path.join(templatesDir, 'a.gts');
-    const key = transformCacheKey('<template></template>', tsconfigPath, 'ts6');
+    const key = transformCacheKey(file, '<template></template>', tsconfigPath, 'ts6');
     writeTransformCache(file, key, templates);
     expect(readTransformCache(file, key)).toEqual(templates);
   });
 
   it('misses when the key differs', () => {
     const file = path.join(templatesDir, 'a.gts');
-    writeTransformCache(file, transformCacheKey('v1', tsconfigPath, 'ts6'), templates);
-    expect(readTransformCache(file, transformCacheKey('v2', tsconfigPath, 'ts6'))).toBeNull();
-    expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'tsgo:typescript@7.0.0'))).toBeNull();
-    expect(readTransformCache(file, transformCacheKey('v1', tsconfigPath, 'ts6'))).toEqual(templates);
+    writeTransformCache(file, transformCacheKey(file, 'v1', tsconfigPath, 'ts6'), templates);
+    expect(readTransformCache(file, transformCacheKey(file, 'v2', tsconfigPath, 'ts6'))).toBeNull();
+    expect(readTransformCache(file, transformCacheKey(file, 'v1', tsconfigPath, 'tsgo:typescript@7.0.0'))).toBeNull();
+    expect(readTransformCache(file, transformCacheKey(file, 'v1', tsconfigPath, 'ts6'))).toEqual(templates);
   });
 });
 
@@ -194,7 +194,7 @@ describe('report cache', () => {
     results: [{ filePath: 'a.gts', messages: [{ ruleId: 'no-inline-style', severity: 2 }] }],
   };
   const key = (contents: string, config: unknown = { extends: ['html-validate:recommended'] }, version = '11.0.0', backend = 'ts6') =>
-    reportCacheKey(contents, config, version, tsconfigPath, backend);
+    reportCacheKey(path.join(templatesDir, 'a.gts'), contents, config, version, tsconfigPath, backend);
 
   it('round-trips a report', () => {
     const file = path.join(templatesDir, 'a.gts');
@@ -212,7 +212,7 @@ describe('report cache', () => {
     fs.writeFileSync(tsconfigPath, '{"compilerOptions":{"target":"es2020"}}');
     const otherTsconfig = path.join(projectRoot, 'tsconfig.other.json');
     fs.writeFileSync(otherTsconfig, '{}');
-    expect(readReportCache(file, reportCacheKey('v1', { extends: ['html-validate:recommended'] }, '11.0.0', otherTsconfig, 'ts6'))).toBeNull();
+    expect(readReportCache(file, reportCacheKey(file, 'v1', { extends: ['html-validate:recommended'] }, '11.0.0', otherTsconfig, 'ts6'))).toBeNull();
     process.env['HVE_MAX_CONDITIONAL_BRANCHES'] = '2';
     try {
       expect(readReportCache(file, key('v1'))).toBeNull();

@@ -210,7 +210,7 @@ Glint adds per-file overhead (TS program build, module rewrite, TypeChecker call
 
 ### Caching
 
-Glint results are content-addressed and cached on disk under `node_modules/.cache/html-validate-ember/glint/`. Set `HVE_NO_CACHE=1` to bypass the cache.
+Glint results, the transform output and (for `validate-gts`) the report of each file are cached on disk under `node_modules/.cache/html-validate-ember/`. An entry is keyed on the file's content plus the content of every project file it imports, transitively (through relative paths and tsconfig `paths`), the project's ambient `.d.ts` files, the lockfile, the tsconfig and the plugin — so editing an imported component invalidates its consumers. Set `HVE_NO_CACHE=1` to bypass the caches.
 
 ## Silencing rules
 

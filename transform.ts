@@ -306,7 +306,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
   // Glint result. On a hit nothing below `computeTemplates` runs: no
   // content-tag parse, no Glint, no blanking.
   const tsconfigPath = findTsconfig(filename);
-  const key = transformCacheKey(data, tsconfigPath, tsconfigPath ? backendKindFor(tsconfigPath) : 'none');
+  const key = transformCacheKey(filename, data, tsconfigPath, tsconfigPath ? backendKindFor(tsconfigPath) : 'none');
   let templates = readTransformCache(filename, key);
   if (!templates) {
     templates = computeTemplates(filename, data);

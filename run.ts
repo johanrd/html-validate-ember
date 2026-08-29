@@ -358,6 +358,7 @@ function printUsage(): void {
     try {
       const tsconfigPath = findTsconfig(file);
       key = reportCacheKey(
+        file,
         fs.readFileSync(file, 'utf8'),
         userConfig,
         htmlValidateVersion,

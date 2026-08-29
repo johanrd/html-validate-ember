@@ -36,6 +36,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import type { ComponentAttrs } from './builtin-components.js';
+import { dependencySha } from './deps.js';
 
 // Walk up from this module looking for the nearest `package.json` so the
 // version is found regardless of whether we're running from source
@@ -130,6 +131,7 @@ interface CacheEntry {
   pluginSourceSha: string;
   tsconfigSha: string;
   fileSha: string;
+  dependencySha: string;
   attrTypeMap: Array<[string, AttrTypeInfo]>;
   componentTagMap: Array<[string, string]>;
   componentAttrMap: Array<[string, ComponentAttrs]>;
@@ -220,7 +222,8 @@ export function readCache(
     parsed.backend !== backend ||
     parsed.pluginSourceSha !== PLUGIN_SOURCE_SHA ||
     parsed.tsconfigSha !== tsconfigSha ||
-    parsed.fileSha !== fileSha
+    parsed.fileSha !== fileSha ||
+    parsed.dependencySha !== dependencySha(filename, contents, tsconfigPath)
   ) {
     return null;
   }
@@ -252,6 +255,7 @@ export function writeCache(
       pluginSourceSha: PLUGIN_SOURCE_SHA,
       tsconfigSha: getTsconfigSha(tsconfigPath),
       fileSha: sha256(contents),
+      dependencySha: dependencySha(filename, contents, tsconfigPath),
       attrTypeMap: serializeMap(result.attrTypeMap),
       componentTagMap: serializeMap(result.componentTagMap),
       componentAttrMap: serializeMap(result.componentAttrMap),
@@ -291,10 +295,11 @@ interface TransformCacheEntry {
 }
 
 /** Everything the transform's output depends on besides the plugin itself. */
-export function transformCacheKey(data: string, tsconfigPath: string | null, backendKind: string): string {
+export function transformCacheKey(filename: string, data: string, tsconfigPath: string | null, backendKind: string): string {
   return sha256(
     [
       data,
+      dependencySha(filename, data, tsconfigPath),
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
       backendKind,
       process.env['HVE_GLINT'] ?? '',
@@ -362,6 +367,7 @@ interface ReportCacheEntry<Result> extends CachedReport<Result> {
 }
 
 export function reportCacheKey(
+  filename: string,
   contents: string,
   config: unknown,
   htmlValidateVersion: string,
@@ -371,6 +377,7 @@ export function reportCacheKey(
   return sha256(
     [
       contents,
+      dependencySha(filename, contents, tsconfigPath),
       JSON.stringify(config ?? null),
       htmlValidateVersion,
       tsconfigPath ? getTsconfigSha(tsconfigPath) : 'no-tsconfig',
