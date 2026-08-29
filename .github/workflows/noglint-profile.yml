@@ -1,0 +1,95 @@
+name: no-glint CPU profile (experiment)
+
+# Profiles the benchmark's `no glint` case on the runner, control (main) and
+# experiment (this branch) side by side, and uploads the .cpuprofile files.
+# Open the artifact's profiles in Chrome DevTools > Performance > Load profile.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Build experiment (this branch)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build control (main)
+        run: |
+          git worktree add "$RUNNER_TEMP/control" origin/main
+          cd "$RUNNER_TEMP/control"
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Profile the `no glint` bench case, 3 runs per side
+        env:
+          # Same environment as test/validate.bench.mjs gives the case.
+          HVE_NO_CACHE: '1'
+          HVE_TS_BACKEND: tsgo
+        run: |
+          files=(test/bench/large.gts examples/*.gts)
+          echo "files: ${#files[@]}"
+          {
+            echo "| side | run | wall ms |"
+            echo "|---|---|---|"
+            for side in control experiment; do
+              dist="$GITHUB_WORKSPACE"
+              [ "$side" = control ] && dist="$RUNNER_TEMP/control"
+              mkdir -p "$RUNNER_TEMP/prof/$side"
+              for i in 1 2 3; do
+                start=$(date +%s%N)
+                node --cpu-prof --cpu-prof-dir="$RUNNER_TEMP/prof/$side" --cpu-prof-name="run$i.cpuprofile" \
+                  "$dist/dist/run.js" --no-glint "${files[@]}" > /dev/null 2> "$RUNNER_TEMP/prof/$side/run$i.stderr" || true
+                end=$(date +%s%N)
+                echo "| $side | $i | $(( (end - start) / 1000000 )) |"
+              done
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarise hottest functions per side
+        run: |
+          node - <<'JS' | tee -a "$GITHUB_STEP_SUMMARY"
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.join(process.env.RUNNER_TEMP, 'prof');
+          for (const side of ['control', 'experiment']) {
+            const self = new Map();
+            let total = 0;
+            for (const file of fs.readdirSync(path.join(root, side)).filter((f) => f.endsWith('.cpuprofile'))) {
+              const prof = JSON.parse(fs.readFileSync(path.join(root, side, file), 'utf8'));
+              const byId = new Map(prof.nodes.map((n) => [n.id, n]));
+              const deltas = prof.timeDeltas;
+              prof.samples.forEach((id, i) => {
+                const n = byId.get(id);
+                const cf = n.callFrame;
+                const key = `${cf.functionName || '(anonymous)'} ${cf.url.replace(/^.*\/(dist|node_modules)\//, '$1/')}:${cf.lineNumber + 1}`;
+                const dt = deltas[i] ?? 0;
+                self.set(key, (self.get(key) ?? 0) + dt);
+                total += dt;
+              });
+            }
+            console.log(`\n### ${side} — top 25 self time (3 runs, ${(total / 1e6).toFixed(0)} ms sampled)\n`);
+            console.log('| self ms | function |'); console.log('|---|---|');
+            for (const [key, us] of [...self].sort((a, b) => b[1] - a[1]).slice(0, 25)) console.log(`| ${(us / 1e3).toFixed(0)} | \`${key}\` |`);
+          }
+          JS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noglint-cpuprofiles
+          path: ${{ runner.temp }}/prof
