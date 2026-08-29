@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { comparisonRows, deltaEmoji, formatTime } from "./bench-format-shared.mjs";
+import { comparisonRows, deltaEmoji, formatTime, LEGEND } from "./bench-format-shared.mjs";
 
 const jsonPath = process.env.BENCH_JSON_OUTPUT;
 
@@ -72,5 +72,5 @@ for (const row of rows) {
 }
 
 console.log();
-console.log("🟢 faster · 🔴 slower · 🟡 within 5% · ⚪ within 1%");
+console.log(LEGEND);
 console.log();

@@ -13,7 +13,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { comparisonRows, deltaEmoji, formatTime } from "./bench-format-shared.mjs";
+import { comparisonRows, deltaEmoji, formatTime, LEGEND } from "./bench-format-shared.mjs";
 
 const marker = "<!-- bench-compare -->";
 
@@ -65,7 +65,7 @@ function buildSummary(json) {
     "|---|---|---:|---:|---:|",
     ...rows,
     "",
-    "> 🟢 faster · 🔴 slower · 🟡 within 5% · ⚪ within 1%",
+    `> ${LEGEND}`,
     "",
   ].join("\n");
 }
