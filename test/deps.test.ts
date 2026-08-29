@@ -255,6 +255,29 @@ describe('long-lived process', () => {
     expect(dependencyClosure(component('root.gts'), read('root.gts'), tsconfig)).toEqual([component('card.gts')]);
   });
 
+  it('reaches .hbs templates, and only those, through a registry file that imports components', () => {
+    fs.writeFileSync(
+      path.join(root, 'types', 'registry.d.ts'),
+      "import Leaf from '../app/components/leaf';\ndeclare module '@glint/environment-ember-loose/registry' { export default interface Registry { Leaf: typeof Leaf } }\n",
+    );
+    fs.mkdirSync(path.join(root, 'app', 'templates'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'app', 'templates', 'page.hbs'), '<Leaf @label="x" />');
+    const copy = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-copy-')));
+    fs.cpSync(root, copy, { recursive: true });
+    edit(path.join(copy, 'app', 'components', 'leaf.gts'), '\n');
+    const sha = (dir: string, rel: string) => {
+      const at = path.join(dir, rel);
+      return dependencySha(at, fs.readFileSync(at, 'utf8'), path.join(dir, 'tsconfig.json'));
+    };
+    try {
+      expect(sha(copy, 'app/templates/page.hbs')).not.toBe(sha(root, 'app/templates/page.hbs'));
+      // a .gts that does not import leaf.gts is not affected
+      expect(sha(copy, 'app/components/unrelated.gts')).toBe(sha(root, 'app/components/unrelated.gts'));
+    } finally {
+      fs.rmSync(copy, { recursive: true, force: true });
+    }
+  });
+
   it('counts a source file with a module augmentation as a project-wide input', () => {
     const copy = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hve-deps-copy-')));
     fs.cpSync(root, copy, { recursive: true });

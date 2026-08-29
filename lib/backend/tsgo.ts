@@ -19,7 +19,7 @@ import { Preprocessor } from 'content-tag';
 import { preprocess as glimmerPreprocess, type AST } from '@glimmer/syntax';
 
 import { isComponentTag } from '../../blank.js';
-import { readCache, writeCache } from '../cache.js';
+import { cacheDependencies, readCache, writeCache } from '../cache.js';
 import { ts6Syntax } from './ts6.js';
 import type {
   CheckerLike,
@@ -509,16 +509,20 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
         });
         continue;
       }
-      if (readCache(filename, contents, tsconfigPath, 'tsgo')) {
+      const dependencies = cacheDependencies(filename, contents, tsconfigPath);
+      if (readCache(filename, contents, tsconfigPath, 'tsgo', dependencies)) {
         cached++;
         continue;
       }
       if (templateBlocks(contents, filename).length === 0) {
-        writeCache(filename, contents, tsconfigPath, 'tsgo', {
-          attrTypeMap: new Map(),
-          componentTagMap: new Map(),
-          componentAttrMap: new Map(),
-        });
+        writeCache(
+          filename,
+          contents,
+          tsconfigPath,
+          'tsgo',
+          { attrTypeMap: new Map(), componentTagMap: new Map(), componentAttrMap: new Map() },
+          dependencies,
+        );
         skips.rewriteEmpty.push({ file: filename });
         continue;
       }

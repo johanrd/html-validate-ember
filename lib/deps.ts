@@ -368,12 +368,20 @@ function resolveUncached(spec: string, fromFile: string, { baseUrl, pathsBase, p
 // --- closure ----------------------------------------------------------------------
 
 /** Project files `file` imports, transitively (real absolute paths, sorted, without `file` itself). */
-export function dependencyClosure(file: string, contents: string, tsconfigPath: string): string[] {
-  revalidateDirectories();
+// Directories are re-validated once per `dependencySha` (which walks
+// many closures), and on every direct call.
+let insideSha = false;
+let revalidatedInsideSha = false;
+
+export function dependencyClosure(file: string, contents: string, tsconfigPath: string, specifiers = importSpecifiers(contents)): string[] {
+  if (!insideSha || !revalidatedInsideSha) {
+    revalidateDirectories();
+    revalidatedInsideSha = insideSha;
+  }
   const paths = projectPaths(tsconfigPath);
   const root = path.resolve(file);
   const seen = new Set<string>([root]);
-  const queue: Array<[string, string[]]> = [[root, importSpecifiers(contents)]];
+  const queue: Array<[string, string[]]> = [[root, specifiers]];
   while (queue.length > 0) {
     const [from, specs] = queue.pop()!;
     for (const spec of specs) {
@@ -439,17 +447,53 @@ function hashFiles(hash: crypto.Hash, projectRoot: string, files: string[]): voi
   }
 }
 
+// The project-wide inputs reach a `.gts`/`.gjs`/`.ts` file through its
+// own imports and the augmentations' declaring files, so their content
+// is hashed. A `.hbs` template has no imports: components reach it only
+// through the registry, so for it the inputs' whole import closure is
+// hashed — an edit to any file the registry reaches invalidates every
+// template. Both shas are computed once per run under a static file
+// system.
+const inputsShaByTsconfig = new Map<string, { own: string; closure: string }>();
+
+function projectInputsSha(tsconfigPath: string, withImports: boolean): string {
+  const memo = inputsShaByTsconfig.get(tsconfigPath);
+  if (memo && staticFileSystem) return withImports ? memo.closure : memo.own;
+  const projectRoot = path.dirname(tsconfigPath);
+  const inputs = projectInputFiles(projectRoot);
+  const closure = new Set<string>(inputs);
+  for (const input of inputs) {
+    const record = fileRecord(input);
+    if (!record) continue;
+    for (const dep of dependencyClosure(input, '', tsconfigPath, record.imports())) closure.add(dep);
+  }
+  const shaOf = (files: string[]) => {
+    const hash = crypto.createHash('sha256');
+    hashFiles(hash, projectRoot, files);
+    return hash.digest('hex');
+  };
+  const shas = { own: shaOf(inputs), closure: shaOf([...closure].sort()) };
+  inputsShaByTsconfig.set(tsconfigPath, shas);
+  return withImports ? shas.closure : shas.own;
+}
+
 /**
  * Sha over everything `file`'s type information can depend on besides its
- * own content: its import closure, and the project's ambient
- * declarations, module augmentations and lockfile.
+ * own content: its import closure and the project-wide inputs (ambient
+ * declarations, module augmentations, the lockfile) — for a `.hbs`
+ * template, the inputs with everything they import.
  */
 export function dependencySha(file: string, contents: string, tsconfigPath: string | null): string {
   if (!tsconfigPath) return 'no-tsconfig';
-  const projectRoot = path.dirname(tsconfigPath);
-  const hash = crypto.createHash('sha256');
-  hashFiles(hash, projectRoot, dependencyClosure(file, contents, tsconfigPath));
-  hash.update('\0');
-  hashFiles(hash, projectRoot, projectInputFiles(projectRoot));
-  return hash.digest('hex');
+  insideSha = true;
+  try {
+    const projectRoot = path.dirname(tsconfigPath);
+    const hash = crypto.createHash('sha256');
+    hashFiles(hash, projectRoot, dependencyClosure(file, contents, tsconfigPath));
+    hash.update(projectInputsSha(tsconfigPath, file.endsWith('.hbs')));
+    return hash.digest('hex');
+  } finally {
+    insideSha = false;
+    revalidatedInsideSha = false;
+  }
 }

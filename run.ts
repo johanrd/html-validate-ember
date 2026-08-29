@@ -149,6 +149,7 @@ function printUsage(): void {
 }
 
 (async () => {
+  assumeStaticFileSystem();
   const args = process.argv.slice(2);
   const flagArgs = args.filter((a) => a.startsWith('--'));
   // Flags that take a value via `=value`. Anything not in this set
@@ -333,7 +334,6 @@ function printUsage(): void {
     }
   };
 
-  assumeStaticFileSystem();
   // A file's report depends on its content, the configuration and the
   // plugin; unchanged files replay their last report instead of being
   // validated again.
