@@ -555,11 +555,13 @@ export function createTs6Backend(deps: Ts6Deps, tsconfigPath: string): TypeBacke
     };
   }
 
+  const syntax = ts6Syntax(ts);
   return {
     kind: 'ts6',
     tsconfigPath,
     projectRoot,
-    syntax: ts6Syntax(ts),
+    syntax,
+    parserSyntax: syntax,
     preload,
     open,
     dispose: () => {

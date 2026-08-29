@@ -120,7 +120,7 @@ function ownTs6Syntax(): TsSyntax | null {
 
 /** Syntax facade for parsing files reached from `filename`. */
 export function syntaxFor(filename: string): TsSyntax | null {
-  return backendFor(filename)?.syntax ?? ownTs6Syntax();
+  return backendFor(filename)?.parserSyntax ?? ownTs6Syntax();
 }
 
 /** Dispose every backend created so far — for hosts that outlive one run. */

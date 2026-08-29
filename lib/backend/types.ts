@@ -152,6 +152,12 @@ export interface TypeBackend {
   readonly tsconfigPath: string;
   readonly projectRoot: string;
   readonly syntax: TsSyntax;
+  /**
+   * Facade for the resolver's syntactic parses of other files. Under tsgo
+   * this is the project's `typescript` 5/6 library when one is installed:
+   * an in-process parse instead of two IPC round-trips per file.
+   */
+  readonly parserSyntax: TsSyntax;
   /** Lazily built `HTMLElementTagNameMap` reverse index, shared per project. */
   elementTypeToTag?: Map<string, string>;
   preload(filenames: readonly string[], onProgress?: (p: PreloadProgress) => void): PreloadStats;

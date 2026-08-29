@@ -732,7 +732,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
   if (!backend) {
     return null;
   }
-  const { tsconfigPath, syntax: ts } = backend;
+  const { tsconfigPath, syntax: ts, parserSyntax: parser } = backend;
 
   // Disk-cache fast path. The extraction result is a pure function of
   // (file content + tsconfig content + backend + plugin version) — repeat
@@ -852,7 +852,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         binderSource = findTemplateSource({
           consumerFile: filename,
           componentName: dottedBinding.binderTag,
-          ts,
+          ts: parser,
         });
       }
       if (binderSource) {
@@ -875,7 +875,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
           parentSource: binderSource,
           hashKey: dottedBinding.hashKey,
           parentArgs: mergedArgs,
-          ts,
+          ts: parser,
         });
         applyResolution(componentTagMap, componentAttrMap, key, resolution);
         // Cache the SOURCE that this dotted invocation yields,
@@ -889,7 +889,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
           parentSource: binderSource,
           hashKey: dottedBinding.hashKey,
           parentArgs: mergedArgs,
-          ts,
+          ts: parser,
         });
         if (nextSource) {
           const accumulatedCurried = new Map([
@@ -909,7 +909,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         declRange,
         consumerFile: filename,
         componentName,
-        ts,
+        ts: parser,
       });
       // Cache for any dotted-children that name this invocation as
       // their binder. Accept null too — a transparent binder result
@@ -919,7 +919,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       binderSourceByKey.set(key, { source, curriedArgs: new Map() });
       if (source) {
         const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
-        const resolution = resolveTemplate(source, { consumerArgs, ts });
+        const resolution = resolveTemplate(source, { consumerArgs, ts: parser });
         applyResolution(componentTagMap, componentAttrMap, key, resolution);
       }
     } else {
@@ -929,11 +929,11 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       const source = findTemplateSource({
         consumerFile: filename,
         componentName,
-        ts,
+        ts: parser,
       });
       if (source) {
         const consumerArgs = consumerArgsByLoc.get(key) ?? new Map();
-        const resolution = resolveTemplate(source, { consumerArgs, ts });
+        const resolution = resolveTemplate(source, { consumerArgs, ts: parser });
         applyResolution(componentTagMap, componentAttrMap, key, resolution);
       }
     }
@@ -954,7 +954,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
       kind: filename.endsWith('.gjs') ? 'gjs' : 'gts',
     };
     for (const [key, propName] of ownLetElementByLoc) {
-      const literal = resolveThisProp(ownSource, propName, { ts });
+      const literal = resolveThisProp(ownSource, propName, { ts: parser });
       if (!literal || !isNativeTag(literal)) continue;
       componentTagMap.set(key, literal);
       componentAttrMap.set(key, {
