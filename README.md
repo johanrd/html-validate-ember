@@ -148,7 +148,7 @@ Add the Ember/Glimmer language IDs to your project's `.vscode/settings.json`:
 
 ## Benchmarks
 
-`pnpm bench` runs the mitata benchmarks in `test/validate.bench.mjs`: `extractAttrTypeMap` per fixture, and whole `dist/run.js` runs over `examples/` (cold, warm, one cached file, `--no-glint`). `pnpm bench:compare --base main` runs them against a base branch side by side; CI posts that comparison on pull requests labelled `run-bench`. Deltas under 5 % are run-to-run noise and 5–10 % may be; the benchmarks exist to catch order-of-magnitude regressions such as a backend start-up or an uncached per-file cost.
+`pnpm bench` runs the mitata benchmarks in `test/validate.bench.mjs`: `extractAttrTypeMap` per fixture, and whole `dist/run.js` runs over `examples/` (cold, warm, one cached file, `--no-glint`; `test/bench-process.mjs`). `pnpm bench:compare --base main` runs them against a base branch: the in-process benchmarks one side after the other in separate processes, the whole-process cases with the two builds' samples interleaved so runner drift lands on both sides alike. CI posts that comparison on pull requests labelled `run-bench`. Deltas under 5 % are run-to-run noise and 5–10 % may be; the benchmarks exist to catch order-of-magnitude regressions such as a backend start-up or an uncached per-file cost.
 
 ## Glint integration
 
