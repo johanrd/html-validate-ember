@@ -262,6 +262,19 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it.each(['1', '0'])('multiline-self-closing-consumer: a substituted self-closing call keeps its newlines, so later errors report the source line (HVE_GLINT=%s)', async (glint) => {
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = glint;
+    try {
+      const r = await validate('multiline-self-closing-consumer.gts');
+      const buttonType = r.messages.filter((m) => m.rule === 'no-implicit-button-type');
+      expect(buttonType.map((m) => `${m.line}:${m.column}`), JSON.stringify(r.messages)).toEqual(['12:6']);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('multi-yield-table-consumer: wrapper with multi-yield template (different ancestors per named block) substitutes to outer wrapper, not first yield-ancestor', async () => {
     // Mirrors HDS `<HdsTable>` shape — its template yields to BOTH
     // `to="head"` (inside `<thead>`) and `to="body"` (inside

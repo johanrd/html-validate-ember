@@ -1144,7 +1144,10 @@ function substituteSelfClosingComponent(
   if (sourceLen < minLen) {
     return false;
   }
-  const inner = ' '.repeat(sourceLen - minLen);
+  // Keep the span's newlines inside the element, so later lines keep
+  // their line numbers.
+  const newlines = ctx.content.slice(elementStart, elementEnd).replace(/[^\r\n]/g, '').slice(0, sourceLen - minLen);
+  const inner = newlines + ' '.repeat(sourceLen - minLen - newlines.length);
   ctx.renames.push([elementStart, elementEnd, openTag + inner + closeTag]);
   ctx.fullyBlankedRanges.push([elementStart, elementEnd]);
   ctx.dynamicContentOffsets.push(elementStart);
