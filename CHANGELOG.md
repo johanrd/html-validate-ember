@@ -1,5 +1,17 @@
 # Changelog
 
+## Release (2026-09-15)
+
+* html-validate-ember 0.9.1 (patch)
+
+#### :bug: Bug Fix
+* `html-validate-ember`
+  * [#61](https://github.com/johanrd/html-validate-ember/pull/61) Check named-block content where its yield sits ([@johanrd](https://github.com/johanrd))
+  * [#62](https://github.com/johanrd/html-validate-ember/pull/62) Keep line numbers after a multi-line self-closing component ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-08-29)
 
 * html-validate-ember 0.9.0 (minor)
