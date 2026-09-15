@@ -132,7 +132,7 @@ function applyResolution(
   // Yield-ancestor preference + guards live in the shared
   // `chooseSubstitution` so the canonical-resolver path
   // (`buildResolutionMaps`) applies the exact same rule (issue #33).
-  const { tag: chosenTag, attrs: chosenAttrs, hasSplat, fromYieldAncestor } =
+  const { tag: chosenTag, attrs: chosenAttrs, hasSplat, fromYieldAncestor, nestedYieldBlocks } =
     chooseSubstitution(resolution);
 
   componentTagMap.set(key, chosenTag);
@@ -141,6 +141,7 @@ function applyResolution(
     attrs: Object.fromEntries(chosenAttrs),
     hasSplat,
     fromYieldAncestor,
+    nestedYieldBlocks,
   });
 }
 

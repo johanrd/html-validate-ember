@@ -32,6 +32,10 @@ export interface ComponentAttrs {
   // from the substituted open tag to avoid html-validate firing
   // aria-label-misuse / aria-labelledby-misuse on the wrong element.
   fromYieldAncestor?: boolean;
+  // Blocks whose `{{yield}}` sits below the resolved element rather than
+  // directly in it, so their consumer content has a different parent at
+  // runtime than it has in the blanked output.
+  nestedYieldBlocks?: string[];
   // Source byte offsets of the `<template>` block this root was
   // extracted from. Matches the `.gts` original-source coordinate
   // system that content-tag's preprocessor reports AND that

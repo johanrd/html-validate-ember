@@ -296,6 +296,22 @@ describe('end-to-end fixtures', () => {
     }
   });
 
+  it.each(['1', '0'])('cell-yield-table-consumer: named-block content is checked where its yield sits, not under the <table> root (HVE_GLINT=%s)', async (glint) => {
+    const prevGlint = process.env['HVE_GLINT'];
+    process.env['HVE_GLINT'] = glint;
+    try {
+      const r = await validate('cell-yield-table-consumer.gts');
+      const offenders = r.messages
+        .filter((m) => ['element-permitted-content', 'element-permitted-parent', 'prefer-tbody'].includes(m.rule))
+        .map((m) => `${m.rule} ${m.line}:${m.column}`);
+      // Only the `<div>` in `<:caption>`, whose yield sits directly in `<table>`.
+      expect(offenders, JSON.stringify(r.messages)).toEqual(['element-permitted-content 12:10']);
+    } finally {
+      if (prevGlint === undefined) delete process.env['HVE_GLINT'];
+      else process.env['HVE_GLINT'] = prevGlint;
+    }
+  });
+
   it('issue #33: component resolving to <nav><ol>{{yield}}</ol></nav> places yielded <li> under the <ol> yield-ancestor (canonical resolver path)', async () => {
     // `<Breadcrumb>` resolves to outer `<nav>` with yield-ancestor
     // `<ol>`; `<BreadcrumbItem>` resolves to `<li>`. The yield-ancestor

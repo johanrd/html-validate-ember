@@ -82,6 +82,7 @@ export function buildResolutionMaps(
         attrs: Object.fromEntries(chosen.attrs),
         hasSplat: chosen.hasSplat,
         fromYieldAncestor: chosen.fromYieldAncestor,
+        nestedYieldBlocks: chosen.nestedYieldBlocks,
       });
     },
   });

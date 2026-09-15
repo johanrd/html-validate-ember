@@ -67,6 +67,7 @@ export interface TagResolution {
   hasSplat: boolean;
   yieldAncestorTag?: string;
   yieldAncestorAttrs?: Map<string, string>;
+  nestedYieldBlocks?: string[];
 }
 
 export interface TransparentResolution {
@@ -94,6 +95,7 @@ export interface ChosenSubstitution {
   attrs: Map<string, string>;
   hasSplat: boolean;
   fromYieldAncestor: boolean;
+  nestedYieldBlocks?: string[];
 }
 
 // Pick the substitution tag for a resolved component invocation.
@@ -145,6 +147,7 @@ export function chooseSubstitution(resolution: TagResolution): ChosenSubstitutio
     attrs: resolution.attrs,
     hasSplat: resolution.hasSplat,
     fromYieldAncestor: false,
+    nestedYieldBlocks: resolution.nestedYieldBlocks,
   };
 }
 
@@ -303,6 +306,7 @@ function makeNativeResolution(
     result.yieldAncestorTag = yieldAncestor.tag;
     result.yieldAncestorAttrs = extractLiteralAttrs(yieldAncestor);
   }
+  result.nestedYieldBlocks = findNestedYieldBlocks(node);
   return result;
 }
 
@@ -341,15 +345,16 @@ function extractLiteralAttrs(node: AST.ElementNode): Map<string, string> {
 // consumer-yielded `<li>` items are valid even though the outer is
 // `<div>`.
 
-function findYieldAncestor(root: AST.ElementNode): AST.ElementNode | null {
-  // Collect every {{yield}}'s nearest native ancestor. When all yields
-  // share the same ancestor, return it (consumer-yielded content has
-  // a single landing site). When yields go to different ancestors
-  // (e.g. multi-yield-to=head/body templates with `<thead>` and
-  // `<tbody>` ancestors), return null — there's no single answer,
-  // and the caller should fall back to the outer wrapper.
-  const ancestors: AST.ElementNode[] = [];
-  function walk(node: AST.Node, ancestor: AST.ElementNode | null): void {
+interface YieldSite {
+  // `to='…'` block name; `default` for a bare `{{yield}}`, null for a
+  // non-literal `to`.
+  block: string | null;
+  ancestor: AST.ElementNode;
+}
+
+function collectYieldSites(root: AST.ElementNode): YieldSite[] {
+  const sites: YieldSite[] = [];
+  function walk(node: AST.Node, ancestor: AST.ElementNode): void {
     if (node.type === 'ElementNode') {
       for (const child of node.children) walk(child, node);
       return;
@@ -357,10 +362,11 @@ function findYieldAncestor(root: AST.ElementNode): AST.ElementNode | null {
     if (
       node.type === 'MustacheStatement' &&
       node.path.type === 'PathExpression' &&
-      node.path.original === 'yield' &&
-      ancestor
+      node.path.original === 'yield'
     ) {
-      ancestors.push(ancestor);
+      const to = node.hash.pairs.find((p) => p.key === 'to')?.value;
+      const block = !to ? 'default' : to.type === 'StringLiteral' ? to.value : null;
+      sites.push({ block, ancestor });
       return;
     }
     if (node.type === 'BlockStatement') {
@@ -371,12 +377,33 @@ function findYieldAncestor(root: AST.ElementNode): AST.ElementNode | null {
     }
   }
   for (const child of root.children) walk(child, root);
+  return sites;
+}
+
+function findYieldAncestor(root: AST.ElementNode): AST.ElementNode | null {
+  // Collect every {{yield}}'s nearest native ancestor. When all yields
+  // share the same ancestor, return it (consumer-yielded content has
+  // a single landing site). When yields go to different ancestors
+  // (e.g. multi-yield-to=head/body templates with `<thead>` and
+  // `<tbody>` ancestors), return null — there's no single answer,
+  // and the caller should fall back to the outer wrapper.
+  const ancestors = collectYieldSites(root).map((s) => s.ancestor);
   if (ancestors.length === 0) return null;
   const first = ancestors[0]!;
   for (const a of ancestors) {
     if (a !== first) return null;
   }
   return first;
+}
+
+// Blocks whose `{{yield}}` sits below `root` rather than directly in it.
+// Consumer content of these blocks is not a child of `root` at runtime.
+function findNestedYieldBlocks(root: AST.ElementNode): string[] | undefined {
+  const blocks = new Set<string>();
+  for (const { block, ancestor } of collectYieldSites(root)) {
+    if (block !== null && ancestor !== root) blocks.add(block);
+  }
+  return blocks.size > 0 ? [...blocks] : undefined;
 }
 
 // --- (element X) helper inside {{#let}} ----------------------------------
@@ -429,6 +456,7 @@ function resolveElementHelperLet(
       result.yieldAncestorTag = ya.tag;
       result.yieldAncestorAttrs = extractLiteralAttrs(ya);
     }
+    result.nestedYieldBlocks = findNestedYieldBlocks(innerTag);
   }
   return result;
 }
