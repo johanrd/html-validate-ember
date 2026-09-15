@@ -1846,6 +1846,33 @@ function detectSuppressions(
     }
     walk(node.children);
   }
+  // Top-level elements the consumer passes into the listed blocks.
+  // Children outside any `<:named>` block belong to `default`.
+  function collectNestedBlockContentOffsets(
+    node: AST.ElementNode,
+    blocks: ReadonlyArray<string>,
+    into: number[],
+  ): void {
+    function collect(stmts: ReadonlyArray<AST.Statement>): void {
+      for (const stmt of stmts) {
+        if (stmt.type === 'BlockStatement') {
+          const arm = selectBranch(stmt, branchSelections);
+          if (arm) collect(arm.body);
+        } else if (stmt.type === 'ElementNode') {
+          into.push(startOffset(stmt));
+        }
+      }
+    }
+    const defaultContent: AST.Statement[] = [];
+    for (const child of node.children) {
+      if (child.type === 'ElementNode' && child.tag.startsWith(':')) {
+        if (blocks.includes(child.tag.slice(1))) collect(child.children);
+      } else {
+        defaultContent.push(child);
+      }
+    }
+    if (blocks.includes('default')) collect(defaultContent);
+  }
   // Custom walk — the off-the-shelf `traverse` would visit forms /
   // fieldsets that live entirely in a blanked-out branch for the
   // current pass, leaking their suppression rules into
@@ -1971,6 +1998,17 @@ function detectSuppressions(
           collectThOffsets(stmt.children, thOffsets);
           for (const off of thOffsets) addPer(off, 'wcag/h63');
         }
+        const nestedYieldBlocks = stmtKey ? glintComponentAttrMap?.get(stmtKey)?.nestedYieldBlocks : undefined;
+        if (nestedYieldBlocks) {
+          // Content of a block whose `{{yield}}` sits below the component's
+          // root lands under the root in the blanked output, but under a
+          // deeper element at runtime (`<table>` vs its `<td>`/`<tbody>`).
+          const offsets: number[] = [];
+          collectNestedBlockContentOffsets(stmt, nestedYieldBlocks, offsets);
+          for (const off of offsets) {
+            for (const rule of PARENT_DEPENDENT_RULES) addPer(off, rule);
+          }
+        }
         walk(stmt.children);
       }
     }
@@ -2038,6 +2076,15 @@ function selectBranch(
 // bare-mustache event names like `{{on @event …}}` could resolve to
 // anything at runtime, so we don't trust them as a suppression signal.
 const INPUT_DRIVEN_FORM_EVENTS: ReadonlySet<string> = new Set(['input', 'change']);
+
+// Rules that judge an element by its parent or ancestors.
+const PARENT_DEPENDENT_RULES: ReadonlyArray<string> = [
+  'element-permitted-content',
+  'element-permitted-parent',
+  'element-permitted-order',
+  'element-required-ancestor',
+  'prefer-tbody',
+];
 
 const STRUCTURAL_CONTENT_PARENTS: ReadonlySet<string> = new Set([
   'ol', 'ul', 'menu', 'select', 'optgroup', 'table', 'thead', 'tbody',
