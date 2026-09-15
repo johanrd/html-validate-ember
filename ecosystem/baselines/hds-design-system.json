@@ -163,22 +163,6 @@
       "message": "Attribute \"selected\" has invalid value \"true\""
     },
     {
-      "file": "showcase/app/components/mock/app/main/table-complex.gts",
-      "line": 98,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/accordion/sub-sections/content.gts",
-      "line": 124,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
       "file": "showcase/app/components/page-components/advanced-table/sub-sections/base-elements.gts",
       "line": 520,
       "column": 46,
@@ -193,14 +177,6 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <button> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/application-state/sub-sections/container.gts",
-      "line": 54,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/badge-count/sub-sections/content.gts",
@@ -291,14 +267,6 @@
       "message": "<form> element must have a submit button"
     },
     {
-      "file": "showcase/app/components/page-components/copy/snippet/sub-sections/containers.gts",
-      "line": 48,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
       "file": "showcase/app/components/page-components/dropdown/sub-sections/list-items/checkmark.gts",
       "line": 28,
       "column": 40,
@@ -385,22 +353,6 @@
       "severity": "warning",
       "ruleId": "prefer-native-element",
       "message": "Prefer to use the native <select> element"
-    },
-    {
-      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-complex-table.gts",
-      "line": 380,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/filter-bar/code-fragments/with-table.gts",
-      "line": 172,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/form/base-elements/sub-sections/label.gts",
@@ -1227,14 +1179,6 @@
       "message": "Landmarks must have a non-empty and unique accessible name (aria-label or aria-labelledby)"
     },
     {
-      "file": "showcase/app/components/page-components/pagination/code-fragments/with-user-table.gts",
-      "line": 48,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
       "line": 114,
       "column": 10,
@@ -1337,14 +1281,6 @@
       "severity": "error",
       "ruleId": "close-order",
       "message": "Stray end tag '</p>'"
-    },
-    {
-      "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
-      "line": 343,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/rich-tooltip/sub-sections/demo.gts",
@@ -1481,286 +1417,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-cluster-data.gts",
-      "line": 53,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/filter.gts",
-      "line": 192,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-multi-select/sorting.gts",
-      "line": 145,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-music-data.gts",
-      "line": 26,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-selectable-data.gts",
-      "line": 42,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
-      "line": 60,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/code-fragments/with-users-data.gts",
-      "line": 86,
-      "column": 12,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 57,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 95,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 125,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 151,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 176,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 204,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 224,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 253,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 287,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 302,
-      "column": 20,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 323,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 338,
-      "column": 18,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 363,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 498,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 543,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/base-elements.gts",
-      "line": 588,
-      "column": 14,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 46,
-      "column": 22,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 93,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 148,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 186,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 207,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/customization.gts",
-      "line": 266,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/data-model.gts",
-      "line": 27,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/layout.gts",
-      "line": 72,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/multi-select.gts",
-      "line": 62,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
-      "line": 217,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/sorting.gts",
-      "line": 300,
-      "column": 10,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-components/table/sub-sections/tooltip.gts",
-      "line": 33,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-components/tooltip/sub-sections/button.gts",
@@ -1945,22 +1601,6 @@
       "severity": "error",
       "ruleId": "element-permitted-content",
       "message": "<div> element is not permitted as content under <button>"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 889,
-      "column": 8,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
-    },
-    {
-      "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
-      "line": 913,
-      "column": 16,
-      "severity": "error",
-      "ruleId": "prefer-tbody",
-      "message": "Prefer to wrap <tr> elements in <tbody>"
     },
     {
       "file": "showcase/app/components/page-foundations/focus-ring/sub-sections/components.gts",
