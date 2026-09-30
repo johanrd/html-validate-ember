@@ -140,4 +140,6 @@ const plugin: Plugin = {
   },
 };
 
+export { isComponentInvocation } from './lib/component-invocation.js';
+
 export default plugin;

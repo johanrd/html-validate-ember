@@ -212,6 +212,39 @@ Glint adds per-file overhead (TS program build, module rewrite, TypeChecker call
 
 Glint results, the transform output and (for `validate-gts`) the report of each file are cached on disk under `node_modules/.cache/html-validate-ember/`. An entry is keyed on the file's content plus the content of every project file it imports, transitively (through relative paths and tsconfig `paths`), the project's ambient `.d.ts` files, the lockfile, the tsconfig and the plugin — so editing an imported component invalidates its consumers. Set `HVE_NO_CACHE=1` to bypass the caches.
 
+## Custom rules
+
+Put project-specific rules in a local [html-validate plugin](https://html-validate.org/dev/writing-plugins.html) and reference it with `<rootDir>`, the folder of `.htmlvalidate.json`:
+
+```json
+{
+  "plugins": ["html-validate-ember", "<rootDir>/lint/html-rules.mjs"],
+  "rules": { "local/no-bold": "error" }
+}
+```
+
+```js
+// lint/html-rules.mjs
+import { Rule } from 'html-validate';
+import { isComponentInvocation } from 'html-validate-ember';
+
+class NoBold extends Rule {
+  setup() {
+    this.on('element:ready', ({ target }) => {
+      if (target.tagName === 'b' && !isComponentInvocation(target)) {
+        this.report(target, 'Use <strong> instead of <b>');
+      }
+    });
+  }
+}
+
+export default { name: 'local', rules: { 'local/no-bold': NoBold } };
+```
+
+With Glint, a component invocation is validated as the element the component renders (`<Modal>` as `<dialog>`). `isComponentInvocation(element)` is true for those, so a rule can report on the component's own template only, not again at every call site.
+
+`validate-gts` includes the plugin file in its cache key, so editing a rule re-lints every file.
+
 ## Silencing rules
 
 Three layers, broadest to narrowest:

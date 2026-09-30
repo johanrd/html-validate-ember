@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { HtmlValidate, formatterFactory } from 'html-validate';
+import { HtmlValidate, StaticConfigLoader, esmResolver, formatterFactory } from 'html-validate';
 import type { ConfigData, Report, Result } from 'html-validate';
 import { createRequire } from 'node:module';
 
@@ -28,13 +28,13 @@ import { assumeStaticFileSystem } from './lib/deps.js';
 // (comments, trailing commas) aren't supported here. If you need them,
 // either run html-validate's CLI directly (`npx html-validate '...'`)
 // or file an issue and we'll wire in html-validate's loader.
-function loadProjectConfig(start: string): ConfigData | null {
+function loadProjectConfig(start: string): { config: ConfigData; dir: string } | null {
   let dir = fs.statSync(start).isDirectory() ? start : path.dirname(start);
   while (dir !== path.dirname(dir)) {
     const candidate = path.join(dir, '.htmlvalidate.json');
     if (fs.existsSync(candidate)) {
       try {
-        return JSON.parse(fs.readFileSync(candidate, 'utf8')) as ConfigData;
+        return { config: JSON.parse(fs.readFileSync(candidate, 'utf8')) as ConfigData, dir };
       } catch (err) {
         process.stderr.write(
           `[validate-gts] failed to parse ${candidate}: ${
@@ -49,7 +49,9 @@ function loadProjectConfig(start: string): ConfigData | null {
   return null;
 }
 
-function makeValidator(userConfig: ConfigData | null): HtmlValidate {
+// Other plugins in the user's config (e.g. `<rootDir>/lint/rules.js`) load
+// through html-validate's ESM resolver, with `<rootDir>` as the config's folder.
+function makeValidator(userConfig: ConfigData | null, configDir: string): HtmlValidate {
   // Always pass the plugin object directly (bypasses CJS-require of our
   // ESM-only package). Strip any string reference to "html-validate-ember"
   // from the user's plugins array — they're a no-op via require() and
@@ -57,7 +59,7 @@ function makeValidator(userConfig: ConfigData | null): HtmlValidate {
   const userPlugins = (userConfig?.plugins ?? []).filter(
     (p) => !(typeof p === 'string' && p === 'html-validate-ember'),
   );
-  return new HtmlValidate({
+  const config: ConfigData = {
     extends: userConfig?.extends ?? [
       'html-validate:recommended',
       'html-validate-ember:gts-recommended',
@@ -72,7 +74,8 @@ function makeValidator(userConfig: ConfigData | null): HtmlValidate {
     },
     ...(userConfig?.elements ? { elements: userConfig.elements } : {}),
     ...(userConfig?.root ? { root: userConfig.root } : {}),
-  });
+  };
+  return new HtmlValidate(new StaticConfigLoader([esmResolver({ rootDir: configDir })], config));
 }
 
 // Recognized template file extensions:
@@ -223,8 +226,19 @@ function printUsage(): void {
   // programmatic config (we can't rely on html-validate's own discovery
   // because its plugin loader uses CJS require() which doesn't work for
   // our ESM-only package).
-  const userConfig = loadProjectConfig(files[0]!);
-  const htmlvalidate = makeValidator(userConfig);
+  const project = loadProjectConfig(files[0]!);
+  const configDir = project?.dir ?? process.cwd();
+  const htmlvalidate = makeValidator(project?.config ?? null, configDir);
+  // Local plugin sources are part of the cache key, so editing a rule re-lints.
+  const configForCacheKey = {
+    config: project?.config ?? null,
+    localPlugins: (project?.config.plugins ?? [])
+      .filter((p): p is string => typeof p === 'string' && p.includes('<rootDir>'))
+      .map((p) => {
+        const file = p.replace('<rootDir>', configDir);
+        return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+      }),
+  };
 
   // Pre-load all .gts/.gjs files into the Glint TS program in one shot,
   // so the per-file extractAttrTypeMap calls reuse a single program
@@ -246,7 +260,7 @@ function printUsage(): void {
       const key = reportCacheKey(
         file,
         fs.readFileSync(file, 'utf8'),
-        userConfig,
+        configForCacheKey,
         htmlValidateVersion,
         tsconfigPath,
         tsconfigPath ? backendKindFor(tsconfigPath) : 'none',
