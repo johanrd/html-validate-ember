@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, it, expect } from 'vitest';
 import { HtmlValidate, Rule } from 'html-validate';
@@ -10,55 +10,73 @@ import plugin, { isComponentInvocation } from '../index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 
-function rulesSource(message: string): string {
+function noBoldSource(message: string, extra = ''): string {
   return `import { Rule } from 'html-validate';
 
-class NoBold extends Rule {
+export class NoBold extends Rule {
   setup() {
     this.on('element:ready', ({ target }) => {
-      if (target.tagName === 'b') this.report(target, '${message}');
+      if (target.tagName === 'b') this.report(target, '${message}');${extra}
     });
   }
 }
-
-export default { name: 'local', rules: { 'local/no-bold': NoBold } };
 `;
 }
 
 describe('validate-gts: plugins from the project config', () => {
-  const project = path.join(__dirname, `.tmp-local-plugin-${process.pid}`);
+  // '#' and '$$' in the folder name: html-validate would read the path as a URL.
+  const project = path.join(__dirname, `.tmp-local-plugin-${process.pid}#1 $$x`);
+  const write = (name: string, text: string): void => {
+    fs.mkdirSync(path.dirname(path.join(project, name)), { recursive: true });
+    fs.writeFileSync(path.join(project, name), text);
+  };
+  const run = (cwd = project): { stdout: string; stderr: string; status: number | null } => {
+    const result = spawnSync(process.execPath, [path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'), path.join(root, 'run.ts'), path.join(project, 'page.gts')], {
+      cwd,
+      encoding: 'utf8',
+      env: { ...process.env, HVE_GLINT: '0' },
+    });
+    return { stdout: result.stdout, stderr: result.stderr, status: result.status };
+  };
 
   afterEach(() => fs.rmSync(project, { recursive: true, force: true }));
 
-  it('loads <rootDir> plugins and re-lints when a plugin file changes', () => {
-    fs.mkdirSync(project, { recursive: true });
-    fs.writeFileSync(
-      path.join(project, '.htmlvalidate.json'),
+  function setup(plugin: string): void {
+    write(
+      '.htmlvalidate.json',
       JSON.stringify({
         extends: ['html-validate-ember:recommended'],
-        plugins: ['<rootDir>/rules.mjs'],
+        plugins: [plugin],
         rules: { 'local/no-bold': 'error' },
       }),
     );
-    fs.writeFileSync(path.join(project, 'page.gts'), '<template><b>Bold</b></template>\n');
+    write('lint/rules.mjs', "import { NoBold } from './no-bold.mjs';\nexport default { name: 'local', rules: { 'local/no-bold': NoBold } };\n");
+    write('page.gts', '<template><b>Bold</b></template>\n');
+  }
 
-    const run = (): string => {
-      try {
-        return execFileSync(
-          path.join(root, 'node_modules', '.bin', 'tsx'),
-          [path.join(root, 'run.ts'), path.join(project, 'page.gts')],
-          { encoding: 'utf8', stdio: 'pipe' },
-        );
-      } catch (error) {
-        return String((error as { stdout?: string }).stdout ?? '');
-      }
-    };
+  it('re-lints when a module the plugin imports changes', () => {
+    setup('<rootDir>/lint/rules.mjs');
+    write('lint/no-bold.mjs', noBoldSource('first message'));
+    expect(run().stdout).toContain('first message');
 
-    fs.writeFileSync(path.join(project, 'rules.mjs'), rulesSource('first message'));
-    expect(run()).toContain('first message');
+    write('lint/no-bold.mjs', noBoldSource('second message'));
+    expect(run().stdout).toContain('second message');
+  });
 
-    fs.writeFileSync(path.join(project, 'rules.mjs'), rulesSource('second message'));
-    expect(run()).toContain('second message');
+  it("resolves './' plugins against the config's folder", () => {
+    setup('./lint/rules.mjs');
+    write('lint/no-bold.mjs', noBoldSource('relative plugin'));
+    const result = run(path.dirname(project));
+    expect(result.stdout).toContain('relative plugin');
+    expect(result.status).toBe(1);
+  });
+
+  it('fails once, before validating, when a plugin cannot load', () => {
+    setup('./lint/missing.mjs');
+    const result = run();
+    expect(result.stderr).toContain('failed to load the configuration');
+    expect(result.stderr).not.toContain('fatal on');
+    expect(result.status).toBe(2);
   });
 });
 

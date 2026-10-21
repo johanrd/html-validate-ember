@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { HtmlValidate, StaticConfigLoader, esmResolver, formatterFactory } from 'html-validate';
-import type { ConfigData, Report, Result } from 'html-validate';
+import type { ConfigData, Report, Resolver, Result } from 'html-validate';
 import { createRequire } from 'node:module';
 
 import plugin from './index.js';
@@ -13,49 +13,83 @@ import { __glintUnavailable } from './transform.js';
 import { backendKindFor, findTsconfig } from './lib/backend/index.js';
 import { readReportCache, reportCacheKey, writeReportCache } from './lib/cache.js';
 import type { CachedReport } from './lib/cache.js';
-import { assumeStaticFileSystem } from './lib/deps.js';
+import { assumeStaticFileSystem, dependencyClosure, sha256 } from './lib/deps.js';
 
-// Walk up from `start` looking for a `.htmlvalidate.json` config file
-// and return its parsed contents (or null if none found / unreadable).
-// We have to load the user's config ourselves rather than relying on
-// html-validate's discovery: html-validate's plugin loader uses CJS
-// `require()` to resolve plugins by string name, which fails silently
-// for our ESM-only package. To work around that, we pass the plugin
-// object directly via `plugins: [plugin]` and merge the user's rules /
-// extends / transform into the same programmatic config.
-//
-// Limitation: parses with `JSON.parse`, so JSON5 / JSONC features
-// (comments, trailing commas) aren't supported here. If you need them,
-// either run html-validate's CLI directly (`npx html-validate '...'`)
-// or file an issue and we'll wire in html-validate's loader.
-function loadProjectConfig(start: string): { config: ConfigData; dir: string } | null {
+// The nearest `.htmlvalidate.json`, loaded like html-validate's CLI loads it:
+// './' paths are relative to its folder, and so is `<rootDir>`.
+async function loadProjectConfig(start: string): Promise<{ config: ConfigData; dir: string } | null> {
   let dir = fs.statSync(start).isDirectory() ? start : path.dirname(start);
   while (dir !== path.dirname(dir)) {
     const candidate = path.join(dir, '.htmlvalidate.json');
     if (fs.existsSync(candidate)) {
+      let config: unknown;
       try {
-        return { config: JSON.parse(fs.readFileSync(candidate, 'utf8')) as ConfigData, dir };
+        config = await esmResolver({ rootDir: dir }).resolveConfig!(candidate, { cache: false });
       } catch (err) {
         process.stderr.write(
-          `[validate-gts] failed to parse ${candidate}: ${
-            err instanceof Error ? err.message : String(err)
-          }\n`,
+          `[validate-gts] failed to parse ${candidate}: ${err instanceof Error ? err.message : String(err)}\n`,
         );
         return null;
       }
+      if (!config || typeof config !== 'object' || Array.isArray(config)) {
+        process.stderr.write(`[validate-gts] ${candidate} is not a configuration object\n`);
+        return null;
+      }
+      return { config: substituteRootDir(config as ConfigData, dir), dir };
     }
     dir = path.dirname(dir);
   }
   return null;
 }
 
-// Other plugins in the user's config (e.g. `<rootDir>/lint/rules.js`) load
-// through html-validate's ESM resolver, with `<rootDir>` as the config's folder.
-function makeValidator(userConfig: ConfigData | null, configDir: string): HtmlValidate {
-  // Always pass the plugin object directly (bypasses CJS-require of our
-  // ESM-only package). Strip any string reference to "html-validate-ember"
-  // from the user's plugins array — they're a no-op via require() and
-  // we provide the object-form here.
+// html-validate resolves a raw native path only when it exists as written,
+// so `<rootDir>` is substituted here (a function replacer keeps `$` literal).
+function substituteRootDir(config: ConfigData, dir: string): ConfigData {
+  const expand = <T>(value: T): T =>
+    (typeof value === 'string' ? value.replace('<rootDir>', () => dir) : value) as T;
+  return {
+    ...config,
+    ...(config.plugins ? { plugins: config.plugins.map(expand) } : {}),
+    ...(config.extends ? { extends: config.extends.map(expand) } : {}),
+    ...(config.elements ? { elements: config.elements.map(expand) } : {}),
+    ...(config.transform
+      ? { transform: Object.fromEntries(Object.entries(config.transform).map(([k, v]) => [k, expand(v)])) }
+      : {}),
+  };
+}
+
+// html-validate's ESM resolver, recording every local file it loads. A missing
+// local file resolves to nothing, rather than being looked up as a URL.
+function recordingResolver(rootDir: string, files: Set<string>): Resolver {
+  const inner = esmResolver({ rootDir });
+  const found = (id: string): boolean => {
+    if (!path.isAbsolute(id)) return true;
+    if (!fs.existsSync(id)) return false;
+    files.add(id);
+    return true;
+  };
+  return {
+    name: 'validate-gts',
+    resolveConfig: (id, options) => (found(id) ? inner.resolveConfig!(id, options) : null),
+    resolveElements: (id, options) => (found(id) ? inner.resolveElements!(id, options) : null),
+    resolvePlugin: (id, options) => (found(id) ? inner.resolvePlugin!(id, options) : null),
+    resolveTransformer: (id, options) => (found(id) ? inner.resolveTransformer!(id, options) : null),
+  };
+}
+
+/** Content of the local files the configuration loaded, with everything they import. */
+function localFilesSha(files: ReadonlySet<string>): string {
+  const all = new Set<string>();
+  for (const file of files) {
+    all.add(file);
+    for (const dep of dependencyClosure(file, fs.readFileSync(file, 'utf8'), null)) all.add(dep);
+  }
+  return sha256([...all].sort().map((file) => `${file}\0${sha256(fs.readFileSync(file))}`).join('\0'));
+}
+
+// The plugin is passed as an object; a by-name "html-validate-ember" entry
+// would make the resolver import a second copy, so it is dropped.
+function makeValidator(userConfig: ConfigData | null, resolver: Resolver): HtmlValidate {
   const userPlugins = (userConfig?.plugins ?? []).filter(
     (p) => !(typeof p === 'string' && p === 'html-validate-ember'),
   );
@@ -75,7 +109,7 @@ function makeValidator(userConfig: ConfigData | null, configDir: string): HtmlVa
     ...(userConfig?.elements ? { elements: userConfig.elements } : {}),
     ...(userConfig?.root ? { root: userConfig.root } : {}),
   };
-  return new HtmlValidate(new StaticConfigLoader([esmResolver({ rootDir: configDir })], config));
+  return new HtmlValidate(new StaticConfigLoader([resolver], config));
 }
 
 // Recognized template file extensions:
@@ -221,24 +255,28 @@ function printUsage(): void {
     process.exit(2);
   }
 
-  // Look for `.htmlvalidate.json` in the first target's ancestors. If
-  // present, merge the user's rules / extends / transform into our
-  // programmatic config (we can't rely on html-validate's own discovery
-  // because its plugin loader uses CJS require() which doesn't work for
-  // our ESM-only package).
-  const project = loadProjectConfig(files[0]!);
-  const configDir = project?.dir ?? process.cwd();
-  const htmlvalidate = makeValidator(project?.config ?? null, configDir);
-  // Local plugin sources are part of the cache key, so editing a rule re-lints.
-  const configForCacheKey = {
-    config: project?.config ?? null,
-    localPlugins: (project?.config.plugins ?? [])
-      .filter((p): p is string => typeof p === 'string' && p.includes('<rootDir>'))
-      .map((p) => {
-        const file = p.replace('<rootDir>', configDir);
-        return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-      }),
-  };
+  const project = await loadProjectConfig(files[0]!);
+  // Transformers resolve lazily, on first use, so local ones are added here.
+  const localFiles = new Set<string>(
+    Object.values(project?.config.transform ?? {}).filter(
+      (t): t is string => typeof t === 'string' && path.isAbsolute(t) && fs.existsSync(t),
+    ),
+  );
+  const htmlvalidate = makeValidator(
+    project?.config ?? null,
+    recordingResolver(project?.dir ?? process.cwd(), localFiles),
+  );
+  // Resolve once up front: a broken plugin fails here with one message, and
+  // the local files it loads are known before the cache keys are computed.
+  try {
+    await htmlvalidate.getConfigFor(files[0]!);
+  } catch (err) {
+    process.stderr.write(
+      `[validate-gts] failed to load the configuration: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+    process.exit(2);
+  }
+  const configForCacheKey = { config: project?.config ?? null, localFiles: localFilesSha(localFiles) };
 
   // Pre-load all .gts/.gjs files into the Glint TS program in one shot,
   // so the per-file extractAttrTypeMap calls reuse a single program
