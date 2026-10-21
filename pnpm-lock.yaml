@@ -12,8 +12,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       '@glimmer/syntax':
-        specifier: ^0.95.0
-        version: 0.95.0
+        specifier: '>= 0.95.0'
+        version: 0.97.0
       content-tag:
         specifier: ^4.1.1
         version: 4.1.1
@@ -266,6 +266,9 @@ packages:
 
   '@glimmer/syntax@0.95.0':
     resolution: {integrity: sha512-W/PHdODnpONsXjbbdY9nedgIHpglMfOzncf/moLVrKIcCfeQhw2vG07Rs/YW8KeJCgJRCLkQsi+Ix7XvrurGAg==}
+
+  '@glimmer/syntax@0.97.0':
+    resolution: {integrity: sha512-uDUqlAxU40eJHJjMUR6ffdpDp6W53gNvS9YZNrBbf77sUL5xUFsBAaReB3FuyVPbwRg09p5rviioUJ8nyg7BBA==}
 
   '@glimmer/util@0.94.8':
     resolution: {integrity: sha512-HfCKeZ74clF9BsPDBOqK/yRNa/ke6niXFPM6zRn9OVYw+ZAidLs7V8He/xljUHlLRL322kaZZY8XxRW7ALEwyg==}
@@ -1876,6 +1879,10 @@ packages:
   simple-html-tokenizer@0.5.11:
     resolution: {integrity: sha512-C2WEK/Z3HoSFbYq8tI7ni3eOo/NneSPRoPpcM7WdLjFOArFuyXEjAoCdOC3DgMfRyziZQ1hCNR4mrNdWEvD0og==}
 
+  simple-html-tokenizer@1.0.0:
+    resolution: {integrity: sha512-ydo9dHOcttfRxVWBglPk7jcBucsuva2zN+5SmUO5eXgUBlxFCZ9CwYEpF30ESzfKsckimVQE+GIbfsgM3mgSdQ==}
+    engines: {node: '>= 20.19'}
+
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -2406,6 +2413,10 @@ snapshots:
       '@glimmer/wire-format': 0.94.8
       '@handlebars/parser': 2.2.2
       simple-html-tokenizer: 0.5.11
+
+  '@glimmer/syntax@0.97.0':
+    dependencies:
+      simple-html-tokenizer: 1.0.0
 
   '@glimmer/util@0.94.8':
     dependencies:
@@ -3970,6 +3981,8 @@ snapshots:
       - supports-color
 
   simple-html-tokenizer@0.5.11: {}
+
+  simple-html-tokenizer@1.0.0: {}
 
   sisteransi@1.0.5: {}
 
