@@ -71,6 +71,15 @@ describe('validate-gts: plugins from the project config', () => {
     expect(result.status).toBe(1);
   });
 
+  it('exits non-zero when a rule throws', () => {
+    setup('./lint/rules.mjs');
+    write('lint/no-bold.mjs', noBoldSource('unused', '\n      target.notAMethod();'));
+    const result = run();
+    expect(result.stderr).toContain('notAMethod is not a function');
+    expect(result.stdout).toContain('failed to validate: 1');
+    expect(result.status).toBe(1);
+  });
+
   it('fails once, before validating, when a plugin cannot load', () => {
     setup('./lint/missing.mjs');
     const result = run();

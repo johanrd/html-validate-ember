@@ -182,7 +182,7 @@ function printUsage(): void {
       '                                     N=0 disables multipass and falls back to the single-branch heuristic.\n' +
       '\n' +
       '  Pass any mix of .gts/.gjs/.hbs files and directories. Directories are walked recursively.\n' +
-      '  Exits non-zero when any file has errors.\n',
+      '  Exits non-zero when any file has errors or fails to validate.\n',
   );
 }
 
@@ -390,6 +390,7 @@ function printUsage(): void {
   let totalWarnings = 0;
   let valid = 0;
   let invalid = 0;
+  let fatal = 0;
   const ruleCounts = new Map<string, number>();
 
   // Validation progress: only shown in --quiet TTY mode (otherwise per-file
@@ -445,6 +446,7 @@ function printUsage(): void {
           err instanceof Error ? err.message : String(err)
         }\n`,
       );
+      fatal++;
       tickValidation();
       continue;
     }
@@ -498,6 +500,9 @@ function printUsage(): void {
   process.stdout.write(`files: ${files.length}\n`);
   process.stdout.write(`clean: ${valid}\n`);
   process.stdout.write(`with errors: ${invalid}\n`);
+  if (fatal > 0) {
+    process.stdout.write(`failed to validate: ${fatal}\n`);
+  }
   process.stdout.write(`total errors: ${totalErrors}\n`);
   if (totalWarnings > 0) {
     process.stdout.write(`total warnings: ${totalWarnings}\n`);
@@ -510,7 +515,7 @@ function printUsage(): void {
     }
   }
 
-  if (totalErrors > 0) {
+  if (totalErrors > 0 || fatal > 0) {
     process.exit(1);
   }
 })().catch((err: unknown) => {
