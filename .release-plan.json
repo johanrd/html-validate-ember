@@ -1,18 +1,18 @@
 {
   "solution": {
     "html-validate-ember": {
-      "impact": "patch",
-      "oldVersion": "0.9.0",
-      "newVersion": "0.9.1",
+      "impact": "minor",
+      "oldVersion": "0.9.1",
+      "newVersion": "0.10.0",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "patch",
-          "reason": "Appears in changelog section :bug: Bug Fix"
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-09-15)\n\n* html-validate-ember 0.9.1 (patch)\n\n#### :bug: Bug Fix\n* `html-validate-ember`\n  * [#61](https://github.com/johanrd/html-validate-ember/pull/61) Check named-block content where its yield sits ([@johanrd](https://github.com/johanrd))\n  * [#62](https://github.com/johanrd/html-validate-ember/pull/62) Keep line numbers after a multi-line self-closing component ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
+  "description": "## Release (2026-10-21)\n\n* html-validate-ember 0.10.0 (minor)\n\n#### :rocket: Enhancement\n* `html-validate-ember`\n  * [#64](https://github.com/johanrd/html-validate-ember/pull/64) Load local plugins and add isComponentInvocation ([@johanrd](https://github.com/johanrd))\n  * [#65](https://github.com/johanrd/html-validate-ember/pull/65) Widen @glimmer/syntax range to >= 0.95.0 ([@johanrd](https://github.com/johanrd))\n\n#### Committers: 1\n- Johan Røed ([@johanrd](https://github.com/johanrd))\n"
 }
