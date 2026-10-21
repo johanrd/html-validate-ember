@@ -87,8 +87,7 @@ function localFilesSha(files: ReadonlySet<string>): string {
   return sha256([...all].sort().map((file) => `${file}\0${sha256(fs.readFileSync(file))}`).join('\0'));
 }
 
-// The plugin is passed as an object; a by-name "html-validate-ember" entry
-// would make the resolver import a second copy, so it is dropped.
+// The plugin is passed as an object, so a by-name "html-validate-ember" entry is dropped.
 function makeValidator(userConfig: ConfigData | null, resolver: Resolver): HtmlValidate {
   const userPlugins = (userConfig?.plugins ?? []).filter(
     (p) => !(typeof p === 'string' && p === 'html-validate-ember'),

@@ -214,11 +214,11 @@ Glint results, the transform output and (for `validate-gts`) the report of each 
 
 ## Custom rules
 
-Put project-specific rules in a local [html-validate plugin](https://html-validate.org/dev/writing-plugins.html) and reference it with `<rootDir>`, the folder of `.htmlvalidate.json`:
+Put project-specific rules in a local [html-validate plugin](https://html-validate.org/dev/writing-plugins.html) and reference it with a path relative to `.htmlvalidate.json`:
 
 ```json
 {
-  "plugins": ["html-validate-ember", "<rootDir>/lint/html-rules.mjs"],
+  "plugins": ["html-validate-ember", "./lint/html-rules.mjs"],
   "rules": { "local/no-bold": "error" }
 }
 ```
@@ -241,9 +241,9 @@ class NoBold extends Rule {
 export default { name: 'local', rules: { 'local/no-bold': NoBold } };
 ```
 
-With Glint, a component invocation is validated as the element the component renders (`<Modal>` as `<dialog>`). `isComponentInvocation(element)` is true for those, so a rule can report on the component's own template only, not again at every call site.
+A component invocation is validated as the element the component renders (`<MyDialog>` as `<dialog>`). `isComponentInvocation(element)` is true for those, so a rule can report on the component's own template only, not again at every call site.
 
-`validate-gts` includes the plugin file in its cache key, so editing a rule re-lints every file.
+`validate-gts` includes the plugin files and the modules they import in its cache key, so editing a rule re-lints every file.
 
 ## Silencing rules
 
