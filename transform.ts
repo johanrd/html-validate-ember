@@ -24,6 +24,7 @@ import path from 'node:path';
 import { readTransformCache, transformCacheKey, writeTransformCache } from './lib/cache.js';
 import type { CachedPass, CachedTemplate } from './lib/cache.js';
 import { extractStringScope } from './lib/scope.js';
+import { markComponentInvocation } from './lib/component-invocation.js';
 
 // Cross-realm `DynamicValue` shim.
 //
@@ -155,6 +156,7 @@ function offsetToLineCol(source: string, offset: number): { line: number; column
 
 function makeHooks(
   dynamicSet: ReadonlySet<number>,
+  componentInvocations: ReadonlySet<number>,
   attrInjections: ReadonlyMap<number, ReadonlyArray<{ attr: string; value: string | null }>>,
   disablePerElement: ReadonlyMap<number, ReadonlySet<string>>,
   startOffset: number,
@@ -189,6 +191,7 @@ function makeHooks(
     // tag-name byte (one past `<`), while Glimmer's getStart() points
     // to the `<` itself. Adjust by 1.
     const templateRelativeOffset = location.offset - startOffset - 1;
+    if (componentInvocations.has(templateRelativeOffset)) markComponentInvocation(el);
     if (dynamicSet.has(templateRelativeOffset)) {
       (el as unknown as { appendText(value: unknown, location: unknown): void }).appendText(
         new DynamicValue(''),
@@ -301,6 +304,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
       originalData,
       hooks: makeHooks(
         new Set(result.dynamicContentOffsets ?? []),
+        new Set(result.componentInvocationOffsets ?? []),
         result.attrInjections ?? new Map(),
         result.disablePerElement ?? new Map(),
         0,
@@ -355,6 +359,7 @@ function* transformGlimmer(source: Source): Generator<Source, void, unknown> {
         originalData,
         hooks: makeHooks(
           new Set(pass.dynamicContentOffsets),
+          new Set(pass.componentInvocationOffsets),
           new Map(pass.attrInjections),
           new Map(pass.disablePerElement.map(([offset, rules]) => [offset, new Set(rules)])),
           tpl.startOffset,
@@ -495,6 +500,7 @@ function computeTemplates(filename: string, data: string): CachedTemplate[] | nu
         content: result.content,
         error: result.error ? result.error.message : null,
         dynamicContentOffsets: result.dynamicContentOffsets ?? [],
+        componentInvocationOffsets: result.componentInvocationOffsets ?? [],
         attrInjections: [...(result.attrInjections ?? new Map())],
         disablePerElement: [...(result.disablePerElement ?? new Map())].map(([offset, rules]) => [offset, [...rules]]),
       });

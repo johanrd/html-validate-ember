@@ -162,10 +162,11 @@ describe('transform cache', () => {
           content: '<div>   </div>',
           error: null,
           dynamicContentOffsets: [5],
+          componentInvocationOffsets: [3],
           attrInjections: [[3, [{ attr: 'type', value: 'button' }, { attr: 'hidden', value: null }]]],
           disablePerElement: [[0, ['no-inline-style']]],
         },
-        { content: '<div>       </div>', error: 'unclosed', dynamicContentOffsets: [], attrInjections: [], disablePerElement: [] },
+        { content: '<div>       </div>', error: 'unclosed', dynamicContentOffsets: [], componentInvocationOffsets: [], attrInjections: [], disablePerElement: [] },
       ],
     },
   ];

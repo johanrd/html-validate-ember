@@ -5,3 +5,6 @@ dist/
 ecosystem/.cache/
 .claude/
 bench-results.json
+
+# validate-gts CLI test projects
+test/.tmp-*

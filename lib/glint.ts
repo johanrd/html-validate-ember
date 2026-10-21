@@ -967,6 +967,7 @@ export function extractAttrTypeMap(filename: string, contents: string): Extracti
         // attribute injection / aria-strip can operate on the splatted
         // tag like any other resolved component.
         hasSplat: true,
+        ownElement: true,
       });
     }
   }
