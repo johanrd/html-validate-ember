@@ -276,6 +276,7 @@ export interface CachedPass {
   content: string;
   error: string | null;
   dynamicContentOffsets: number[];
+  componentInvocationOffsets: number[];
   attrInjections: Array<[number, Array<{ attr: string; value: string | null }>]>;
   disablePerElement: Array<[number, string[]]>;
 }

@@ -423,6 +423,7 @@ interface Context {
   renames: Array<[number, number, string]>;
   fullyBlankedRanges: Range[];
   dynamicContentOffsets: number[];
+  componentInvocationOffsets: number[];
   // Per-offset attribute injections, applied at parse-time by
   // transform.ts's `processElement` hook via `setAttribute`. Each
   // entry pairs an attribute name with either a literal value or
@@ -1251,6 +1252,12 @@ function emitAttribute(attr: AST.AttrNode, ctx: Context, effectiveTag: string): 
   }
 }
 
+function lookupResolvedAttrs(node: AST.ElementNode, ctx: Context): ComponentAttrs | undefined {
+  if (!node.loc.start) return undefined;
+  const key = `${node.loc.start.line}:${node.loc.start.column}`;
+  return ctx.effectiveComponentAttrMap?.get(key) ?? ctx.glintComponentAttrMap?.get(key);
+}
+
 // Handle an `<element>` AST node: drive Glint substitution / neutralization
 // and process attributes / modifiers / inline comments.
 function handleElementNode(node: AST.ElementNode, ctx: Context): void {
@@ -1277,6 +1284,7 @@ function handleElementNode(node: AST.ElementNode, ctx: Context): void {
   }
   if (resolved !== null) {
     effectiveTag = resolved;
+    if (!lookupResolvedAttrs(node, ctx)?.ownElement) ctx.componentInvocationOffsets.push(start);
     if (node.selfClosing && !VOID_ELEMENTS.has(resolved)) {
       // Non-void self-closing: the whole span is in fullyBlankedRanges;
       // attribute children are guarded out via inFullyBlankedRange.
@@ -1488,6 +1496,8 @@ export interface BlankResult {
   content: string;
   error: Error | null;
   dynamicContentOffsets: number[];
+  // Element starts where a component invocation was substituted by the tag it renders.
+  componentInvocationOffsets: number[];
   // Per-offset attribute injections — applied at parse-time by
   // transform.ts's `processElement` hook via `setAttribute`. See
   // `Context.attrInjections` for rationale.
@@ -1518,6 +1528,7 @@ export interface BlankErrorResult {
   content: string;
   error: Error;
   dynamicContentOffsets?: undefined;
+  componentInvocationOffsets?: undefined;
   attrInjections?: undefined;
   disablePerElement?: undefined;
 }
@@ -1551,6 +1562,7 @@ function blankTemplateContent(
     renames: [],
     fullyBlankedRanges: [],
     dynamicContentOffsets: [],
+    componentInvocationOffsets: [],
     attrInjections: new Map(),
     branchSelections,
     inFullyBlankedRange(offset: number): boolean {
@@ -1614,6 +1626,7 @@ function blankTemplateContent(
     content: buf.join(''),
     error: null,
     dynamicContentOffsets: ctx.dynamicContentOffsets,
+    componentInvocationOffsets: ctx.componentInvocationOffsets,
     attrInjections: ctx.attrInjections,
     disablePerElement: detectSuppressions(
       ast,

@@ -36,6 +36,8 @@ export interface ComponentAttrs {
   // directly in it, so their consumer content has a different parent at
   // runtime than it has in the blanked output.
   nestedYieldBlocks?: string[];
+  // The element is written in this template (`(element this.tag)`), not a component call.
+  ownElement?: boolean;
   // Source byte offsets of the `<template>` block this root was
   // extracted from. Matches the `.gts` original-source coordinate
   // system that content-tag's preprocessor reports AND that
