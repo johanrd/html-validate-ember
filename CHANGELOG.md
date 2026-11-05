@@ -1,5 +1,16 @@
 # Changelog
 
+## Release (2026-11-05)
+
+* html-validate-ember 0.11.0 (minor)
+
+#### :rocket: Enhancement
+* `html-validate-ember`
+  * [#67](https://github.com/johanrd/html-validate-ember/pull/67) Move the TypeScript 7 backend to the 7.1 API ([@johanrd](https://github.com/johanrd))
+
+#### Committers: 1
+- Johan Røed ([@johanrd](https://github.com/johanrd))
+
 ## Release (2026-10-21)
 
 * html-validate-ember 0.10.0 (minor)
