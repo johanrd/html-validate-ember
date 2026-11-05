@@ -3,7 +3,7 @@
 // Two implementations produce the same shapes:
 //   - `ts6`: TypeScript 5/6 as an in-process library plus Glint's
 //     `rewriteModule` (the original pipeline).
-//   - `tsgo`: TypeScript 7's synchronous IPC API (`typescript/unstable/sync`)
+//   - `tsgo`: TypeScript 7's synchronous IPC API (`typescript/sync`)
 //     against a project whose tsconfig declares `contentMappers`, so the
 //     `.gts` transform already happened inside the compiler.
 //
