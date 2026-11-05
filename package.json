@@ -85,7 +85,7 @@
     "release-plan": "^0.18.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-7": "npm:typescript@7.1.0-dev.20260821.1",
+    "typescript-7": "npm:typescript@7.1.0-beta",
     "vitest": "^4.1.5"
   },
   "peerDependencies": {

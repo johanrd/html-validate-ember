@@ -1,4 +1,4 @@
-// TypeScript 7 backend: `typescript/unstable/sync`, the synchronous IPC
+// TypeScript 7 backend: `typescript/sync`, the synchronous IPC
 // API of the Go compiler. The project is opened with `runExternalCode`
 // so the tsconfig's `contentMappers` (ember-content-mapper) transform
 // `.gts` files inside the compiler; `getSourceFile('x.gts')` returns
@@ -34,7 +34,7 @@ import type {
   VirtualRange,
 } from './types.js';
 
-// Minimal local typing for the `typescript/unstable/*` surface we use.
+// Minimal local typing for the `typescript/sync` and `typescript/ast` surface we use.
 // The package is a peer that consumers install under a name of their
 // choosing (see `loadTsgo`), so nothing here imports its types.
 interface TsgoSpanSegment {
@@ -63,6 +63,7 @@ interface TsgoProject {
   readonly checker: unknown;
 }
 interface TsgoSnapshot {
+  update(params: TsgoSnapshotParams): TsgoSnapshot;
   getDefaultProjectForFile(file: string): TsgoProject | undefined;
   dispose(): void;
 }
@@ -70,17 +71,20 @@ interface TsgoFileSystem {
   readFile(fileName: string): string | undefined;
   fileExists(fileName: string): boolean;
   directoryExists(directoryName: string): boolean;
-  getAccessibleEntries(directoryName: string): { files: string[]; directories: string[] };
+  getAccessibleEntries(directoryName: string): { files: string[]; directories: string[]; symlinks: string[] };
   realpath(p: string): string;
+  stat(p: string): { mode: number; size: number; mtime: Date } | undefined;
+  writeFile(fileName: string, content: string): void;
+  removeFile(p: string): void;
 }
-interface TsgoUpdateSnapshotParams {
+interface TsgoSnapshotParams {
   openProjects?: readonly string[];
   openFiles?: readonly string[];
   closeFiles?: readonly string[];
-  fileChanges?: { changed?: string[]; created?: string[]; deleted?: string[] };
+  fileNotifications?: { changed?: string[]; created?: string[]; deleted?: string[] };
 }
 interface TsgoApi {
-  updateSnapshot(params?: TsgoUpdateSnapshotParams): TsgoSnapshot;
+  createSnapshot(params: TsgoSnapshotParams): TsgoSnapshot;
   close(): void;
 }
 interface TsgoSyncModule {
@@ -119,7 +123,8 @@ const packageByRoot = new Map<string, { name: string; version: string } | null>(
  * Find a TypeScript 7 package installed in the project. `typescript` itself
  * when it is 7.x, otherwise the aliases projects use to run 7 next to a
  * library-API 5/6 (`HVE_TSGO=<package name>` overrides the search).
- * Requires Node 22.12+ (`require()` of the ESM API).
+ * Requires TypeScript 7.1 (the first with this API) and Node 22.12+
+ * (`require()` of the ESM API).
  */
 /**
  * The TypeScript 7 package `loadTsgo` would use, without loading it: the
@@ -134,7 +139,7 @@ export function resolveTsgoPackage(projectRoot: string): { name: string; version
   for (const name of override ? [override] : CANDIDATE_PACKAGES) {
     try {
       const version = (req(`${name}/package.json`) as { version?: string }).version ?? '0';
-      if (Number.parseInt(version, 10) < 7) continue;
+      if (Number.parseFloat(version) < 7.1) continue;
       found = { name, version };
       break;
     } catch {
@@ -153,11 +158,11 @@ export function loadTsgo(projectRoot: string): TsgoModules | null {
   if (pkg) {
     const req = createRequire(path.join(projectRoot, 'package.json'));
     try {
-      const sync = req(`${pkg.name}/unstable/sync`) as TsgoSyncModule;
-      const ast = req(`${pkg.name}/unstable/ast`) as TsgoAstModule;
+      const sync = req(`${pkg.name}/sync`) as TsgoSyncModule;
+      const ast = req(`${pkg.name}/ast`) as TsgoAstModule;
       found = { packageName: pkg.name, version: pkg.version, sync, ast };
     } catch {
-      // installed but not requirable (Node < 22.12)
+      // installed but not requirable (Node < 22.12, or a 7.1 nightly older than the API)
     }
   }
   modulesByRoot.set(projectRoot, found);
@@ -402,15 +407,17 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     getAccessibleEntries: (name) => {
       const files: string[] = [];
       const directories: string[] = [];
+      const symlinks: string[] = [];
       try {
         for (const entry of fs.readdirSync(name, { withFileTypes: true })) {
           if (entry.isDirectory()) directories.push(entry.name);
           else if (entry.isFile() || entry.isSymbolicLink()) files.push(entry.name);
+          if (entry.isSymbolicLink()) symlinks.push(entry.name);
         }
       } catch {
         // unreadable directory — report it empty
       }
-      return { files, directories };
+      return { files, directories, symlinks };
     },
     realpath: (p) => {
       try {
@@ -419,6 +426,19 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
         return p;
       }
     },
+    stat: (p) => {
+      const v = overlay.get(p);
+      if (v !== undefined) return { mode: 0o100644, size: Buffer.byteLength(v), mtime: new Date() };
+      try {
+        const { mode, size, mtime } = fs.statSync(p);
+        return { mode, size, mtime };
+      } catch {
+        return undefined;
+      }
+    },
+    // The project is only read: nothing is emitted.
+    writeFile: () => {},
+    removeFile: () => {},
   };
 
   let api: TsgoApi | null = null;
@@ -437,15 +457,15 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
 
   function ensureSnapshot(): TsgoSnapshot {
     if (!current) {
-      current = ensureApi().updateSnapshot({ openProjects: [tsconfigPath] });
+      current = ensureApi().createSnapshot({ openProjects: [tsconfigPath] });
     }
     return current;
   }
 
-  function replaceSnapshot(params: TsgoUpdateSnapshotParams): TsgoSnapshot {
+  function replaceSnapshot(params: TsgoSnapshotParams): TsgoSnapshot {
     const previous = ensureSnapshot();
-    current = ensureApi().updateSnapshot(params);
-    retired.push(previous);
+    current = previous.update(params);
+    if (current !== previous) retired.push(previous);
     return current;
   }
 
@@ -459,14 +479,14 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     const cached = parsedFiles.get(virtualName);
     if (cached?.contents === contents) return cached.sourceFile;
     overlay.set(virtualName, contents);
-    const snapshot = ensureApi().updateSnapshot({ openFiles: [virtualName] });
+    const snapshot = ensureSnapshot().update({ openFiles: [virtualName] });
     const project = snapshot.getDefaultProjectForFile(virtualName);
     const sourceFile = project?.program.getSourceFile(virtualName);
     if (!sourceFile) {
       snapshot.dispose();
       throw new Error(`typescript-go did not open ${virtualName}`);
     }
-    ensureApi().updateSnapshot({ closeFiles: [virtualName] }).dispose();
+    snapshot.update({ closeFiles: [virtualName] }).dispose();
     snapshot.dispose();
     overlay.delete(virtualName);
     // Node data is decoded client-side and outlives the snapshot; this is
@@ -553,7 +573,7 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
     let snapshot: TsgoSnapshot;
     if (onDisk === contents) {
       if (overlay.delete(filename)) {
-        snapshot = replaceSnapshot({ fileChanges: { changed: [filename] } });
+        snapshot = replaceSnapshot({ fileNotifications: { changed: [filename] } });
       } else {
         snapshot = ensureSnapshot();
       }
@@ -561,14 +581,17 @@ export function createTsgoBackend(mods: TsgoModules, tsconfigPath: string): Type
       snapshot = ensureSnapshot();
     } else {
       overlay.set(filename, contents);
-      snapshot = replaceSnapshot({ fileChanges: onDisk === null ? { created: [filename] } : { changed: [filename] } });
+      snapshot = replaceSnapshot({
+        fileNotifications: onDisk === null ? { created: [filename] } : { changed: [filename] },
+      });
     }
     let project = snapshot.getDefaultProjectForFile(filename);
     let sourceFile = project?.program.getSourceFile(filename);
     if (!sourceFile) {
       // Created after the snapshot was taken (a file the project's include
       // pattern matches but the compiler has not seen yet).
-      snapshot = replaceSnapshot({ fileChanges: { created: [filename] } });
+      // Only an opened file is guaranteed a default project.
+      snapshot = replaceSnapshot({ fileNotifications: { created: [filename] }, openFiles: [filename] });
       project = snapshot.getDefaultProjectForFile(filename);
       sourceFile = project?.program.getSourceFile(filename);
     }
